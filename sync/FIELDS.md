@@ -68,6 +68,15 @@ Despite the `S7` suffix, `PicksAndBansS7` is the current picks/bans table.
 ### Milestone tournament
 Most recent finished LCK pages: `LCK 2026 Season Playoffs` (ended 2026-09-13, 41 games), `LCK 2026 Rounds 3-4` (regular season, ended 2026-08-23). Both share `Split = "Rounds 3-4"`. The regular season has far more games per player, which suits the 5-game graying logic, so the milestone defaults to the latest non-playoff, non-qualifier tournament.
 
+## Spot-check of loaded data (2026-10-08)
+
+Method: re-pulled the raw `ScoreboardPlayers` / `ScoreboardGames` / `MatchSchedule` rows for `LCK/2026 Season/Rounds 3-4` straight from Cargo, recomputed each stat independently in Python (kill participation uses the source's own `TeamKills` field, not our `team_game`), and compared with `GET /api/players/:id`.
+
+- **Players:** 5 checked (Bdd, Cuzz, Effort, PerfecT (Lee Seung-min), Minous with 1 game). Games, wins, KDA, kill participation, damage/min, damage share, gold/min, gold share, CS/min, vision/min and average game length all matched to 5+ decimal places.
+- **Teams:** game W-L and series W-L for all 10 teams matched the source rows exactly (0 mismatches).
+- **Not a valid check:** the `Standings` table. Its totals (e.g. Gen.G 41-19) are far larger than this page's games and did not reconcile with a simple cumulative sum, so its scope is unclear. Don't use it as ground truth without finding out what it aggregates.
+- **Limits:** this verifies sync fidelity and our SQL math against the same source data, not the accuracy of Leaguepedia's own numbers.
+
 ## Rate limits
 
 Anonymous `cargoquery` hit `ratelimited` within a few requests. `cargotables` and `cargofields` were fine.
