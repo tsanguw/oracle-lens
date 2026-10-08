@@ -1,0 +1,15 @@
+:root {
+  --bg-page: #0b0e14;
+  --bg-bar: #0f131b;
+  --bg-panel: #141922;
+  --bg-raised: #1b212c;
+  --border: #2a3140;
+  --border-strong: #3a4356;
+  --text: #eef1f6;
+  --text-muted: #9aa3b2;
+  --gold: #f0b429;
+  --on-gold: #1a1300;
+
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'Barlow', sans-serif;
+}

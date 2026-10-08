@@ -1,0 +1,6 @@
+mwrogue
+mwclient
+psycopg[binary]
+python-dotenv
+pyyaml
+pytest
