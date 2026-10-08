@@ -1,4 +1,6 @@
 @import './tokens.css';
+@import './layout.css';
+@import './player.css';
 
 *,
 *::before,
@@ -11,8 +13,7 @@ body {
   background: var(--bg-page);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -23,15 +24,50 @@ h3 {
   font-family: var(--font-display);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 a {
-  color: inherit;
+  color: var(--text);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--gold);
+}
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .container {
   width: 100%;
-  max-width: 1216px;
+  max-width: 1280px;
   margin: 0 auto;
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-panel), var(--bg-raised), var(--bg-panel));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
 }

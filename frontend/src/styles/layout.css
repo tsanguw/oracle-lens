@@ -1,0 +1,139 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.site-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-bar);
+}
+.site-header__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.brand__mark {
+  width: 14px;
+  height: 28px;
+  background: var(--gold);
+  transform: skewX(-14deg);
+  display: inline-block;
+}
+.brand__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tabs__link {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 12px 18px;
+  border-bottom: 3px solid transparent;
+}
+.tabs__link.active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
+/* Footer */
+.site-footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-bar);
+  margin-top: auto;
+}
+.site-footer__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 22px 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.site-footer a {
+  text-decoration: underline;
+}
+
+/* Page body + sections */
+.main {
+  flex: 1;
+  padding-top: 40px;
+  padding-bottom: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  transition: opacity 0.15s;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.section__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.section__title {
+  font-size: 28px;
+  letter-spacing: 0.06em;
+}
+.section__note {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* Empty + stub states */
+.empty {
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.empty__title {
+  font-size: 28px;
+  letter-spacing: 0.06em;
+}
+.empty__text {
+  margin: 0;
+  max-width: 560px;
+  color: var(--text-muted);
+}
+.stub__title {
+  font-size: 56px;
+  letter-spacing: 0.03em;
+}
+.stub__text {
+  margin: 0;
+  color: var(--text-muted);
+}

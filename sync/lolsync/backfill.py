@@ -222,16 +222,17 @@ def _load(conn: psycopg.Connection, lp: Leaguepedia, page: str) -> dict[str, int
 
         cur.execute(
             """INSERT INTO tournament
-                 (leaguepedia_name, league_id, year, split, stage, is_international, sub_region, start_date, end_date)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                 (leaguepedia_name, name, league_id, year, split, stage, is_international, sub_region, start_date, end_date)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (leaguepedia_name) DO UPDATE SET
+                 name = EXCLUDED.name,
                  league_id = EXCLUDED.league_id, year = EXCLUDED.year, split = EXCLUDED.split,
                  stage = EXCLUDED.stage, is_international = EXCLUDED.is_international,
                  sub_region = EXCLUDED.sub_region, start_date = EXCLUDED.start_date,
                  end_date = EXCLUDED.end_date
                RETURNING id""",
             (
-                page, league_id, year, t["Split"] or None,
+                page, t["Name"], league_id, year, t["Split"] or None,
                 "Playoffs" if t["IsPlayoffs"] == "1" else "Regular season",
                 is_intl, sub_region, t["DateStart"] or None, t["Date"] or None,
             ),

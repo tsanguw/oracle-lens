@@ -1,0 +1,78 @@
+export interface Summary {
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  blueGames: number
+  blueWins: number
+  redGames: number
+  redWins: number
+  kills: number | null
+  deaths: number | null
+  assists: number | null
+  kda: number | null
+  killParticipation: number | null
+  damagePerMin: number | null
+  damageShare: number | null
+  goldPerMin: number | null
+  goldShare: number | null
+  csPerMin: number | null
+  visionPerMin: number | null
+  firstBloodRate: number | null
+  championPool: number
+  avgGameLengthSec: number | null
+}
+
+export interface Range {
+  label: string
+  description: string
+  isDefault: boolean
+  domesticOnly: boolean
+  from: string | null
+  to: string | null
+  resolved: { league: string; year: number; split: string | null } | null
+}
+
+export interface PlayerResponse {
+  player: {
+    id: number
+    name: string
+    displayName: string
+    nationality: string | null
+    role: string | null
+    team: string | null
+    league: string | null
+  }
+  range: Range
+  empty: boolean
+  summary: Summary | null
+}
+
+export interface ChampionRow {
+  champion: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  kda: number | null
+  csPerMin: number | null
+  damagePerMin: number | null
+  underMinSample: boolean
+}
+
+export interface ChampionsResponse {
+  range: Range
+  empty: boolean
+  champions: ChampionRow[]
+}
+
+export interface FiltersResponse {
+  leagues: string[]
+  years: number[]
+  splits: string[]
+  patches: string[]
+}
+
+export interface LastUpdatedResponse {
+  lastUpdated: string | null
+}

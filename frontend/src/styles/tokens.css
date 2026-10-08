@@ -1,12 +1,16 @@
 :root {
   --bg-page: #0b0e14;
   --bg-bar: #0f131b;
+  --bg-hero: #10141c;
   --bg-panel: #141922;
   --bg-raised: #1b212c;
+  --bg-chip: #262d3b;
   --border: #2a3140;
   --border-strong: #3a4356;
   --text: #eef1f6;
+  --text-soft: #c9cfda;
   --text-muted: #9aa3b2;
+  --text-dim: #7d8698;
   --gold: #f0b429;
   --on-gold: #1a1300;
 
