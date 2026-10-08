@@ -1,0 +1,23 @@
+# Hand-written league mapping: Leaguepedia long league names -> current league identity.
+# Only names verified against the live Leagues table are listed. Historical names
+# (EU LCS, NA LCS, 2025 LTA North/South, ...) are added in the full-backfill milestone
+# after checking their exact Leaguepedia spellings.
+
+leagues:
+  LCK:   { region: Korea,         names: ["LoL Champions Korea"] }
+  LPL:   { region: China,         names: ["Tencent LoL Pro League"] }
+  LEC:   { region: Europe,        names: ["LoL EMEA Championship"] }
+  LCS:   { region: North America, names: ["League of Legends Championship Series"] }
+  CBLOL: { region: Brazil,        names: ["Circuit Brazilian League of Legends"] }
+  LCP:   { region: Asia Pacific,  names: ["League of Legends Championship Pacific"] }
+
+# Pre-2025 leagues that roll up into LCP; the old short name is kept as sub_region.
+lcp_predecessors:
+  "Pacific Championship Series": PCS
+  "Vietnam Championship Series": VCS
+  "LoL Japan League": LJL
+
+# Leaguepedia long names of official international events (tournament.league_id stays NULL).
+internationals:
+  - "Mid-Season Invitational"
+  - "World Championship"
