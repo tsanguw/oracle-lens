@@ -20,6 +20,7 @@ import psycopg
 from dotenv import load_dotenv
 
 from lolsync.backfill import (
+    assign_splits,
     backfill_all,
     backfill_tournament,
     fetch_tournament,
@@ -32,6 +33,19 @@ from lolsync.resolve import ResolveCache
 
 ROOT = Path(__file__).resolve().parent
 load_dotenv(ROOT.parent / ".env")
+
+
+def connect() -> psycopg.Connection:
+    """TCP keepalives and a connect timeout, so a connection that died while the machine slept
+    raises an error instead of blocking forever."""
+    return psycopg.connect(
+        os.environ["DATABASE_URL"],
+        connect_timeout=10,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=3,
+    )
 
 
 def make_logger() -> tuple:
@@ -82,15 +96,15 @@ def main() -> int:
             for t in tournaments:
                 log(f"  {t['DateStart'] or '?':10s} {t['Year']} {t['Region']:14s} {t['Name']}")
             return 0
-        with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
-            summary = backfill_all(conn, lp, tournaments, resolver, log, force=args.force)
+        summary = backfill_all(connect, lp, tournaments, resolver, log, force=args.force)
         log(f"SUMMARY {summary}")
         return 1 if summary.get("failed") else 0
 
     page = args.tournament or pick_latest_tournament(lp)
     log(f"Tournament: {page}")
-    with psycopg.connect(os.environ["DATABASE_URL"]) as conn:
+    with connect() as conn:
         counts = backfill_tournament(conn, lp, fetch_tournament(lp, page), ResolveCache(), resolver, force=args.force)
+        assign_splits(conn)
     for key, value in counts.items():
         log(f"  {key}: {value}")
     return 0

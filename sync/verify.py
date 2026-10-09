@@ -38,6 +38,33 @@ CHECKS = {
     "tournaments with no games": """
         SELECT COUNT(*) FROM tournament t WHERE NOT EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id)""",
     "games with NULL played_at": "SELECT COUNT(*) FROM game WHERE played_at IS NULL",
+    "draft rows naming a placeholder as a champion (None, Missing Data)": """
+        SELECT COUNT(*) FROM pick_ban b JOIN champion c ON c.id = b.champion_id
+        WHERE lower(c.name) IN ('none', 'null', 'missing data', 'tbd', '')""",
+    "draft rows for a team that did not play that game": """
+        SELECT COUNT(*) FROM pick_ban b
+        WHERE NOT EXISTS (SELECT 1 FROM team_game t WHERE t.game_id = b.game_id AND t.team_id = b.team_id)""",
+    "teams with no games, draft rows or series (ghost rows)": """
+        SELECT COUNT(*) FROM team t
+        WHERE NOT EXISTS (SELECT 1 FROM team_game x WHERE x.team_id = t.id)
+          AND NOT EXISTS (SELECT 1 FROM pick_ban x WHERE x.team_id = t.id)
+          AND NOT EXISTS (SELECT 1 FROM series s WHERE t.id IN (s.team1_id, s.team2_id, s.winner_id))
+          AND NOT EXISTS (SELECT 1 FROM tournament_team_league x WHERE x.team_id = t.id)
+          AND NOT EXISTS (SELECT 1 FROM team_alias a WHERE a.team_id = t.id)""",
+    "series involving a placeholder team (TBD, empty)": """
+        SELECT COUNT(*) FROM series s JOIN team t ON t.id IN (s.team1_id, s.team2_id, s.winner_id)
+        WHERE lower(t.name) IN ('tbd', 'tba', 'none', '')""",
+    "players whose side or win disagrees with their team": """
+        SELECT COUNT(*) FROM player_game p JOIN team_game t ON t.game_id = p.game_id AND t.team_id = p.team_id
+        WHERE p.side <> t.side OR p.win <> t.win""",
+    "teams without five distinct roles in a game": """
+        SELECT COUNT(*) FROM (SELECT 1 FROM player_game GROUP BY game_id, team_id
+                              HAVING COUNT(*) <> 5 OR COUNT(DISTINCT role) <> 5) s""",
+    "player groups differing only by case/underscores": """
+        SELECT COUNT(*) FROM (SELECT 1 FROM player
+          GROUP BY lower(regexp_replace(name, '[^a-zA-Z0-9]', '', 'g')) HAVING COUNT(*) > 1) s""",
+    "team groups differing only by case": """
+        SELECT COUNT(*) FROM (SELECT 1 FROM team GROUP BY lower(name) HAVING COUNT(*) > 1) s""",
     "players with an unusual role": """
         SELECT COUNT(*) FROM player_game WHERE role NOT IN ('Top','Jungle','Mid','Bot','Support')""",
 }

@@ -13,7 +13,9 @@ from .client import Leaguepedia
 from .normalize import (
     LeagueResolver,
     cargo_quote,
+    is_placeholder,
     length_sec,
+    real_names,
     parse_utc,
     player_side,
     split_list,
@@ -138,10 +140,66 @@ class Loader:
         return self._upsert("team", name, {"region": region})
 
     def player(self, page: str, display_name: str | None, nationality: str | None) -> int:
+        # Players Leaguepedia has no page for (qualifier-only appearances) can reach us under several
+        # capitalisations. Leaguepedia disambiguates namesakes with a "(Real Name)" suffix, so a spelling
+        # that differs only by case is the same player: reuse the one already stored.
+        key = ("player", page)
+        if key not in self._ids:
+            self.cur.execute("SELECT id FROM player WHERE lower(name) = lower(%s) ORDER BY id LIMIT 1", (page,))
+            existing = self.cur.fetchone()
+            if existing:
+                self._ids[key] = existing[0]
         return self._upsert("player", page, {"display_name": display_name, "nationality": nationality})
 
     def champion(self, name: str) -> int:
         return self._upsert("champion", name)
+
+
+Draft = dict[tuple[int, str], list[tuple[str, "int | None"]]]
+
+
+def build_draft(
+    pb: dict[str, Any] | None,
+    team_rows: list[dict[str, Any]],
+    team_id: Callable[[str], int],
+) -> tuple[Draft, bool]:
+    """A game's draft as {(team id, 'ban'|'pick'): [(champion, slot), ...]}, plus whether any of it
+    came from the ScoreboardTeams fallback.
+
+    PicksAndBansS7 is preferred because its picks are in draft order. Wherever it has nothing for a
+    team and action (no row at all, or a row with empty fields) the ScoreboardTeams lists are used:
+    bans keep their slot order, but picks are listed by role, so their real draft order is unknown
+    and the slot is None (stored as NULL, never guessed).
+    """
+    draft: Draft = {}
+    if pb is not None and not is_placeholder(pb["Team1"]) and not is_placeholder(pb["Team2"]):
+        for side_no, team_name in ((1, pb["Team1"]), (2, pb["Team2"])):
+            tid = team_id(team_name)
+            for action, label in (("ban", "Ban"), ("pick", "Pick")):
+                slots = [
+                    (pb[f"Team{side_no}{label}{n}"], n)
+                    for n in range(1, 6)
+                    if not is_placeholder(pb[f"Team{side_no}{label}{n}"])
+                ]
+                if slots:
+                    draft[(tid, action)] = slots
+    used_scoreboard = False
+    for r in team_rows:
+        tid = team_id(r["Team"])
+        for action, raw in (("ban", r["Bans"]), ("pick", r["Picks"])):
+            listed = real_names(split_list(raw))
+            have = draft.get((tid, action), [])
+            # Use the scoreboard list when PicksAndBansS7 has nothing, or has fewer entries (a partial
+            # row). Keep PicksAndBansS7's slot for any champion it did record; a ban otherwise takes
+            # its position in the list, and a pick has no known draft order.
+            if len(listed) > len(have):
+                known = {champ: slot for champ, slot in have}
+                draft[(tid, action)] = [
+                    (champ, known.get(champ, i if action == "ban" else None))
+                    for i, champ in enumerate(listed, start=1)
+                ]
+                used_scoreboard = True
+    return draft, used_scoreboard
 
 
 def _set_state(conn: psycopg.Connection, page: str, status: str, error: str | None = None) -> None:
@@ -223,8 +281,10 @@ def _load(
         {g["Team1"] for g in games} | {g["Team2"] for g in games}
         | {r["Team"] for r in teams} | {r["Team"] for r in players}
         | {m["Team1"] for m in matches} | {m["Team2"] for m in matches}
+        # The draft table spells teams independently; unresolved, they became ghost teams with draft rows.
+        | {r["Team1"] for r in pickbans} | {r["Team2"] for r in pickbans}
     )
-    resolve_team_names(lp, all_team_names, cache)
+    resolve_team_names(lp, {n for n in all_team_names if not is_placeholder(n)}, cache)
     resolve_players(lp, (p["Link"] for p in players), cache)
 
     teams_by_game: dict[str, list[dict]] = defaultdict(list)
@@ -275,8 +335,7 @@ def _load(
             return tid
 
         def player_id(link: str, name: str) -> int:
-            canon = cache.player_canonical.get(link, link)
-            info = cache.player_info.get(canon, {})
+            canon, info = cache.player(link)
             pid = load.player(canon, info.get("id") or name, info.get("nationality"))
             for old in {link, name} - {canon}:
                 cur.execute(
@@ -308,7 +367,8 @@ def _load(
             return series_ids[match_id]
 
         for m in matches:
-            if m["MatchId"] and m["Team1"] and m["Team2"]:
+            # A bracket slot whose teams are not decided yet ("TBD") is not a series.
+            if m["MatchId"] and not is_placeholder(m["Team1"]) and not is_placeholder(m["Team2"]):
                 upsert_series(m["MatchId"], m["Team1"], m["Team2"], m["Winner"], m["Team1Score"], m["Team2Score"], m["BestOf"])
 
         participating: set[str] = set()
@@ -320,7 +380,7 @@ def _load(
                 continue
             series_id = (
                 upsert_series(g["MatchId"], g["Team1"], g["Team2"], g["Winner"], None, None, None)
-                if g["MatchId"] and g["Team1"] and g["Team2"] else None
+                if g["MatchId"] and not is_placeholder(g["Team1"]) and not is_placeholder(g["Team2"]) else None
             )
             cur.execute(
                 """INSERT INTO game (leaguepedia_id, series_id, tournament_id, patch, played_at, length_sec)
@@ -371,27 +431,16 @@ def _load(
             )
             counts["player_games"] += len(player_rows)
 
-            draft_rows: list[tuple] = []
-            pb = pb_by_game.get(gid)
-            if pb is not None:
-                # PicksAndBansS7: picks are in draft order.
-                for side_no, team_name in ((1, pb["Team1"]), (2, pb["Team2"])):
-                    tid = team_id(team_name)
-                    for action, label in (("ban", "Ban"), ("pick", "Pick")):
-                        for slot in range(1, 6):
-                            champ = pb[f"Team{side_no}{label}{slot}"]
-                            if champ:
-                                draft_rows.append((game_id, tid, load.champion(champ), action, slot))
-            else:
-                # Older games: fall back to ScoreboardTeams. Bans are in slot order; picks are listed
-                # by role, so their real draft order is unknown (stored as NULL, never guessed).
-                for r in trs:
-                    tid = team_id(r["Team"])
-                    for slot, champ in enumerate(split_list(r["Bans"]), start=1):
-                        draft_rows.append((game_id, tid, load.champion(champ), "ban", slot))
-                    for champ in split_list(r["Picks"]):
-                        draft_rows.append((game_id, tid, load.champion(champ), "pick", None))
-                counts["games_draft_from_scoreboard" if draft_rows else "games_without_draft"] += 1
+            draft, used_scoreboard = build_draft(pb_by_game.get(gid), trs, team_id)
+            draft_rows = [
+                (game_id, tid, load.champion(champ), action, slot)
+                for (tid, action), entries in draft.items()
+                for champ, slot in entries
+            ]
+            if not draft_rows:
+                counts["games_without_draft"] += 1
+            elif used_scoreboard:
+                counts["games_draft_from_scoreboard"] += 1
             cur.executemany(
                 "INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES (%s,%s,%s,%s,%s)",
                 draft_rows,
@@ -417,8 +466,27 @@ def _load(
     return dict(counts)
 
 
+def assign_splits(conn: psycopg.Connection) -> int:
+    """Give split-less domestic events (playoffs, Regional Finals, LTA playoffs) the split they belong
+    to. The sync re-upserts Leaguepedia's raw (empty) value, so this runs after every sync."""
+    changed = conn.execute("SELECT assign_missing_splits()").fetchone()[0]
+    conn.commit()
+    return changed
+
+
+def _reconnect(connect: Callable[[], psycopg.Connection], log: Log) -> psycopg.Connection:
+    """Open a fresh connection, waiting for the database to come back (e.g. after the machine slept)."""
+    for attempt in range(1, 11):
+        try:
+            return connect()
+        except psycopg.Error as exc:
+            log(f"  database unavailable (attempt {attempt}/10): {str(exc)[:120]}")
+            time.sleep(min(15 * attempt, 120))
+    raise RuntimeError("could not reconnect to the database")
+
+
 def backfill_all(
-    conn: psycopg.Connection,
+    connect: Callable[[], psycopg.Connection],
     lp: Leaguepedia,
     tournaments: list[dict[str, Any]],
     resolver: LeagueResolver,
@@ -426,7 +494,12 @@ def backfill_all(
     force: bool = False,
     pause_sec: float = 1.0,
 ) -> dict[str, int]:
-    """Run every tournament in order, continuing past failures. Re-running resumes."""
+    """Run every tournament in order, continuing past failures. Re-running resumes.
+
+    `connect` opens a database connection. If the connection drops mid-run (the machine slept, Docker
+    restarted), the run reconnects and retries the tournament instead of hanging or failing the rest.
+    """
+    conn = connect()
     cache = ResolveCache()
     summary: dict[str, int] = defaultdict(int)
     failures: list[tuple[str, str]] = []
@@ -435,7 +508,17 @@ def backfill_all(
         page, label = t["OverviewPage"], f"[{i}/{len(tournaments)}] {t['Name']}"
         t0 = time.monotonic()
         try:
-            counts = backfill_tournament(conn, lp, t, cache, resolver, force=force)
+            try:
+                counts = backfill_tournament(conn, lp, t, cache, resolver, force=force)
+            except (psycopg.OperationalError, psycopg.InterfaceError) as exc:
+                log(f"{label}: database connection lost ({type(exc).__name__}); reconnecting and retrying")
+                summary["reconnects"] += 1
+                try:
+                    conn.close()
+                except psycopg.Error:
+                    pass
+                conn = _reconnect(connect, log)
+                counts = backfill_tournament(conn, lp, t, cache, resolver, force=force)
         except OutOfScope as exc:
             summary["out_of_scope"] += 1
             log(f"{label}: out of scope ({exc})")
@@ -460,4 +543,12 @@ def backfill_all(
     summary["elapsed_min"] = round((time.monotonic() - started) / 60)
     for page, err in failures:
         log(f"  failed: {page}: {err}")
+    try:
+        summary["splits_assigned"] = assign_splits(conn)
+    except psycopg.Error as exc:  # e.g. the connection dropped on the last tournament; rerun fixes it
+        log(f"  could not assign splits: {str(exc)[:120]}")
+    try:
+        conn.close()
+    except psycopg.Error:
+        pass
     return dict(summary)

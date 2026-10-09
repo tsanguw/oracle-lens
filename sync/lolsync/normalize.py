@@ -59,6 +59,19 @@ def split_list(value: str | None) -> list[str]:
     return [v.strip() for v in (value or "").split(",") if v.strip()]
 
 
+# Leaguepedia writes these where a value is absent (an unused ban slot is the text "None"). They are
+# never real champions, teams or players and must not be stored as if they were.
+PLACEHOLDER_NAMES = frozenset({"", "none", "null", "missing data", "tbd", "tba"})
+
+
+def is_placeholder(name: str | None) -> bool:
+    return (name or "").strip().casefold() in PLACEHOLDER_NAMES
+
+
+def real_names(names: list[str]) -> list[str]:
+    return [n for n in names if not is_placeholder(n)]
+
+
 def cargo_quote(value: str) -> str:
     """Escape a string literal for a Cargo where clause."""
     return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
