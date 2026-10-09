@@ -8,6 +8,7 @@ handful of requests.
 from __future__ import annotations
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -43,13 +44,25 @@ def upload_images(client, bucket: str, folder: Path, log: Log = print, kinds: It
     kinds = list(kinds)
     have = existing_keys(client, bucket, [f"{k}/" for k in kinds])
     counts = {"uploaded": 0, "skipped": 0}
+    todo: list[tuple[str, Path]] = []
     for kind in kinds:
         for path in sorted((folder / kind).glob("*.webp")):
             key = f"{kind}/{path.name}"
             if key in have:
                 counts["skipped"] += 1
-                continue
-            client.put_object(Bucket=bucket, Key=key, Body=path.read_bytes(), ContentType="image/webp", CacheControl=CACHE)
-            counts["uploaded"] += 1
+            else:
+                todo.append((key, path))
+    log(f"r2: {len(todo)} to upload, {counts['skipped']} already there")
+
+    def put(item: tuple[str, Path]) -> None:
+        key, path = item
+        client.put_object(Bucket=bucket, Key=key, Body=path.read_bytes(), ContentType="image/webp", CacheControl=CACHE)
+
+    # A few uploads at a time: one request per file is slow when done strictly one after another.
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for i, _ in enumerate(pool.map(put, todo), start=1):
+            counts["uploaded"] = i
+            if i % 200 == 0:
+                log(f"r2: {i}/{len(todo)}")
     log(f"r2: {counts}")
     return counts
