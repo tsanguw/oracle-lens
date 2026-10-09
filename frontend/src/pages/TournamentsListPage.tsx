@@ -4,6 +4,8 @@ import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { ListHead, listState, Pager, SearchField } from '../components/ListParts'
 import { dateRange } from '../lib/format'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 const STAGES = ['Regular season', 'Playoffs', 'Qualifier']
 const STATUSES = ['In progress', 'Completed']
@@ -13,6 +15,7 @@ export default function TournamentsListPage() {
   const query = params.toString()
   const list = useApi<TournamentListResponse>(`/api/tournaments${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle('Tournaments')
   const { sort, dir, q, update, setPage, applyFilters } = listState(params, setParams, 'date')
   const data = list.data
 
@@ -39,13 +42,10 @@ export default function TournamentsListPage() {
           showing={showing}
           note="Qualifiers and promotion series are hidden unless you choose the Qualifier stage."
         />
-        <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search tournaments" placeholder="Search tournaments" />
+        <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search tournaments" placeholder="Search tournaments" status={list.loading ? 'Loading results' : list.data ? `${list.data.total.toLocaleString('en-US')} tournaments` : undefined} />
 
         {list.error ? (
-          <div className="empty" role="alert">
-            <h2 className="empty__title">Something went wrong</h2>
-            <p className="empty__text">{list.error.message}. Try again in a moment.</p>
-          </div>
+          <ErrorState message={list.error.message} onRetry={list.reload} level={2} />
         ) : data && data.empty ? (
           <div className="empty">
             <h2 className="empty__title">No tournaments found</h2>
@@ -123,6 +123,7 @@ export default function TournamentsListPage() {
           <label key={key} className="field">
             <span className="field__label">{label}</span>
             <select
+              name={key}
               value={params.get(key) ?? ''}
               onChange={(e) => {
                 const next = new URLSearchParams(params)

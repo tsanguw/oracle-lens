@@ -78,7 +78,7 @@ export default function FilterBar({ params, onChange, options, range, withRole =
         return (
           <label key={key} className="field">
             <span className="field__label">{label}</span>
-            <select value={value} onChange={(e) => set(key, e.target.value)}>
+            <select name={key} value={value} onChange={(e) => set(key, e.target.value)}>
               <option value="">{blank}</option>
               {all.map((v) => (
                 <option key={v} value={v}>
@@ -92,6 +92,7 @@ export default function FilterBar({ params, onChange, options, range, withRole =
       <label className="check">
         <input
           type="checkbox"
+          name="domestic"
           checked={params.get('domestic') === 'true'}
           onChange={(e) => {
             const next = new URLSearchParams(params)
@@ -102,7 +103,7 @@ export default function FilterBar({ params, onChange, options, range, withRole =
         />
         Domestic only
       </label>
-      <button type="button" className="btn-reset" onClick={() => onChange(new URLSearchParams())}>
+      <button type="button" className="btn-reset" aria-label="Reset filters" onClick={() => onChange(new URLSearchParams())}>
         Reset
       </button>
     </FilterDock>

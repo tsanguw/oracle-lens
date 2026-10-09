@@ -25,6 +25,8 @@ import FilterBar from '../components/FilterBar'
 import MatchupPanel from '../components/MatchupPanel'
 import { StatTilesSkeleton } from '../components/StatTiles'
 import { ChampionIcon } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
 
@@ -42,6 +44,7 @@ export default function ChampionPage({ name }: { name: string }) {
   const patches = useApi<{ empty: boolean; patches: ChampionPatchRow[] }>(`${base}/patches${qs}`)
   const context = useApi<ChampionContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle(name)
 
   const reset = () => setParams(new URLSearchParams())
 
@@ -58,10 +61,7 @@ export default function ChampionPage({ name }: { name: string }) {
   if (champion.error) {
     return (
       <main className="main container">
-        <div className="empty" role="alert">
-          <h1 className="empty__title">Something went wrong</h1>
-          <p className="empty__text">{champion.error.message}. Try again in a moment.</p>
-        </div>
+        <ErrorState message={champion.error.message} onRetry={champion.reload} level={1} />
       </main>
     )
   }

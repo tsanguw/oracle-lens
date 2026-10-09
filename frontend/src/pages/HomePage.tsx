@@ -4,9 +4,12 @@ import { useApi } from '../api/useApi'
 import SearchBox from '../components/SearchBox'
 import { dateRange } from '../lib/format'
 import { TeamLogo } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 export default function HomePage() {
   const recent = useApi<RecentTournamentsResponse>('/api/tournaments/recent?limit=5')
+  usePageTitle(null)
 
   return (
     <main className="main container home">
@@ -31,10 +34,7 @@ export default function HomePage() {
           <Link to="/tournaments" className="home__all">All tournaments →</Link>
         </div>
         {recent.error ? (
-          <div className="empty" role="alert">
-            <h3 className="empty__title">Couldn’t load tournaments</h3>
-            <p className="empty__text">{recent.error.message}. Try again in a moment.</p>
-          </div>
+          <ErrorState message={recent.error.message} onRetry={recent.reload} heading="Couldn’t load tournaments" level={3} />
         ) : (
           <div className="cards" aria-busy={recent.loading}>
             {recent.data

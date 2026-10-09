@@ -19,6 +19,8 @@ import {
   TournamentPlayersTable,
   TournamentTiles,
 } from '../components/TournamentParts'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
 
@@ -32,6 +34,7 @@ export default function TournamentPage({ id }: { id: string }) {
   const players = useApi<{ empty: boolean; minGames: number; players: TournamentPlayer[] }>(`${base}/players`)
   const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
   const context = useApi<TournamentContextResponse>(`${base}/context`)
+  usePageTitle(tournament.data?.tournament.name ?? 'Tournament')
 
   if (tournament.error?.status === 404) {
     return (
@@ -46,10 +49,7 @@ export default function TournamentPage({ id }: { id: string }) {
   if (tournament.error) {
     return (
       <main className="main container">
-        <div className="empty" role="alert">
-          <h1 className="empty__title">Something went wrong</h1>
-          <p className="empty__text">{tournament.error.message}. Try again in a moment.</p>
-        </div>
+        <ErrorState message={tournament.error.message} onRetry={tournament.reload} level={1} />
       </main>
     )
   }

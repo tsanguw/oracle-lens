@@ -22,7 +22,7 @@ export function ListHead({ eyebrow, title, showing, note }: { eyebrow: string; t
 }
 
 /** A debounced search box. `value` is the committed query (from the URL); `onSearch` fires after typing pauses. */
-export function SearchField({ value, onSearch, label, placeholder }: { value: string; onSearch: (q: string) => void; label: string; placeholder: string }) {
+export function SearchField({ value, onSearch, label, placeholder, status }: { value: string; onSearch: (q: string) => void; label: string; placeholder: string; status?: string }) {
   const [text, setText] = useState(value)
   const latest = useRef(onSearch)
   latest.current = onSearch
@@ -44,7 +44,10 @@ export function SearchField({ value, onSearch, label, placeholder }: { value: st
         <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" />
         <path d="M15.5 15.5 21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       </svg>
-      <input type="search" value={text} placeholder={placeholder} autoComplete="off" onChange={(e) => setText(e.target.value)} />
+      <input type="search" name="q" spellCheck={false} value={text} placeholder={placeholder} autoComplete="off" onChange={(e) => setText(e.target.value)} />
+      <span className="sr-only" role="status" aria-live="polite">
+        {status}
+      </span>
     </label>
   )
 }

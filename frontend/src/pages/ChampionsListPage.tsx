@@ -5,6 +5,8 @@ import FilterBar from '../components/FilterBar'
 import { ListHead, listState, Pager, SearchField, SortHeader } from '../components/ListParts'
 import { decimal, NA, percent } from '../lib/format'
 import { ChampionIcon } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 type SortKey = 'presence' | 'games' | 'winRate' | 'pickRate' | 'banRate' | 'kda'
 
@@ -31,6 +33,7 @@ export default function ChampionsListPage() {
   const query = params.toString()
   const board = useApi<ListResponse<ChampionListRow>>(`/api/champions${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle('Champions')
   const { sort, dir, q, update, onSort, setPage, applyFilters } = listState(params, setParams, 'presence')
   const data = board.data
 
@@ -43,13 +46,10 @@ export default function ChampionsListPage() {
           showing={data?.range.label ?? null}
           note="Presence is the share of games where a champion was picked or banned. Grayed rows have fewer than 5 games. Qualifiers and promotion series are not considered."
         />
-        <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search champions" placeholder="Search champions" />
+        <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search champions" placeholder="Search champions" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} champions` : undefined} />
 
         {board.error ? (
-          <div className="empty" role="alert">
-            <h2 className="empty__title">Something went wrong</h2>
-            <p className="empty__text">{board.error.message}. Try again in a moment.</p>
-          </div>
+          <ErrorState message={board.error.message} onRetry={board.reload} level={2} />
         ) : data && data.empty ? (
           <div className="empty">
             <h2 className="empty__title">No champions found</h2>

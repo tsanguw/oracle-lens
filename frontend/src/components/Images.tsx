@@ -83,7 +83,8 @@ export function ChampionIcon({ name, size = 32, className = '' }: BaseProps & { 
       alt=""
       width={size}
       height={size}
-      loading="lazy"
+      loading={size >= 96 ? 'eager' : 'lazy'}
+      fetchPriority={size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}
     />
   )
@@ -108,7 +109,8 @@ export function TeamLogo({ name, size = 28, className = '' }: BaseProps & { name
       alt=""
       width={size}
       height={size}
-      loading="lazy"
+      loading={size >= 96 ? 'eager' : 'lazy'}
+      fetchPriority={size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}
     />
   )
@@ -135,7 +137,8 @@ export function PlayerPhoto({ page, name, role, size = 36, className = '' }: Bas
       alt=""
       width={size}
       height={size}
-      loading="lazy"
+      loading={size >= 96 ? 'eager' : 'lazy'}
+      fetchPriority={size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}
     />
   )

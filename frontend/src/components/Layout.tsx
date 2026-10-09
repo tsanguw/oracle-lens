@@ -1,4 +1,5 @@
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { LastUpdatedResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 
@@ -8,6 +9,46 @@ const TABS = [
   { to: '/champions', label: 'Champions' },
   { to: '/tournaments', label: 'Tournaments' },
 ]
+
+/** Puts keyboard and screen-reader focus on the page content. */
+function focusMain(): void {
+  const main = document.querySelector('main')
+  if (!main) return
+  main.id = 'main'
+  main.tabIndex = -1
+  main.focus({ preventScroll: true })
+}
+
+/** After a link navigation (not a filter or page change within the same page), start the new page at the top. */
+function RouteEffects() {
+  const { pathname } = useLocation()
+  const first = useRef(true)
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    window.scrollTo(0, 0)
+    focusMain()
+  }, [pathname])
+  return null
+}
+
+function SkipLink() {
+  return (
+    <a
+      href="#main"
+      className="skip-link"
+      onClick={(e) => {
+        e.preventDefault()
+        focusMain()
+        document.querySelector('main')?.scrollIntoView()
+      }}
+    >
+      Skip to content
+    </a>
+  )
+}
 
 function Header() {
   return (
@@ -57,6 +98,8 @@ function Footer() {
 export default function Layout() {
   return (
     <div className="page">
+      <SkipLink />
+      <RouteEffects />
       <Header />
       <Outlet />
       <Footer />

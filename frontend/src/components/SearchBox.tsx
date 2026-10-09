@@ -79,11 +79,11 @@ export default function SearchBox() {
   }, [q])
 
   useEffect(() => {
-    const close = (e: MouseEvent) => {
+    const close = (e: PointerEvent) => {
       if (!boxRef.current?.contains(e.target as Node)) setOpen(false)
     }
-    document.addEventListener('mousedown', close)
-    return () => document.removeEventListener('mousedown', close)
+    document.addEventListener('pointerdown', close)
+    return () => document.removeEventListener('pointerdown', close)
   }, [])
 
   const go = (item: Item) => {
@@ -123,6 +123,8 @@ export default function SearchBox() {
           id="global-search"
           className="search__input"
           type="search"
+          name="q"
+          spellCheck={false}
           autoComplete="off"
           placeholder="Try “Faker”, “T1” or “Azir”"
           value={query}

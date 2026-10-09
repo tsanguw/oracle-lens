@@ -13,11 +13,14 @@ interface State<T> {
   data: T | null
   error: ApiError | null
   loading: boolean
+  /** Fetch again, for a Retry button. */
+  reload: () => void
 }
 
 /** Fetches `path` (relative, e.g. /api/players/x?year=2026); refetches when it changes. */
 export function useApi<T>(path: string): State<T> {
-  const [state, setState] = useState<State<T>>({ data: null, error: null, loading: true })
+  const [state, setState] = useState<Omit<State<T>, 'reload'>>({ data: null, error: null, loading: true })
+  const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -34,7 +37,7 @@ export function useApi<T>(path: string): State<T> {
         setState({ data: null, error, loading: false })
       })
     return () => controller.abort()
-  }, [path])
+  }, [path, attempt])
 
-  return state
+  return { ...state, reload: () => setAttempt((n) => n + 1) }
 }

@@ -39,7 +39,7 @@ export function ContextStrip({ children }: { children: ReactNode }) {
     <div className="container ctx-wrap">
       <div className="ctx-bar">
         <span className="ctx-bar__summary">Related info</span>
-        <button type="button" className="ctx-bar__toggle" aria-expanded={!hidden} aria-controls="related-info" onClick={toggle}>
+        <button type="button" className="ctx-bar__toggle" aria-label={`${hidden ? 'Show' : 'Hide'} related info`} aria-expanded={!hidden} aria-controls="related-info" onClick={toggle}>
           {hidden ? 'Show' : 'Hide'}
           <span aria-hidden="true"> {hidden ? '▾' : '▴'}</span>
         </button>

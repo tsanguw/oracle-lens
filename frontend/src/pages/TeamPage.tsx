@@ -17,6 +17,8 @@ import TeamContext from '../components/TeamContext'
 import TeamHeader, { TeamHeaderSkeleton } from '../components/TeamHeader'
 import { TeamPicksTable, TeamPlayersTable, TeamTiles } from '../components/TeamTables'
 import { TeamLogo } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 export default function TeamPage({ name }: { name: string }) {
   const [params, setParams] = useSearchParams()
@@ -30,6 +32,7 @@ export default function TeamPage({ name }: { name: string }) {
   const opponents = useApi<TeamOpponentsResponse>(`${base}/opponents${qs}`)
   const context = useApi<TeamContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle(name)
 
   const reset = () => setParams(new URLSearchParams())
 
@@ -46,10 +49,7 @@ export default function TeamPage({ name }: { name: string }) {
   if (team.error) {
     return (
       <main className="main container">
-        <div className="empty" role="alert">
-          <h1 className="empty__title">Something went wrong</h1>
-          <p className="empty__text">{team.error.message}. Try again in a moment.</p>
-        </div>
+        <ErrorState message={team.error.message} onRetry={team.reload} level={1} />
       </main>
     )
   }

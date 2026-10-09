@@ -19,6 +19,8 @@ import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
 import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
 import { opposingLabel } from '../lib/format'
 import { ChampionIcon, PlayerPhoto } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 export default function PlayerPage({ name }: { name: string }) {
   const [params, setParams] = useSearchParams()
@@ -33,6 +35,7 @@ export default function PlayerPage({ name }: { name: string }) {
   const bans = useApi<TargetBansResponse>(`${base}/target-bans${qs}`)
   const context = useApi<PlayerContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle(player.data?.player.displayName ?? name)
 
   const reset = () => setParams(new URLSearchParams())
 
@@ -49,10 +52,7 @@ export default function PlayerPage({ name }: { name: string }) {
   if (player.error) {
     return (
       <main className="main container">
-        <div className="empty" role="alert">
-          <h1 className="empty__title">Something went wrong</h1>
-          <p className="empty__text">{player.error.message}. Try again in a moment.</p>
-        </div>
+        <ErrorState message={player.error.message} onRetry={player.reload} level={1} />
       </main>
     )
   }

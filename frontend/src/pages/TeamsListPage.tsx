@@ -5,6 +5,8 @@ import FilterBar from '../components/FilterBar'
 import { ListHead, listState, Pager, SearchField, SortHeader } from '../components/ListParts'
 import { decimal, duration, goldDiff, percent } from '../lib/format'
 import { TeamLogo } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 type SortKey = 'winRate' | 'games' | 'goldDiff' | 'killsPerGame' | 'towersPerGame' | 'avgGameLengthSec'
 
@@ -22,6 +24,7 @@ export default function TeamsListPage() {
   const query = params.toString()
   const board = useApi<ListResponse<TeamListRow>>(`/api/teams${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle('Team leaderboard')
   const { sort, dir, q, update, onSort, setPage, applyFilters } = listState(params, setParams, 'winRate')
   const data = board.data
 
@@ -34,13 +37,10 @@ export default function TeamsListPage() {
           showing={data?.range.label ?? null}
           note={`Minimum ${data?.minGames ?? 5} games to be ranked. Qualifiers and promotion series are not considered.`}
         />
-        <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search teams" placeholder="Search teams" />
+        <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search teams" placeholder="Search teams" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} teams` : undefined} />
 
         {board.error ? (
-          <div className="empty" role="alert">
-            <h2 className="empty__title">Something went wrong</h2>
-            <p className="empty__text">{board.error.message}. Try again in a moment.</p>
-          </div>
+          <ErrorState message={board.error.message} onRetry={board.reload} level={2} />
         ) : data && data.empty ? (
           <div className="empty">
             <h2 className="empty__title">No ranked teams</h2>

@@ -3,6 +3,7 @@ import ChampionPage from './ChampionPage'
 import PlayerPage from './PlayerPage'
 import TeamPage from './TeamPage'
 import TournamentPage from './TournamentPage'
+import { usePageTitle } from '../lib/usePageTitle'
 
 /** Remounts the page per player so a previous player's data never flashes. */
 export function PlayerRoute() {
@@ -29,6 +30,7 @@ export function TournamentRoute() {
 }
 
 export function ComingSoon({ title }: { title: string }) {
+  usePageTitle(title)
   return (
     <main className="main container">
       <h1 className="stub__title">{title}</h1>

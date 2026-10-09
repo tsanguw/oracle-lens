@@ -20,10 +20,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+html {
+  /* The docked filter bar is sticky at the bottom; keep keyboard focus from landing behind it. */
+  scroll-padding-bottom: 14rem;
+}
+
 h1,
 h2,
 h3 {
   margin: 0;
+  text-wrap: balance;
   font-family: var(--font-display);
   font-weight: 700;
   text-transform: uppercase;
@@ -72,5 +78,41 @@ a:hover {
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
+  }
+}
+
+/* Skips the double-tap-to-zoom delay on controls. */
+a,
+button,
+select,
+input,
+label {
+  touch-action: manipulation;
+}
+
+/* Main is focused after navigation so keyboard and screen-reader users start at the new page. */
+main:focus {
+  outline: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -64px;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--gold);
+  color: var(--on-gold);
+  font-weight: 600;
+}
+.skip-link:focus {
+  top: 12px;
+  color: var(--on-gold);
+}
+
+/* The "Enter" hint in the search box means nothing on touch screens. */
+@media (hover: none) {
+  .search__hint {
+    display: none;
   }
 }

@@ -6,6 +6,8 @@ import { SearchField } from '../components/ListParts'
 import { dropInvalid, splitsFor, yearsFor } from '../lib/filterOptions'
 import { decimal, percent, whole } from '../lib/format'
 import { PlayerPhoto, TeamLogo } from '../components/Images'
+import { usePageTitle } from '../lib/usePageTitle'
+import ErrorState from '../components/ErrorState'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 
@@ -43,6 +45,7 @@ export default function LeaderboardPage() {
   const query = params.toString()
   const board = useApi<LeaderboardResponse>(`/api/leaderboard/players${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
+  usePageTitle('Player leaderboard')
 
   const data = board.data
   const range = data?.range ?? null
@@ -113,13 +116,10 @@ export default function LeaderboardPage() {
           <span className="showing__label">{range?.label ?? ' '}</span>
         </div>
       </section>
-      <SearchField value={params.get('q') ?? ''} onSearch={(v) => update({ q: v })} label="Search players" placeholder="Search players" />
+      <SearchField value={params.get('q') ?? ''} onSearch={(v) => update({ q: v })} label="Search players" placeholder="Search players" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} players` : undefined} />
 
       {board.error ? (
-        <div className="empty" role="alert">
-          <h2 className="empty__title">Something went wrong</h2>
-          <p className="empty__text">{board.error.message}. Try again in a moment.</p>
-        </div>
+        <ErrorState message={board.error.message} onRetry={board.reload} level={2} />
       ) : data && data.empty ? (
         <div className="empty">
           <h2 className="empty__title">No ranked players</h2>
@@ -236,7 +236,7 @@ export default function LeaderboardPage() {
           return (
             <label key={key} className="field">
               <span className="field__label">{label}</span>
-              <select value={value} onChange={(e) => update({ [key]: e.target.value })}>
+              <select name={key} value={value} onChange={(e) => update({ [key]: e.target.value })}>
                 <option value="">{blank}</option>
                 {all.map((v) => (
                   <option key={v} value={v}>
@@ -250,12 +250,13 @@ export default function LeaderboardPage() {
         <label className="check">
           <input
             type="checkbox"
+            name="domestic"
             checked={params.get('domestic') === 'true'}
             onChange={(e) => update({ domestic: e.target.checked ? 'true' : '' })}
           />
           Domestic only
         </label>
-        <button type="button" className="btn-reset" onClick={() => setParams(new URLSearchParams())}>
+        <button type="button" className="btn-reset" aria-label="Reset filters" onClick={() => setParams(new URLSearchParams())}>
           Reset
         </button>
         <p className="lb-note">
