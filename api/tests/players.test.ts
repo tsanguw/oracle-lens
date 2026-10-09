@@ -2,6 +2,7 @@ import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db.js'
+import { resetDb } from './resetDb.js'
 
 /*
  * Fixture for player "Pee" (Mid, Team A; teammate "Tee"). Every game: Pee 4/2/6, 1800s long, 6000 dmg
@@ -86,6 +87,7 @@ async function addGame(opts: {
 }
 
 beforeAll(async () => {
+  await resetDb()
   const one = async (sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows[0].id as number
   const league = await one(`INSERT INTO league (name, region) VALUES ('LCK','Korea') RETURNING id`)
   const team = (name: string) => one(`INSERT INTO team (name) VALUES ($1) RETURNING id`, [name])
