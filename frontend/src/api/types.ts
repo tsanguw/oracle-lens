@@ -283,6 +283,92 @@ export interface ChampionContextResponse {
   events: (ContextEvent & { games: number })[]
 }
 
+export interface TournamentInfo {
+  id: number
+  name: string
+  leaguepediaName: string
+  league: string | null
+  leagues: string[]
+  year: number
+  split: string | null
+  stage: string | null
+  isInternational: boolean
+  status: 'In progress' | 'Completed'
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface TournamentSummary {
+  games: number
+  series: number
+  teams: number
+  avgGameLengthSec: number | null
+  blueWinRate: number | null
+  killsPerGame: number | null
+  patches: string[]
+  standingLabel: string
+  standingTeam: string | null
+}
+
+export interface TournamentResponse {
+  tournament: TournamentInfo
+  empty: boolean
+  summary: TournamentSummary | null
+}
+
+export interface StandingRow {
+  team: string
+  seriesWins: number
+  seriesLosses: number
+  gameWins: number
+  gameLosses: number
+  gameWinRate: number
+}
+
+export interface SeriesRow {
+  seriesId: number
+  at: string | null
+  team1: string | null
+  team2: string | null
+  winner: string | null
+  score: string | null
+  bestOf: number | null
+}
+
+export interface MatchesResponse {
+  empty: boolean
+  upcoming: SeriesRow[]
+  results: SeriesRow[]
+}
+
+export interface TournamentPlayer {
+  page: string
+  name: string
+  team: string | null
+  role: string | null
+  games: number
+  winRate: number
+  kda: number | null
+  killParticipation: number | null
+  damagePerMin: number | null
+}
+
+export interface TournamentChampion {
+  champion: string
+  picks: number
+  wins: number
+  winRate: number | null
+  bans: number
+  presence: number
+}
+
+export interface TournamentContextResponse {
+  teams: StandingRow[]
+  upcoming: SeriesRow[]
+  results: SeriesRow[]
+  related: { id: number; name: string; league: string; status: 'In progress' | 'Completed'; startDate: string | null; endDate: string | null }[]
+}
+
 export interface TeamSummary {
   games: number
   wins: number

@@ -7,6 +7,18 @@ import { recentSchema, recentTournaments, search, searchSchema } from './homeQue
 import { loadPlayerContext } from './playerContext.js'
 import { loadTeamContext } from './teamContext.js'
 import {
+  findTournament,
+  loadRelatedEvents,
+  loadResults,
+  loadStandings,
+  loadTournamentChampions,
+  loadTournamentPlayers,
+  loadTournamentSummary,
+  loadUpcoming,
+  tournamentListSchema,
+  type TournamentRow,
+} from './tournamentQueries.js'
+import {
   championSchema,
   findChampion,
   loadChampionContext,
@@ -221,6 +233,53 @@ export function createApp() {
     const { limit } = recentSchema.parse(req.query)
     res.json({ tournaments: await recentTournaments(pool, limit) })
   }))
+
+  /** Resolves :id to a tournament (404 if unknown) and hands it, with the optional `limit`, to `load`. */
+  const tournamentRoute = <T>(path: string, load: (ctx: { tournament: TournamentRow; limit: number | undefined }) => Promise<T>) =>
+    app.get(
+      `/api/tournaments/:id${path}`,
+      wrap(async (req, res) => {
+        const { limit } = tournamentListSchema.parse(req.query)
+        const tournament = await findTournament(pool, String(req.params.id))
+        if (!tournament) {
+          res.status(404).json({ error: 'Tournament not found' })
+          return
+        }
+        res.json(await load({ tournament, limit }))
+      }),
+    )
+
+  tournamentRoute('', async ({ tournament }) => {
+    const summary = await loadTournamentSummary(pool, tournament)
+    return { tournament, empty: summary === null, summary }
+  })
+  tournamentRoute('/standings', async ({ tournament }) => {
+    const standings = await loadStandings(pool, tournament.id)
+    return { empty: standings.length === 0, standings }
+  })
+  tournamentRoute('/matches', async ({ tournament, limit }) => {
+    const [upcoming, results] = await Promise.all([loadUpcoming(pool, tournament.id), loadResults(pool, tournament.id, limit)])
+    return { empty: upcoming.length === 0 && results.length === 0, upcoming, results }
+  })
+  tournamentRoute('/players', async ({ tournament, limit }) => {
+    const { minGames, players } = await loadTournamentPlayers(pool, tournament.id, limit)
+    return { empty: players.length === 0, minGames, players }
+  })
+  tournamentRoute('/champions', async ({ tournament, limit }) => {
+    const champions = await loadTournamentChampions(pool, tournament.id, limit)
+    return { empty: champions.length === 0, champions }
+  })
+  /** Leading teams, schedule and results, and related events for the related-info strip. */
+  tournamentRoute('/context', async ({ tournament }) => {
+    const [teams, upcoming, results, related] = await Promise.all([
+      loadStandings(pool, tournament.id, 5),
+      loadUpcoming(pool, tournament.id),
+      loadResults(pool, tournament.id, 3),
+      loadRelatedEvents(pool, tournament),
+    ])
+    return { teams, upcoming, results, related }
+  })
+
 
   app.get('/api/filters', wrap(async (_req, res) => {
     const [leagues, years, splits, patches] = await Promise.all([

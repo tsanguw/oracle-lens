@@ -1,0 +1,142 @@
+import { useState } from 'react'
+import type {
+  MatchesResponse,
+  StandingRow,
+  TournamentChampion,
+  TournamentContextResponse,
+  TournamentPlayer,
+  TournamentResponse,
+} from '../api/types'
+import { useApi } from '../api/useApi'
+import { StatTilesSkeleton } from '../components/StatTiles'
+import {
+  ResultsTable,
+  StandingsTable,
+  TournamentChampionsTable,
+  TournamentContext,
+  TournamentHeader,
+  TournamentHeaderSkeleton,
+  TournamentPlayersTable,
+  TournamentTiles,
+} from '../components/TournamentParts'
+
+const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
+
+export default function TournamentPage({ id }: { id: string }) {
+  const [showAll, setShowAll] = useState(false)
+  const base = `/api/tournaments/${encodeURIComponent(id)}`
+
+  const tournament = useApi<TournamentResponse>(base)
+  const standings = useApi<{ empty: boolean; standings: StandingRow[] }>(`${base}/standings`)
+  const matches = useApi<MatchesResponse>(`${base}/matches?limit=${showAll ? 200 : 20}`)
+  const players = useApi<{ empty: boolean; minGames: number; players: TournamentPlayer[] }>(`${base}/players`)
+  const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
+  const context = useApi<TournamentContextResponse>(`${base}/context`)
+
+  if (tournament.error?.status === 404) {
+    return (
+      <main className="main container">
+        <div className="empty" role="alert">
+          <h1 className="empty__title">Tournament not found</h1>
+          <p className="empty__text">We don’t have a tournament with that id.</p>
+        </div>
+      </main>
+    )
+  }
+  if (tournament.error) {
+    return (
+      <main className="main container">
+        <div className="empty" role="alert">
+          <h1 className="empty__title">Something went wrong</h1>
+          <p className="empty__text">{tournament.error.message}. Try again in a moment.</p>
+        </div>
+      </main>
+    )
+  }
+
+  const data = tournament.data
+  const results = matches.data?.results ?? []
+
+  return (
+    <>
+      {data ? <TournamentHeader data={data} /> : <TournamentHeaderSkeleton />}
+      <TournamentContext data={context.data} />
+      <main className="main container">
+        {data?.empty ? (
+          <div className="empty" role="status">
+            <h2 className="empty__title">No games recorded</h2>
+            <p className="empty__text">This event has no games in our data yet.</p>
+          </div>
+        ) : (
+          <>
+            <section aria-labelledby="overview" className="section">
+              <h2 id="overview" className="section__title">
+                Overview
+              </h2>
+              {data?.summary ? <TournamentTiles summary={data.summary} /> : <StatTilesSkeleton />}
+            </section>
+
+            <section aria-labelledby="records" className="section">
+              <div className="section__head">
+                <h2 id="records" className="section__title">
+                  Team records
+                </h2>
+                <span className="section__note">Series record first, then game difference</span>
+              </div>
+              {standings.data ? <StandingsTable standings={standings.data.standings} /> : <Skeleton />}
+            </section>
+
+            <section aria-labelledby="results" className="section">
+              <div className="section__head">
+                <h2 id="results" className="section__title">
+                  Results
+                </h2>
+                <span className="section__note">Newest first</span>
+              </div>
+              {matches.data ? (
+                results.length === 0 ? (
+                  <p className="section__note">No results yet.</p>
+                ) : (
+                  <>
+                    <ResultsTable results={results} />
+                    {!showAll && results.length >= 20 && (
+                      <button type="button" className="btn-reset btn-reset--inline" onClick={() => setShowAll(true)}>
+                        Show all results
+                      </button>
+                    )}
+                  </>
+                )
+              ) : (
+                <Skeleton />
+              )}
+            </section>
+
+            <section aria-labelledby="players" className="section">
+              <div className="section__head">
+                <h2 id="players" className="section__title">
+                  Top players
+                </h2>
+                <span className="section__note">
+                  {players.data && players.data.minGames < 5
+                    ? 'Short event: everyone who played, ranked by KDA'
+                    : 'Ranked by KDA, minimum 5 games'}
+                </span>
+              </div>
+              {players.data ? <TournamentPlayersTable players={players.data.players} /> : <Skeleton />}
+            </section>
+
+            <section aria-labelledby="champions" className="section">
+              <div className="section__head">
+                <h2 id="champions" className="section__title">
+                  Champions
+                </h2>
+                <span className="section__note">Presence is the share of games where it was picked or banned</span>
+              </div>
+              {champions.data ? <TournamentChampionsTable champions={champions.data.champions} /> : <Skeleton />}
+            </section>
+          </>
+        )}
+      </main>
+    </>
+  )
+}

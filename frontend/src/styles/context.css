@@ -163,3 +163,48 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Series rows (tournament schedule and results): two teams, the score, and when. */
+.series {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 12px;
+  padding: 10px 0;
+}
+.series__teams {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.series__team {
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+}
+.series__team.is-winner,
+.series__winner {
+  color: var(--text);
+  font-weight: 700;
+}
+.series__team:hover,
+.pool__link:hover {
+  color: var(--gold);
+}
+.series__score {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  align-self: center;
+}
+.series__when {
+  grid-column: 1 / -1;
+}
+.series__vs {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.btn-reset--inline {
+  margin: 4px 0 0;
+  align-self: flex-start;
+}
