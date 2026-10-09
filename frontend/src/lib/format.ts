@@ -40,3 +40,18 @@ export const opposingLabel = (role: string | null | undefined): string => {
 }
 
 export const rate =(wins: number, games: number): number | null => (games > 0 ? wins / games : null)
+
+/** "Sep 5 – Oct 10, 2026" from two ISO dates (YYYY-MM-DD); either may be missing. */
+export const dateRange = (start: string | null, end: string | null): string => {
+  if (!start && !end) return NA
+  const fmt = (iso: string, year: boolean) =>
+    new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(year ? { year: 'numeric' } : {}),
+      timeZone: 'UTC',
+    })
+  if (!start || !end) return fmt((start ?? end)!, true)
+  const sameYear = start.slice(0, 4) === end.slice(0, 4)
+  return `${fmt(start, !sameYear)} – ${fmt(end, true)}`
+}

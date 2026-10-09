@@ -157,3 +157,25 @@ export interface LeaderboardResponse {
   empty: boolean
   players: LeaderboardRow[]
 }
+
+export interface SearchResponse {
+  players: { page: string; name: string; role: string | null; team: string | null }[]
+  teams: { name: string; league: string | null }[]
+  champions: { name: string; role: string | null }[]
+  tournaments: { id: number; name: string; status: 'In progress' | 'Completed' }[]
+}
+
+export interface RecentTournament {
+  id: number
+  name: string
+  league: string
+  status: 'In progress' | 'Completed'
+  startDate: string | null
+  endDate: string | null
+  standingLabel: string | null
+  standingTeam: string | null
+}
+
+export interface RecentTournamentsResponse {
+  tournaments: RecentTournament[]
+}

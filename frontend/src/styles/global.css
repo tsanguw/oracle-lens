@@ -2,6 +2,7 @@
 @import './layout.css';
 @import './player.css';
 @import './leaderboard.css';
+@import './home.css';
 
 *,
 *::before,

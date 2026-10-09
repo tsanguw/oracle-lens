@@ -3,6 +3,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { ZodError } from 'zod'
 import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
+import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { leaderboardSchema, loadLeaderboard } from './leaderboardQueries.js'
 import {
   findPlayer,
@@ -88,6 +89,15 @@ export function createApp() {
 
   app.get('/api/leaderboard/players', wrap(async (req, res) => {
     res.json(await loadLeaderboard(pool, leaderboardSchema.parse(req.query)))
+  }))
+
+  app.get('/api/search', wrap(async (req, res) => {
+    res.json(await search(pool, searchSchema.parse(req.query)))
+  }))
+
+  app.get('/api/tournaments/recent', wrap(async (req, res) => {
+    const { limit } = recentSchema.parse(req.query)
+    res.json({ tournaments: await recentTournaments(pool, limit) })
   }))
 
   app.get('/api/filters', wrap(async (_req, res) => {

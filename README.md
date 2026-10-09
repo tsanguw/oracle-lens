@@ -2,7 +2,7 @@
 
 Browse professional League of Legends esports stats: players, teams, champions, and tournaments, with sortable leaderboards, matchup breakdowns, and shareable filters. All data comes from [Leaguepedia](https://lol.fandom.com)'s Cargo API, synced into our own Postgres database. The site never calls Leaguepedia when a visitor loads a page.
 
-> **Status: the player page and player leaderboard are built**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
+> **Status: the home page (search and recent tournaments), player page and player leaderboard are built**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
 
 ## Architecture
 
@@ -131,6 +131,8 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/players/:id/matchups/players` | Record and average gold difference against each opposing laner in the same role. |
 | `GET /api/players/:id/matchups/champions` | Record and average gold difference against the champion the lane opponent played. |
 | `GET /api/players/:id/target-bans` | Champions the player has played that opponents banned, with the share of games. |
+| `GET /api/search?q=` | Players (including old names), teams, champions and tournaments matching `q` (2+ characters), grouped by type, prefix matches first. `limit` per group (default 4). |
+| `GET /api/tournaments/recent` | The newest official events with games, qualifiers excluded. Each has a status (`In progress` while today is inside its dates) and a standing: the current leader while running, the champion for finished playoffs and internationals, otherwise the team with the best record. `limit` default 5. |
 | `GET /api/leaderboard/players` | Ranked players for the leaderboard page (see below). |
 | `GET /api/filters` | Available leagues, years, splits, patches. Years with only qualifier games are left out. |
 | `GET /api/meta/last-updated` | Timestamp of the last successful sync (shown in the footer). |
@@ -178,8 +180,8 @@ sync/
 1. ✅ **Milestone 1:** monorepo, schema, one-tournament backfill, two player endpoints, player page (overview + champion pool)
 2. ✅ **Player page complete:** lane matchups (vs. opponents and vs. champions faced) and target bans
 3. Full backfill across all leagues and years
-4. ✅ Player leaderboard
-5. Teams, champions, tournaments, search, and home page
+4. ✅ Player leaderboard and home page (search, recent tournaments)
+5. Teams, champions, and tournaments pages (search results already link to their future routes)
 6. Nightly GitHub Actions sync and keep-awake ping
 7. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
 
