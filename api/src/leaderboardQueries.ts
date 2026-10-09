@@ -1,6 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { buildConditions, filterSchema, hasRangeFilter, MIN_SAMPLE, type Filters } from './filters.js'
+import { likeEscape } from './homeQueries.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
 export const SORT_KEYS = ['kda', 'winRate', 'games', 'killParticipation', 'damagePerMin', 'csPerMin', 'visionPerMin'] as const
@@ -10,6 +11,8 @@ export const leaderboardSchema = filterSchema.extend({
   dir: z.enum(['asc', 'desc']).default('desc'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
+  /** Matches a player's name or old names. */
+  q: z.string().trim().max(60).default(''),
   /** Qualifiers and promotion series are left out unless asked for. */
   qualifiers: z
     .enum(['true', 'false'])
@@ -119,6 +122,10 @@ function sortExpr(q: LeaderboardQuery): string {
 export async function loadLeaderboard(pool: pg.Pool, q: LeaderboardQuery) {
   const params: unknown[] = []
   const { conditions, range } = await resolveRange(pool, q, params)
+  if (q.q) {
+    const like = `$${params.push(`%${likeEscape(q.q)}%`)}`
+    conditions.push(`(p.name ILIKE ${like} OR p.display_name ILIKE ${like})`)
+  }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   const limit = `$${params.push(q.pageSize)}`
   const offset = `$${params.push((q.page - 1) * q.pageSize)}`

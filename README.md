@@ -2,7 +2,7 @@
 
 Browse professional League of Legends esports stats: players, teams, champions, and tournaments, with sortable leaderboards, matchup breakdowns, and shareable filters. All data comes from [Leaguepedia](https://lol.fandom.com)'s Cargo API, synced into our own Postgres database. The site never calls Leaguepedia when a visitor loads a page.
 
-> **Status: the home page (search and recent tournaments), player page, team page, champion page, tournament page and player leaderboard are built**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
+> **Status: every page in the plan is built: the home page (search and recent tournaments), the four lists (players, teams, champions, tournaments) and their detail pages**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
 
 ## Architecture
 
@@ -144,6 +144,7 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/tournaments/:id` | One event (`:id` is the numeric id the search and home links use): league (or the leagues of a multi-league event), stage, status, dates, and a summary: games, series, teams, game length, blue-side win rate, kills per game, patches, and the leader (while running) or champion (finished playoffs and internationals). |
 | `GET /api/tournaments/:id/standings`, `/matches`, `/players`, `/champions` | Team records (series first, then game difference), results newest first plus upcoming scheduled series (`limit`, default 20 for results), top players by KDA (minimum 5 games, or everyone for very short events), and champion picks, bans and presence. |
 | `GET /api/tournaments/:id/context` | The related-info strip on the tournament page: leading teams, upcoming and latest series, and the other events of the same league and year (or the other internationals). |
+| `GET /api/teams`, `/api/champions`, `/api/tournaments` | The list pages. All take `q` (name search), `dir`, `page` and `pageSize`, and a `sort` from a fixed set. **Teams** (`sort`: `winRate` default, `games`, `goldDiff`, `killsPerGame`, `towersPerGame`, `avgGameLengthSec`; minimum 5 games) and **champions** (`sort`: `presence` default, `games`, `winRate`, `pickRate`, `banRate`, `kda`) use the leaderboard's default range and filters, and champions rank rows under 5 games after the rest when sorting by win rate or KDA. **Tournaments** (`sort`: `date` or `name`) filter by `league` (or `INTL`), `year`, `stage` and `status`, and hide qualifiers unless `stage=Qualifier`. |
 | `GET /api/search?q=` | Players (including old names), teams, champions and tournaments matching `q` (2+ characters), grouped by type, prefix matches first. `limit` per group (default 4). |
 | `GET /api/tournaments/recent` | The newest official events with games, qualifiers excluded. Each has a status (`In progress` while today is inside its dates) and a standing: the current leader while running, the champion for finished playoffs and internationals, otherwise the team with the best record. `limit` default 5. |
 | `GET /api/leaderboard/players` | Ranked players for the leaderboard page (see below). |
@@ -201,7 +202,7 @@ sync/
 5. ✅ Team page
 6. ✅ Champion page
 7. ✅ Tournament page
-8. Lists for tournaments, teams and champions, so the nav tabs lead somewhere (search and the home page already link to the detail pages)
+8. ✅ List pages for teams, champions and tournaments (and name search on the player leaderboard), so every nav tab leads somewhere
 9. Nightly GitHub Actions sync and keep-awake ping
 10. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
 

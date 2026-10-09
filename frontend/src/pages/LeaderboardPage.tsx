@@ -2,6 +2,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import type { FiltersResponse, LeaderboardResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
+import { SearchField } from '../components/ListParts'
 import { decimal, percent, whole } from '../lib/format'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
@@ -110,7 +111,7 @@ export default function LeaderboardPage() {
           <span className="showing__label">{range?.label ?? ' '}</span>
         </div>
       </section>
-
+      <SearchField value={params.get('q') ?? ''} onSearch={(v) => update({ q: v })} label="Search players" placeholder="Search players" />
 
       {board.error ? (
         <div className="empty" role="alert">

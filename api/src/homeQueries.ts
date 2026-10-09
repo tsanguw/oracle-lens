@@ -11,7 +11,7 @@ export const recentSchema = z.object({
 })
 
 /** Escapes LIKE wildcards so a visitor typing "%" or "_" searches for the literal character. */
-const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`)
+export const likeEscape = (s: string) => s.replace(/[\\%_]/g, (c) => `\\${c}`)
 
 /** Prefix matches rank before substring matches; callers add their own tiebreak. */
 const rank = (col: string) => `(CASE WHEN ${col} ILIKE $2 THEN 0 ELSE 1 END)`

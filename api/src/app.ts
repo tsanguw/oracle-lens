@@ -5,6 +5,7 @@ import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerContext } from './playerContext.js'
+import { championsListSchema, loadChampionsList, loadTeamsList, loadTournamentsList, teamsListSchema, tournamentsListSchema } from './listQueries.js'
 import { loadTeamContext } from './teamContext.js'
 import {
   findTournament,
@@ -227,6 +228,18 @@ export function createApp() {
 
   app.get('/api/search', wrap(async (req, res) => {
     res.json(await search(pool, searchSchema.parse(req.query)))
+  }))
+
+  app.get('/api/teams', wrap(async (req, res) => {
+    res.json(await loadTeamsList(pool, teamsListSchema.parse(req.query)))
+  }))
+
+  app.get('/api/champions', wrap(async (req, res) => {
+    res.json(await loadChampionsList(pool, championsListSchema.parse(req.query)))
+  }))
+
+  app.get('/api/tournaments', wrap(async (req, res) => {
+    res.json(await loadTournamentsList(pool, tournamentsListSchema.parse(req.query)))
   }))
 
   app.get('/api/tournaments/recent', wrap(async (req, res) => {

@@ -485,3 +485,63 @@ export interface RecentTournament {
 export interface RecentTournamentsResponse {
   tournaments: RecentTournament[]
 }
+
+export interface ListResponse<T> {
+  range: LeaderboardRange
+  minGames: number
+  total: number
+  page: number
+  pageSize: number
+  empty: boolean
+  rows: T[]
+}
+
+export interface TeamListRow {
+  rank: number
+  name: string
+  league: string | null
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  goldDiff: number | null
+  killsPerGame: number | null
+  towersPerGame: number | null
+  avgGameLengthSec: number | null
+}
+
+export interface ChampionListRow {
+  rank: number
+  name: string
+  role: string | null
+  games: number
+  wins: number
+  winRate: number | null
+  pickRate: number | null
+  banRate: number | null
+  presence: number | null
+  kda: number | null
+  underMinSample: boolean
+}
+
+export interface TournamentListRow {
+  id: number
+  name: string
+  league: string
+  stage: string | null
+  year: number
+  status: 'In progress' | 'Completed'
+  startDate: string | null
+  endDate: string | null
+  games: number
+  standingLabel: string
+  standingTeam: string | null
+}
+
+export interface TournamentListResponse {
+  total: number
+  page: number
+  pageSize: number
+  empty: boolean
+  rows: TournamentListRow[]
+}

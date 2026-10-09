@@ -161,3 +161,54 @@
     max-width: none;
   }
 }
+
+/* Shared by the list pages (players, teams, champions, tournaments). */
+.lb-subnote {
+  margin: 12px 0 0;
+  max-width: 640px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.lb__sub {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-left: 4px;
+}
+.lb__sort--left {
+  text-align: left;
+}
+.lb tbody tr.is-dim {
+  opacity: 0.45;
+}
+.list-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 420px;
+  height: 46px;
+  padding: 0 14px;
+  margin-top: -16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+}
+.list-search:focus-within {
+  border-color: var(--gold);
+}
+.list-search__icon {
+  color: var(--text-muted);
+  flex: none;
+}
+.list-search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: transparent;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 16px;
+}
+.list-search input::placeholder {
+  color: var(--text-dim);
+}
