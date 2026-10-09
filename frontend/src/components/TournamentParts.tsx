@@ -10,6 +10,7 @@ import type {
 } from '../api/types'
 import { dateRange, decimal, duration, matchTime, NA, percent, whole } from '../lib/format'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
+import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
 
 const teamLink = (name: string) => `/teams/${encodeURIComponent(name)}`
 
@@ -31,7 +32,8 @@ export function TournamentHeader({ data }: { data: TournamentResponse }) {
         {summary?.standingTeam && (
           <div className="showing">
             <span className="showing__eyebrow">{summary.standingLabel}</span>
-            <Link to={teamLink(summary.standingTeam)} className="showing__label">
+            <Link to={teamLink(summary.standingTeam)} className="showing__label with-img">
+              <TeamLogo name={summary.standingTeam} size={32} />
               {summary.standingTeam}
             </Link>
           </div>
@@ -63,7 +65,8 @@ export function SeriesList({ series }: { series: SeriesRow[] }) {
             <span className="series__teams">
               {[s.team1, s.team2].map((team, i) =>
                 team ? (
-                  <Link key={i} to={teamLink(team)} className={`series__team${s.winner === team ? ' is-winner' : ''}`}>
+                  <Link key={i} to={teamLink(team)} className={`series__team with-img${s.winner === team ? ' is-winner' : ''}`}>
+                    <TeamLogo name={team} size={20} />
                     {team}
                   </Link>
                 ) : (
@@ -91,7 +94,10 @@ export function TournamentContext({ data }: { data: TournamentContextResponse | 
             {data.teams.map((t) => (
               <li key={t.team}>
                 <Link to={teamLink(t.team)} className="ctx__row ctx__row--champ">
-                  <span className="ctx__name">{t.team}</span>
+                  <span className="ctx__name with-img">
+                    <TeamLogo name={t.team} size={24} />
+                    {t.team}
+                  </span>
                   <span className="ctx__meta">{t.seriesWins}-{t.seriesLosses} series</span>
                   <span className="ctx__meta">{t.gameWins}-{t.gameLosses} games</span>
                 </Link>
@@ -170,9 +176,12 @@ export function StandingsTable({ standings }: { standings: StandingRow[] }) {
         <tr key={r.team}>
           <td className="pool__champ pool__role">{i + 1}</td>
           <td className="pool__champ">
-            <Link to={teamLink(r.team)} className="pool__link">
-              {r.team}
-            </Link>
+            <span className="with-img">
+              <TeamLogo name={r.team} size={26} />
+              <Link to={teamLink(r.team)} className="pool__link">
+                {r.team}
+              </Link>
+            </span>
           </td>
           <td>{`${r.seriesWins}-${r.seriesLosses}`}</td>
           <td>{`${r.gameWins}-${r.gameLosses}`}</td>
@@ -231,9 +240,12 @@ export function TournamentPlayersTable({ players }: { players: TournamentPlayer[
         <tr key={p.page}>
           <td className="pool__champ pool__role">{i + 1}</td>
           <td className="pool__champ">
-            <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
-              {p.name}
-            </Link>
+            <span className="with-img">
+              <PlayerPhoto page={p.page} name={p.name} size={28} />
+              <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
+                {p.name}
+              </Link>
+            </span>
           </td>
           <td className="pool__champ" style={{ fontWeight: 400 }}>
             {p.team ? (
@@ -262,9 +274,12 @@ export function TournamentChampionsTable({ champions }: { champions: TournamentC
       {champions.map((c) => (
         <tr key={c.champion}>
           <td className="pool__champ">
-            <Link to={`/champions/${encodeURIComponent(c.champion)}`} className="pool__link">
-              {c.champion}
-            </Link>
+            <span className="with-img">
+              <ChampionIcon name={c.champion} size={28} />
+              <Link to={`/champions/${encodeURIComponent(c.champion)}`} className="pool__link">
+                {c.champion}
+              </Link>
+            </span>
           </td>
           <td>{percent(c.presence)}</td>
           <td>{c.picks}</td>

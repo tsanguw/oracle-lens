@@ -18,6 +18,7 @@ import PlayerHeader, { PlayerHeaderSkeleton } from '../components/PlayerHeader'
 import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
 import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
 import { opposingLabel } from '../lib/format'
+import { ChampionIcon, PlayerPhoto } from '../components/Images'
 
 export default function PlayerPage({ name }: { name: string }) {
   const [params, setParams] = useSearchParams()
@@ -111,6 +112,7 @@ export default function PlayerPage({ name }: { name: string }) {
                       key: m.page,
                       to: `/players/${encodeURIComponent(m.page)}`,
                       detail: m.team,
+                      icon: <PlayerPhoto page={m.page} name={m.name} size={26} />,
                     })) ?? null
                   }
                 />
@@ -118,7 +120,7 @@ export default function PlayerPage({ name }: { name: string }) {
                   title="Vs. champions faced"
                   subtitle="Enemy laner’s champion"
                   loading={vsChampions.loading}
-                  items={vsChampions.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion })) ?? null}
+                  items={vsChampions.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion, icon: <ChampionIcon name={m.champion} size={26} /> })) ?? null}
                 />
               </div>
             </section>

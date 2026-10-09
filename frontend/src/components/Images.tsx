@@ -1,0 +1,132 @@
+import { useEffect, useState } from 'react'
+
+/*
+ * Champion icons come from Riot's Data Dragon CDN; team logos and player photos are files cached by the sync
+ * (python main.py images) under /img. Every component falls back to a neutral box or initials when an image is
+ * unknown or fails to load, so the pages work before the sync has run and for the many teams and players
+ * Leaguepedia has no picture for.
+ */
+
+const IMAGE_BASE: string = (import.meta.env.VITE_IMAGE_BASE as string | undefined) ?? '/img'
+const DDRAGON = 'https://ddragon.leagueoflegends.com'
+
+interface Manifest {
+  ddragonVersion: string | null
+  champions: Record<string, string>
+  teams: Record<string, string>
+  players: Record<string, string>
+}
+
+const EMPTY: Manifest = { ddragonVersion: null, champions: {}, teams: {}, players: {} }
+
+let loaded: Manifest | null = null
+let pending: Promise<Manifest> | null = null
+
+function loadManifest(): Promise<Manifest> {
+  pending ??= fetch('/api/assets/images')
+    .then((res) => (res.ok ? (res.json() as Promise<Manifest>) : Promise.reject(new Error('manifest'))))
+    .then((m) => (loaded = m))
+    .catch(() => {
+      pending = null // try again on the next page; meanwhile every image shows its fallback
+      return EMPTY
+    })
+  return pending
+}
+
+/** The image manifest, fetched once per visit and shared by every component. */
+export function useImages(): Manifest {
+  const [manifest, setManifest] = useState<Manifest>(loaded ?? EMPTY)
+  useEffect(() => {
+    if (loaded) return
+    let live = true
+    void loadManifest().then((m) => {
+      if (live) setManifest(m)
+    })
+    return () => {
+      live = false
+    }
+  }, [])
+  return manifest
+}
+
+/** Up to two initials for a name: "Gen.G" -> "GG", "Team Liquid" -> "TL", "T1" -> "T1". */
+export function initials(name: string): string {
+  const words = name.split(/[\s.\-_]+/).filter(Boolean)
+  const letters = words.length > 1 ? words.slice(0, 2).map((w) => w[0]) : [...(words[0] ?? '?')].slice(0, 2)
+  return letters.join('').toUpperCase()
+}
+
+interface BaseProps {
+  size?: number
+  className?: string
+}
+
+export function ChampionIcon({ name, size = 32, className = '' }: BaseProps & { name: string }) {
+  const { champions, ddragonVersion } = useImages()
+  const [failed, setFailed] = useState(false)
+  const key = champions[name]
+  const style = { width: size, height: size }
+  if (!key || !ddragonVersion || failed) return <span className={`icon-box ${className}`} style={style} aria-hidden="true" />
+  return (
+    <img
+      className={`img img--icon ${className}`}
+      src={`${DDRAGON}/cdn/${ddragonVersion}/img/champion/${key}.png`}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+export function TeamLogo({ name, size = 28, className = '' }: BaseProps & { name: string }) {
+  const { teams } = useImages()
+  const [failed, setFailed] = useState(false)
+  const file = teams[name]
+  const style = { width: size, height: size }
+  if (!file || failed) {
+    return (
+      <span className={`avatar avatar--team ${className}`} style={{ ...style, fontSize: Math.max(10, size * 0.38) }} aria-hidden="true">
+        {initials(name)}
+      </span>
+    )
+  }
+  return (
+    <img
+      className={`img img--logo ${className}`}
+      src={`${IMAGE_BASE}/teams/${file}`}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+/** `page` is the player's unique page name (the key photos are stored under); `name` is what to show initials for. */
+export function PlayerPhoto({ page, name, size = 36, className = '' }: BaseProps & { page: string; name: string }) {
+  const { players } = useImages()
+  const [failed, setFailed] = useState(false)
+  const file = players[page]
+  const style = { width: size, height: size }
+  if (!file || failed) {
+    return (
+      <span className={`avatar ${className}`} style={{ ...style, fontSize: Math.max(10, size * 0.38) }} aria-hidden="true">
+        {initials(name)}
+      </span>
+    )
+  }
+  return (
+    <img
+      className={`img img--photo ${className}`}
+      src={`${IMAGE_BASE}/players/${file}`}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  )
+}

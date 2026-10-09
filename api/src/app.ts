@@ -5,6 +5,7 @@ import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerContext } from './playerContext.js'
+import { loadImageManifest } from './assets.js'
 import { championsListSchema, loadChampionsList, loadTeamsList, loadTournamentsList, teamsListSchema, tournamentsListSchema } from './listQueries.js'
 import { loadTeamContext } from './teamContext.js'
 import {
@@ -228,6 +229,12 @@ export function createApp() {
 
   app.get('/api/search', wrap(async (req, res) => {
     res.json(await search(pool, searchSchema.parse(req.query)))
+  }))
+
+  /** Which champions, teams and players have an image. Changes only when the sync runs, so it is cacheable. */
+  app.get('/api/assets/images', wrap(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=300')
+    res.json(await loadImageManifest(pool))
   }))
 
   app.get('/api/teams', wrap(async (req, res) => {

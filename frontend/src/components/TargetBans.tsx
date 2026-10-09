@@ -1,12 +1,13 @@
 import type { TargetBan } from '../api/types'
 import { percent } from '../lib/format'
+import { ChampionIcon } from './Images'
 
 export default function TargetBans({ bans }: { bans: TargetBan[] }) {
   return (
     <div className="bans">
       {bans.map((b) => (
         <div key={b.champion} className="ban">
-          <span className="icon-box icon-box--lg" aria-hidden="true" />
+          <ChampionIcon name={b.champion} size={44} />
           <span className="ban__text">
             <span className="ban__name">{b.champion}</span>
             <span className="ban__rate">Banned in {percent(b.rate)} of games</span>

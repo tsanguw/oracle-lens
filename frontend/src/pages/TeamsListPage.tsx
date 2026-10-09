@@ -4,6 +4,7 @@ import { useApi } from '../api/useApi'
 import FilterBar from '../components/FilterBar'
 import { ListHead, listState, Pager, SearchField, SortHeader } from '../components/ListParts'
 import { decimal, duration, goldDiff, percent } from '../lib/format'
+import { TeamLogo } from '../components/Images'
 
 type SortKey = 'winRate' | 'games' | 'goldDiff' | 'killsPerGame' | 'towersPerGame' | 'avgGameLengthSec'
 
@@ -68,7 +69,10 @@ export default function TeamsListPage() {
                   <tr key={r.name}>
                     <td className={`lb__rank${r.rank <= 3 ? ' lb__rank--top' : ''}`}>{r.rank}</td>
                     <td className="lb__left lb__player">
-                      <Link to={`/teams/${encodeURIComponent(r.name)}`}>{r.name}</Link>
+                      <span className="with-img">
+                        <TeamLogo name={r.name} size={30} />
+                        <Link to={`/teams/${encodeURIComponent(r.name)}`}>{r.name}</Link>
+                      </span>
                     </td>
                     <td className="lb__left">
                       <span className="tag tag--small">{r.league ?? 'INTL'}</span>

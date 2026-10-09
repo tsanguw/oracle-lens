@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { TeamPick, TeamPlayer, TeamSummary } from '../api/types'
 import { decimal, duration, goldDiff, percent, rate, whole } from '../lib/format'
+import { ChampionIcon, PlayerPhoto } from './Images'
 
 interface Tile {
   label: string
@@ -63,9 +64,12 @@ export function TeamPlayersTable({ players }: { players: TeamPlayer[] }) {
             <tr key={p.page} className={p.underMinSample ? 'is-dim' : undefined}>
               <td className="pool__champ pool__role">{p.role ?? 'N/A'}</td>
               <td className="pool__champ">
-                <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
-                  {p.name}
-                </Link>
+                <span className="with-img">
+                  <PlayerPhoto page={p.page} name={p.name} size={28} />
+                  <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
+                    {p.name}
+                  </Link>
+                </span>
               </td>
               <td>{p.games}</td>
               <td>{`${p.wins}-${p.games - p.wins}`}</td>
@@ -102,7 +106,7 @@ export function TeamPicksTable({ picks }: { picks: TeamPick[] }) {
             <tr key={c.champion} className={c.underMinSample ? 'is-dim' : undefined}>
               <td className="pool__champ">
                 <span className="pool__champ-inner">
-                  <span className="icon-box" aria-hidden="true" />
+                  <ChampionIcon name={c.champion} />
                   {c.champion}
                 </span>
               </td>

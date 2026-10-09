@@ -24,6 +24,7 @@ import EmptyState from '../components/EmptyState'
 import FilterBar from '../components/FilterBar'
 import MatchupPanel from '../components/MatchupPanel'
 import { StatTilesSkeleton } from '../components/StatTiles'
+import { ChampionIcon } from '../components/Images'
 
 const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
 
@@ -111,7 +112,7 @@ export default function ChampionPage({ name }: { name: string }) {
                   subtitle="Lane opponent’s champion"
                   loading={counters.loading}
                   items={
-                    counters.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion, to: `/champions/${encodeURIComponent(m.champion)}` })) ??
+                    counters.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion, icon: <ChampionIcon name={m.champion} size={26} />, to: `/champions/${encodeURIComponent(m.champion)}` })) ??
                     null
                   }
                 />

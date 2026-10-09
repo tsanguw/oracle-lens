@@ -16,6 +16,7 @@ import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
 import TeamContext from '../components/TeamContext'
 import TeamHeader, { TeamHeaderSkeleton } from '../components/TeamHeader'
 import { TeamPicksTable, TeamPlayersTable, TeamTiles } from '../components/TeamTables'
+import { TeamLogo } from '../components/Images'
 
 export default function TeamPage({ name }: { name: string }) {
   const [params, setParams] = useSearchParams()
@@ -147,6 +148,7 @@ export default function TeamPage({ name }: { name: string }) {
                       key: o.team,
                       name: o.team,
                       to: `/teams/${encodeURIComponent(o.team)}`,
+                      icon: <TeamLogo name={o.team} size={26} />,
                     })) ?? null
                   }
                 />

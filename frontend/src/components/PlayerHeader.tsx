@@ -1,4 +1,5 @@
 import type { PlayerResponse } from '../api/types'
+import { PlayerPhoto } from './Images'
 
 export default function PlayerHeader({ data }: { data: PlayerResponse }) {
   const { player, range } = data
@@ -6,8 +7,8 @@ export default function PlayerHeader({ data }: { data: PlayerResponse }) {
     <section className="hero">
       <div className="container hero__inner">
         <div className="hero__who">
-          <div className="photo" role="img" aria-label="Player photo placeholder">
-            [Photo]
+          <div className="hero-img">
+            <PlayerPhoto page={player.name} name={player.displayName} size={128} />
           </div>
           <div className="hero__text">
             <div className="tags">

@@ -208,3 +208,72 @@
   margin: 4px 0 0;
   align-self: flex-start;
 }
+
+/* Champion icons, team logos and player photos (see components/Images.tsx). */
+.img {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+}
+.img--icon {
+  border: 1px solid var(--border-strong);
+  background: var(--bg-chip);
+}
+.img--logo {
+  object-fit: contain;
+}
+.img--photo {
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-raised);
+}
+.avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  background: var(--bg-chip);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.avatar--team {
+  background: var(--bg-raised);
+}
+/* A name with its image beside it, in tables and lists. */
+.with-img {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+/* The large image slot in a page header. */
+.hero-img {
+  width: 128px;
+  height: 128px;
+  flex: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.hero-img .img,
+.hero-img .avatar {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  font-size: 40px;
+}
+.hero-img .img--logo,
+.hero-img .img--icon {
+  padding: 12px;
+  background: transparent;
+  border: 0;
+}

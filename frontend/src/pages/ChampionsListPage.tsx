@@ -4,6 +4,7 @@ import { useApi } from '../api/useApi'
 import FilterBar from '../components/FilterBar'
 import { ListHead, listState, Pager, SearchField, SortHeader } from '../components/ListParts'
 import { decimal, NA, percent } from '../lib/format'
+import { ChampionIcon } from '../components/Images'
 
 type SortKey = 'presence' | 'games' | 'winRate' | 'pickRate' | 'banRate' | 'kda'
 
@@ -75,7 +76,10 @@ export default function ChampionsListPage() {
                   <tr key={r.name} className={r.underMinSample ? 'is-dim' : undefined}>
                     <td className={`lb__rank${r.rank <= 3 ? ' lb__rank--top' : ''}`}>{r.rank}</td>
                     <td className="lb__left lb__player">
-                      <Link to={`/champions/${encodeURIComponent(r.name)}`}>{r.name}</Link>
+                      <span className="with-img">
+                        <ChampionIcon name={r.name} size={30} />
+                        <Link to={`/champions/${encodeURIComponent(r.name)}`}>{r.name}</Link>
+                      </span>
                     </td>
                     <td className="lb__left lb__team">{r.role ?? NA}</td>
                     {COLUMNS.map((c) => (

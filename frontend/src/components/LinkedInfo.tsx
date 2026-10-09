@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ContextEvent, ContextMatch, RosterPlayer } from '../api/types'
 import { dateRange, matchTime } from '../lib/format'
+import { PlayerPhoto } from './Images'
 
 /*
  * Building blocks for the "related info" strip under the header of every detail page
@@ -104,7 +105,10 @@ export function RosterList({ roster }: { roster: RosterPlayer[] }) {
     <li key={p.page}>
       <Link to={`/players/${encodeURIComponent(p.page)}`} className={`ctx__row${p.isViewed ? ' is-viewed' : ''}`}>
         <span className="ctx__role">{p.role ?? '—'}</span>
-        <span className="ctx__name">{p.name}</span>
+        <span className="ctx__name with-img">
+          <PlayerPhoto page={p.page} name={p.name} size={26} />
+          {p.name}
+        </span>
         <span className="ctx__meta">{p.games} games</span>
       </Link>
     </li>

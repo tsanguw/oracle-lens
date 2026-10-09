@@ -1,5 +1,6 @@
 import type { ChampionRow } from '../api/types'
 import { decimal, percent, whole } from '../lib/format'
+import { ChampionIcon } from './Images'
 
 const HEAD: { label: string; align: 'left' | 'right' }[] = [
   { label: 'Champion', align: 'left' },
@@ -31,7 +32,7 @@ export default function ChampionPoolTable({ champions }: { champions: ChampionRo
             <tr key={c.champion} className={c.underMinSample ? 'is-dim' : undefined}>
               <td className="pool__champ">
                 <span className="pool__champ-inner">
-                  <span className="icon-box" aria-hidden="true" />
+                  <ChampionIcon name={c.champion} />
                   {c.champion}
                 </span>
               </td>

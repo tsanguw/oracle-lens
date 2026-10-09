@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom'
 import { goldDiff, percent } from '../lib/format'
+import type { ReactNode } from 'react'
 
 export interface MatchupItem {
   key: string
+  /** Optional image shown before the name: a champion icon, player photo or team logo. */
+  icon?: ReactNode
   name: string
   /** Optional link target, e.g. the opposing player's page. */
   to?: string
@@ -38,7 +41,8 @@ export default function MatchupPanel({ title, subtitle, items, loading }: Props)
       ) : (
         items.map((m) => (
           <div key={m.key} className={`matchup${m.underMinSample ? ' is-dim' : ''}`}>
-            <span className="matchup__who">
+            <span className="matchup__who with-img">
+              {m.icon}
               {m.to ? (
                 <Link to={m.to} className="matchup__name">
                   {m.name}

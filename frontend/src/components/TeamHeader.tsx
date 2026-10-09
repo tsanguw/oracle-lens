@@ -1,4 +1,5 @@
 import type { TeamResponse } from '../api/types'
+import { TeamLogo } from './Images'
 
 export default function TeamHeader({ data }: { data: TeamResponse }) {
   const { team, range } = data
@@ -6,8 +7,8 @@ export default function TeamHeader({ data }: { data: TeamResponse }) {
     <section className="hero">
       <div className="container hero__inner">
         <div className="hero__who">
-          <div className="photo" role="img" aria-label="Team logo placeholder">
-            [Logo]
+          <div className="hero-img">
+            <TeamLogo name={team.name} size={128} />
           </div>
           <div className="hero__text">
             <div className="tags">

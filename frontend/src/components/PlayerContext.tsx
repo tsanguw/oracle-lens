@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { PlayerContextResponse } from '../api/types'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventsPanel, RosterList, SchedulePanel } from './LinkedInfo'
+import { TeamLogo } from './Images'
 
 export default function PlayerContext({ data }: { data: PlayerContextResponse | null }) {
   if (!data) return <ContextSkeleton />
@@ -17,6 +18,7 @@ export default function PlayerContext({ data }: { data: PlayerContextResponse | 
         note={team.isCurrent ? undefined : `No games since ${lastSeen}. This may no longer be their team.`}
       >
         <Link to={`/teams/${encodeURIComponent(team.name)}`} className="ctx__team">
+          <TeamLogo name={team.name} size={44} />
           <span className="ctx__team-name">{team.name}</span>
           {team.league && <span className="tag tag--small">{team.league}</span>}
         </Link>

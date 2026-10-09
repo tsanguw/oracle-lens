@@ -42,6 +42,14 @@ function Footer() {
         </span>
         <span>Data last updated: {updated ?? 'unknown'}</span>
       </div>
+      <div className="site-footer__inner site-footer__legal">
+        <span>
+          Champion icons are from Riot Games’ Data Dragon. Team logos and player photos belong to their owners, and come from
+          Leaguepedia. This is a non-commercial, educational project. [Site name] isn’t endorsed by Riot Games and doesn’t
+          reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games
+          properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
+        </span>
+      </div>
     </footer>
   )
 }

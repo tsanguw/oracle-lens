@@ -10,6 +10,7 @@ import type {
 } from '../api/types'
 import { decimal, duration, NA, percent, rate, whole } from '../lib/format'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
+import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
 
 export function ChampionHeader({ data }: { data: ChampionResponse }) {
   const { champion, summary, range } = data
@@ -17,8 +18,8 @@ export function ChampionHeader({ data }: { data: ChampionResponse }) {
     <section className="hero">
       <div className="container hero__inner">
         <div className="hero__who">
-          <div className="photo" role="img" aria-label="Champion icon placeholder">
-            [Icon]
+          <div className="hero-img">
+            <ChampionIcon name={champion.name} size={128} />
           </div>
           <div className="hero__text">
             <div className="tags">{summary?.role && <span className="tag tag--gold">{summary.role}</span>}</div>
@@ -166,15 +167,21 @@ export function ChampionPlayersTable({ players }: { players: ChampionPlayer[] })
       {players.map((p) => (
         <tr key={p.page} className={p.underMinSample ? 'is-dim' : undefined}>
           <td className="pool__champ">
-            <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
-              {p.name}
-            </Link>
+            <span className="with-img">
+              <PlayerPhoto page={p.page} name={p.name} size={28} />
+              <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
+                {p.name}
+              </Link>
+            </span>
           </td>
           <td className="pool__champ pool__role" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 15 }}>
             {p.team ? (
-              <Link to={`/teams/${encodeURIComponent(p.team)}`} className="pool__link">
-                {p.team}
-              </Link>
+              <span className="with-img">
+                <TeamLogo name={p.team} size={22} />
+                <Link to={`/teams/${encodeURIComponent(p.team)}`} className="pool__link">
+                  {p.team}
+                </Link>
+              </span>
             ) : (
               NA
             )}
@@ -196,9 +203,12 @@ export function ChampionTeamsTable({ teams }: { teams: ChampionTeam[] }) {
       {teams.map((t) => (
         <tr key={t.name} className={t.underMinSample ? 'is-dim' : undefined}>
           <td className="pool__champ">
-            <Link to={`/teams/${encodeURIComponent(t.name)}`} className="pool__link">
-              {t.name}
-            </Link>
+            <span className="with-img">
+              <TeamLogo name={t.name} size={24} />
+              <Link to={`/teams/${encodeURIComponent(t.name)}`} className="pool__link">
+                {t.name}
+              </Link>
+            </span>
           </td>
           <td>{t.games}</td>
           <td>{`${t.wins}-${t.games - t.wins}`}</td>

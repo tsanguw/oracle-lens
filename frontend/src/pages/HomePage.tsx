@@ -3,6 +3,7 @@ import type { RecentTournamentsResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import SearchBox from '../components/SearchBox'
 import { dateRange } from '../lib/format'
+import { TeamLogo } from '../components/Images'
 
 export default function HomePage() {
   const recent = useApi<RecentTournamentsResponse>('/api/tournaments/recent?limit=5')
@@ -47,7 +48,10 @@ export default function HomePage() {
                     <p className="card__dates">{dateRange(t.startDate, t.endDate)}</p>
                     <div className="card__foot">
                       <span className="card__foot-label">{t.standingLabel ?? ' '}</span>
-                      <span className="card__foot-value">{t.standingTeam ?? ' '}</span>
+                      <span className="card__foot-value with-img">
+                        {t.standingTeam && <TeamLogo name={t.standingTeam} size={22} />}
+                        {t.standingTeam ?? ' '}
+                      </span>
                     </div>
                   </Link>
                 ))

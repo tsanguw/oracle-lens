@@ -4,6 +4,7 @@ import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { SearchField } from '../components/ListParts'
 import { decimal, percent, whole } from '../lib/format'
+import { PlayerPhoto, TeamLogo } from '../components/Images'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 
@@ -158,9 +159,21 @@ export default function LeaderboardPage() {
                 <tr key={r.page}>
                   <td className={`lb__rank${r.rank <= 3 ? ' lb__rank--top' : ''}`}>{r.rank}</td>
                   <td className="lb__left lb__player">
-                    <Link to={`/players/${encodeURIComponent(r.page)}`}>{r.name}</Link>
+                    <span className="with-img">
+                      <PlayerPhoto page={r.page} name={r.name} size={32} />
+                      <Link to={`/players/${encodeURIComponent(r.page)}`}>{r.name}</Link>
+                    </span>
                   </td>
-                  <td className="lb__left lb__team">{r.team ?? 'N/A'}</td>
+                  <td className="lb__left lb__team">
+                    {r.team ? (
+                      <span className="with-img">
+                        <TeamLogo name={r.team} size={22} />
+                        {r.team}
+                      </span>
+                    ) : (
+                      'N/A'
+                    )}
+                  </td>
                   <td className="lb__left">
                     <span className="tag tag--small">{r.league ?? 'INTL'}</span>
                   </td>

@@ -4,3 +4,4 @@ psycopg[binary]
 python-dotenv
 pyyaml
 pytest
+pillow

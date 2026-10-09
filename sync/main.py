@@ -29,6 +29,7 @@ from lolsync.backfill import (
     refresh_schedule,
 )
 from lolsync.client import Leaguepedia
+from lolsync.images import sync_champion_icons, sync_player_photos, sync_team_logos
 from lolsync.normalize import LeagueResolver
 from lolsync.resolve import ResolveCache
 
@@ -78,6 +79,10 @@ def main() -> int:
     bf.add_argument("--list", action="store_true", help="with --all: list tournaments and exit")
     bf.add_argument("--year-from", type=int)
     bf.add_argument("--year-to", type=int)
+    im = sub.add_parser("images", help="cache team logos and player photos locally, and record champion icon keys")
+    im.add_argument("--only", choices=["teams", "players", "champions"], action="append", help="repeat to pick several; default is all")
+    im.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder for the cached images")
+    im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
     sub.add_parser("schedule", help="refresh match dates for series already loaded (fast, no games reloaded)")
     sub.add_parser("nightly", help="only new games (not implemented yet)")
     args = parser.parse_args()
@@ -88,6 +93,17 @@ def main() -> int:
 
     log, log_path = make_logger()
     lp = Leaguepedia()
+    if args.mode == "images":
+        kinds = set(args.only or ["teams", "players", "champions"])
+        out_dir = Path(args.out)
+        with connect() as conn:
+            if "champions" in kinds:
+                sync_champion_icons(conn, log)
+            if "teams" in kinds:
+                sync_team_logos(conn, lp, out_dir, log, args.limit)
+            if "players" in kinds:
+                sync_player_photos(conn, lp, out_dir, log, args.limit)
+        return 0
     if args.mode == "schedule":
         with connect() as conn:
             log(f"series dates updated: {refresh_schedule(conn, lp, log)}")
