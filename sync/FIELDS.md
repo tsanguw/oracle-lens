@@ -77,6 +77,34 @@ Method: re-pulled the raw `ScoreboardPlayers` / `ScoreboardGames` / `MatchSchedu
 - **Not a valid check:** the `Standings` table. Its totals (e.g. Gen.G 41-19) are far larger than this page's games and did not reconcile with a simple cumulative sum, so its scope is unclear. Don't use it as ground truth without finding out what it aggregates.
 - **Limits:** this verifies sync fidelity and our SQL math against the same source data, not the accuracy of Leaguepedia's own numbers.
 
+## Findings from the full backfill (610 tournaments, 2011-2026)
+
+Things that only showed up at scale, and how the sync handles them:
+
+- **Cargo matches names case-insensitively.** Looking up "AN" returns the row for "An", and `GROUP BY` merges spellings. Leaguepedia has one canonical page per player or team, but scoreboards spell names inconsistently ("aphromoo", "Dplus KIA"). Every lookup therefore matches by casefold and takes the canonical spelling from Leaguepedia's own row (`resolve.py`). Matching by exact key silently dropped redirects and created duplicate players.
+- **Underscores are spaces** in page titles (`Leo_(Han_Gyeo-re)` is `Leo (Han Gyeo-re)`); links are normalised the same way MediaWiki does.
+- **Placeholders:** an unused ban slot is the literal text `None`; some rows say `Missing Data`; unplayed bracket slots have team `TBD` or empty. None are stored (`normalize.is_placeholder`).
+- **`PicksAndBansS7` can be missing, empty, or partial** (for example only 2 of 5 bans). For each team and action the sync takes whichever of `PicksAndBansS7` and `ScoreboardTeams` has more entries, keeping `PicksAndBansS7`'s slot numbers where it has them. Picks from the scoreboard have unknown draft order (`NULL`).
+- **Splits:** about 75 domestic events (Regional Finals, some playoffs, the 2025 LTA playoffs) have no `split`. The database function `assign_missing_splits()` gives them the split of the most recent earlier event of the same league and year, so "most recent split" and the split filter include playoffs. Events with nothing earlier in their year keep an empty split (promotion events that start the year before; a few unlabelled 2012-2015 events).
+- **Tier-2 leagues:** from 2025 PCS, VCS and LJL continue as second-tier leagues. Only their earlier tournaments belong to LCP.
+- **Regional Finals** carry `League = World Championship` with a domestic `Region`; they are loaded as that region's domestic events.
+- **Team renames** follow `Teams.RenamedTo` to the current name (for example `SK Telecom T1` to `T1`, `Splyce` to `Team Vitality`). These mappings are Leaguepedia's and may join organisations that you would treat as separate eras.
+
+### Era coverage (share of player rows with a NULL value)
+
+| Stat | Missing |
+|---|---|
+| Vision score | 100% until 2017, 95% in 2018, 27% in 2019, 14-22% in 2020-21, none from 2022 |
+| Damage to champions | 100% until 2019, 74% in 2020, none from 2021 |
+| Gold | 39-69% in 2012-2015, 12% in 2016, none from 2017 |
+| First blood | not available for any game |
+
+These display as N/A, never 0.
+
+### Known source gaps
+- Three games in `LCK 2023 Spring` have only one team's scoreboard row (and 0 or 5 player rows) in Leaguepedia, so they cannot be stored as complete games (`skipped_games_bad_team_rows`).
+- Team spellings `bleiz eSPORTS` and `Bleiz e-SPORTS` are probably one team but differ by punctuation with no redirect, so they stay separate.
+
 ## Rate limits
 
 Anonymous `cargoquery` hit `ratelimited` within a few requests. `cargotables` and `cargofields` were fine.

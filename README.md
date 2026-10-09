@@ -100,12 +100,21 @@ How it works:
 
 - Reads `ScoreboardGames`, `ScoreboardTeams`, `ScoreboardPlayers`, `PicksAndBansS7`, `MatchSchedule`, and `Tournaments`.
 - Resolves historical names to current ones: league names via `sync/league_aliases.yaml` (hand-written), player names via `PlayerRedirects`, team names by following `Teams.RenamedTo`. Lookups are cached for the whole run.
-- Leagues roll up under their current name: EU LCS → LEC, NA LCS → LCS, 2025 LTA North → LCS, 2025 LTA South → CBLOL, and pre-2025 PCS/VCS/LJL → LCP (with the old name kept as `sub_region`). From 2025 PCS, VCS and LJL continue as second-tier leagues, so those tournaments are not loaded.
+- Leagues roll up under their current name: EU LCS → LEC, NA LCS → LCS, OGN Champions ("LoL The Champions", 2012-2015) → LCK, 2025 LTA North → LCS, 2025 LTA South → CBLOL, and pre-2025 PCS/VCS/LJL → LCP (with the old name kept as `sub_region`). From 2025 PCS, VCS and LJL continue as second-tier leagues, so those tournaments are not loaded.
 - **2025 LTA playoffs** include teams from both conferences. They have no single league; each team's games land in its own conference's league through the `tournament_team_league` table, so those games count toward both LCS and CBLOL history.
 - Leaguepedia tags each region's Worlds "Regional Finals" with `League = World Championship`; these are loaded as domestic events of that region's league, not as internationals.
 - For games without a `PicksAndBansS7` row (older eras) the draft comes from `ScoreboardTeams`: bans keep their slot order, and picks are stored with `draft_order = NULL` because their real order is unknown.
 - Progress is tracked per tournament in the `sync_state` table. Re-running is idempotent. A tournament that has not finished yet stays `pending` so a later run completes it.
-- Uses throttling and exponential backoff on rate limits.
+- Uses throttling and exponential backoff on rate limits. If the database connection drops mid-run (for example the machine slept), the run reconnects and retries instead of hanging.
+- Names are matched case-insensitively and normalised the way the wiki does, placeholder values (`None`, `TBD`, `Missing Data`) are never stored, and split-less playoffs and Regional Finals are given the split they belong to (`assign_missing_splits()`, run after every sync).
+
+After a run, check the data with the read-only health report:
+
+```bash
+python verify.py          # integrity checks, games per league and year, and missing stats by era
+```
+
+`python repair_names.py` (dry run by default, `--apply` to change data) merges duplicate players or teams that earlier loads stored under different spellings.
 
 Run the sync unit tests with `python -m pytest` inside `sync/`.
 
@@ -170,11 +179,16 @@ sync/
 5. Nightly GitHub Actions sync and keep-awake ping
 6. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
 
+## Scope decisions
+
+- **Qualifiers and promotions are not considered on the default leaderboard.** Events Leaguepedia flags as qualifiers (Worlds Play-In, Regional Finals, promotion and relegation series, and similar) are stored with `tournament.stage = 'Qualifier'`, and the default leaderboards exclude them. The leaderboard pages carry a note saying so. They stay in the database, so they can be included by choosing them explicitly.
+- Everything is rolled up under each league's current name (see [Sync](#sync)); pre-2025 PCS, VCS and LJL count as LCP, and from 2025 they are second-tier leagues that are not loaded.
+
 ## Known limitations
 
 - **First blood is not available** in Leaguepedia's scoreboard tables, so `first_blood` is `NULL` and the stat shows "N/A".
 - **Draft order** for picks and bans is the slot within each team's picks or bans, not the true interleaved draft order.
-- Leagues outside the six tracked ones (and their predecessors) are not loaded: for example LMS, OPL, TCL, LLA, and Challengers leagues. Predecessors that are not listed in `league_aliases.yaml` (such as LCK's pre-2016 "LoL The Champions") are not included.
+- Leagues outside the six tracked ones (and their predecessors) are not loaded: for example LMS, OPL, TCL, LLA, and Challengers leagues. Predecessors that are not listed in `league_aliases.yaml` are not included.
 - For older games the draft comes from `ScoreboardTeams`, so the real pick order is not known there (stored as `NULL`).
 
 ## Data attribution
