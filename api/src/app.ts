@@ -7,6 +7,18 @@ import { recentSchema, recentTournaments, search, searchSchema } from './homeQue
 import { loadPlayerContext } from './playerContext.js'
 import { loadTeamContext } from './teamContext.js'
 import {
+  championSchema,
+  findChampion,
+  loadChampionContext,
+  loadChampionCounters,
+  loadChampionPatches,
+  loadChampionPlayers,
+  loadChampionRoles,
+  loadChampionSummary,
+  loadChampionTeams,
+  type ChampionRow,
+} from './championQueries.js'
+import {
   findTeam,
   loadOpponents,
   loadTeamDraft,
@@ -154,6 +166,48 @@ export function createApp() {
     }
     res.json({ team, ...(await loadTeamContext(pool, team.id)) })
   }))
+
+  /** Resolves :name to a champion and hands its parsed filters to `load`, or sends 404. */
+  const championRoute = <T>(path: string, load: (ctx: { champion: ChampionRow; query: ReturnType<typeof championSchema.parse> }) => Promise<T>) =>
+    app.get(
+      `/api/champions/:name${path}`,
+      wrap(async (req, res) => {
+        const query = championSchema.parse(req.query)
+        const champion = await findChampion(pool, String(req.params.name))
+        if (!champion) {
+          res.status(404).json({ error: 'Champion not found' })
+          return
+        }
+        res.json(await load({ champion, query }))
+      }),
+    )
+
+  championRoute('', async ({ champion, query }) => {
+    const { range, summary } = await loadChampionSummary(pool, query, champion)
+    return { champion, range, empty: summary === null, summary }
+  })
+  championRoute('/roles', async ({ champion, query }) => {
+    const roles = await loadChampionRoles(pool, query, champion)
+    return { empty: roles.length === 0, roles }
+  })
+  championRoute('/players', async ({ champion, query }) => {
+    const players = await loadChampionPlayers(pool, query, champion, query.limit)
+    return { empty: players.length === 0, players }
+  })
+  championRoute('/teams', async ({ champion, query }) => {
+    const teams = await loadChampionTeams(pool, query, champion, query.limit)
+    return { empty: teams.length === 0, teams }
+  })
+  championRoute('/matchups', async ({ champion, query }) => {
+    const matchups = await loadChampionCounters(pool, query, champion, query.limit)
+    return { empty: matchups.length === 0, matchups }
+  })
+  championRoute('/patches', async ({ champion, query }) => {
+    const patches = await loadChampionPatches(pool, query, champion)
+    return { empty: patches.length === 0, patches }
+  })
+  /** Top players, top teams and recent events for the related-info strip. Ignores the stat filters. */
+  championRoute('/context', ({ champion }) => loadChampionContext(pool, champion).then((ctx) => ({ champion, ...ctx })))
 
   app.get('/api/leaderboard/players', wrap(async (req, res) => {
     res.json(await loadLeaderboard(pool, leaderboardSchema.parse(req.query)))

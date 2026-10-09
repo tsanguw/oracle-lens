@@ -195,6 +195,94 @@ export interface PlayerContextResponse {
   results: ContextMatch[]
 }
 
+/** What the filter bar needs from any page's range: whether it is the default, and what that resolved to. */
+export interface FilterRange {
+  isDefault: boolean
+  resolved: { league?: string; year: number; split: string | null } | null
+  /** Each league's own latest split when the default range spans several leagues. */
+  leagues?: { league: string; year: number; split: string | null }[]
+}
+
+export interface ChampionSummary {
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  blueGames: number
+  blueWins: number
+  redGames: number
+  redWins: number
+  pickRate: number | null
+  banRate: number | null
+  presence: number | null
+  totalGames: number
+  kda: number | null
+  killParticipation: number | null
+  damagePerMin: number | null
+  goldPerMin: number | null
+  csPerMin: number | null
+  avgGameLengthSec: number | null
+  role: string | null
+}
+
+export interface ChampionResponse {
+  champion: { id: number; name: string }
+  range: LeaderboardRange
+  empty: boolean
+  summary: ChampionSummary | null
+}
+
+export interface ChampionRoleRow {
+  role: string
+  games: number
+  wins: number
+  winRate: number
+}
+
+export interface ChampionPlayer {
+  page: string
+  name: string
+  team: string | null
+  games: number
+  wins: number
+  winRate: number
+  kda: number | null
+  underMinSample: boolean
+}
+
+export interface ChampionTeam {
+  name: string
+  games: number
+  wins: number
+  winRate: number
+  underMinSample: boolean
+}
+
+export interface ChampionCounter {
+  champion: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  goldDiff: number | null
+  underMinSample: boolean
+}
+
+export interface ChampionPatchRow {
+  patch: string
+  games: number
+  wins: number
+  winRate: number
+  pickRate: number | null
+}
+
+export interface ChampionContextResponse {
+  champion: { id: number; name: string }
+  players: ChampionPlayer[]
+  teams: ChampionTeam[]
+  events: (ContextEvent & { games: number })[]
+}
+
 export interface TeamSummary {
   games: number
   wins: number

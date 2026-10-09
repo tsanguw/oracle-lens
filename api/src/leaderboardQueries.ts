@@ -1,6 +1,6 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { buildConditions, filterSchema, hasRangeFilter, MIN_SAMPLE } from './filters.js'
+import { buildConditions, filterSchema, hasRangeFilter, MIN_SAMPLE, type Filters } from './filters.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
 export const SORT_KEYS = ['kda', 'winRate', 'games', 'killParticipation', 'damagePerMin', 'csPerMin', 'visionPerMin'] as const
@@ -18,6 +18,9 @@ export const leaderboardSchema = filterSchema.extend({
 })
 
 export type LeaderboardQuery = z.infer<typeof leaderboardSchema>
+
+/** What the default-range resolver needs: the stat filters plus whether qualifiers are wanted. */
+export type RangeQuery = Filters & { qualifiers: boolean }
 
 export interface LeaderboardRange {
   label: string
@@ -52,9 +55,9 @@ const NOT_QUALIFIER = `t.stage IS DISTINCT FROM 'Qualifier'`
  * split (playoffs included), plus international events from the earliest such split onward. Only
  * leagues that played in the most recent year count, so a league that has stopped adds no stale data.
  */
-async function resolveRange(
+export async function resolveRange(
   pool: pg.Pool,
-  q: LeaderboardQuery,
+  q: RangeQuery,
   params: unknown[],
 ): Promise<{ conditions: string[]; range: LeaderboardRange }> {
   const base = q.qualifiers ? [] : [NOT_QUALIFIER]

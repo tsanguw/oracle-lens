@@ -98,6 +98,10 @@
   align-items: baseline;
   padding: 8px 0;
 }
+.ctx__row--champ {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+}
 .ctx__row.is-viewed .ctx__name {
   color: var(--gold);
 }

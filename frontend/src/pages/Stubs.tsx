@@ -1,4 +1,5 @@
 import { useParams } from 'react-router-dom'
+import ChampionPage from './ChampionPage'
 import PlayerPage from './PlayerPage'
 import TeamPage from './TeamPage'
 
@@ -12,6 +13,12 @@ export function PlayerRoute() {
 export function TeamRoute() {
   const { name = '' } = useParams()
   return <TeamPage key={name} name={name} />
+}
+
+/** Remounts the page per champion so one champion's data never flashes on another. */
+export function ChampionRoute() {
+  const { name = '' } = useParams()
+  return <ChampionPage key={name} name={name} />
 }
 
 export function ComingSoon({ title }: { title: string }) {
