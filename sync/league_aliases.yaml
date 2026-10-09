@@ -1,14 +1,15 @@
 # Hand-written league mapping: Leaguepedia long league names -> current league identity.
-# Only names verified against the live Leagues table are listed. Historical names
-# (EU LCS, NA LCS, 2025 LTA North/South, ...) are added in the full-backfill milestone
-# after checking their exact Leaguepedia spellings.
+# Every name below was verified against the live Leagues/Tournaments tables (2026-10-08).
 
 leagues:
   LCK:   { region: Korea,         names: ["LoL Champions Korea"] }
   LPL:   { region: China,         names: ["Tencent LoL Pro League"] }
-  LEC:   { region: Europe,        names: ["LoL EMEA Championship"] }
-  LCS:   { region: North America, names: ["League of Legends Championship Series"] }
-  CBLOL: { region: Brazil,        names: ["Circuit Brazilian League of Legends"] }
+  # EU LCS -> LEC
+  LEC:   { region: Europe,        names: ["LoL EMEA Championship", "Europe League Championship Series"] }
+  # NA LCS -> LCS, and 2025 LTA North -> LCS
+  LCS:   { region: North America, names: ["League of Legends Championship Series", "North America League Championship Series", "League of Legends Championship of The Americas North"] }
+  # 2025 LTA South -> CBLOL
+  CBLOL: { region: Brazil,        names: ["Circuit Brazilian League of Legends", "League of Legends Championship of The Americas South"] }
   LCP:   { region: Asia Pacific,  names: ["League of Legends Championship Pacific"] }
 
 # Pre-2025 leagues that roll up into LCP; the old short name is kept as sub_region.
@@ -17,7 +18,24 @@ lcp_predecessors:
   "Vietnam Championship Series": VCS
   "LoL Japan League": LJL
 
-# Leaguepedia long names of official international events (tournament.league_id stays NULL).
-internationals:
-  - "Mid-Season Invitational"
-  - "World Championship"
+# 2025 LTA playoff events with teams from both conferences. The tournament has no single league;
+# each team's games count toward its own conference's league (LTA North -> LCS, LTA South -> CBLOL).
+multi_league:
+  "League of Legends Championship of The Americas":
+    conference_leagues:
+      "League of Legends Championship of The Americas North": LCS
+      "League of Legends Championship of The Americas South": CBLOL
+
+# Leaguepedia tags each region's Worlds "Regional Finals" gauntlet with League = "World Championship"
+# but Region = the domestic region. They are domestic events of that region's league.
+regional_finals:
+  league_name: "World Championship"
+  region_to_league:
+    China: LPL
+    Korea: LCK
+    Europe: LEC
+    "North America": LCS
+
+# Official international events are every official tournament whose Region is this value
+# (Worlds Main Event and Play-In, MSI, First Stand, Rift Rivals, Mid-Season Cup, wildcard events, ...).
+international_region: "International"

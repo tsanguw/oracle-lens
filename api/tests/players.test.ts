@@ -375,6 +375,108 @@ describe('GET /api/players/:id/target-bans', () => {
   })
 })
 
+/*
+ * 2025 LTA: North and South have their own split pages, but the playoffs are one combined event with
+ * teams from both conferences. Each team's games in that event count toward its own conference's
+ * league (Team X -> LCS, Team Y -> CBLOL) via tournament_team_league.
+ *
+ *  LTA North 2025 Split 1 (LCS):    Xan plays 2 games
+ *  LTA South 2025 Split 1 (CBLOL):  Yan plays 2 games
+ *  LTA 2025 Split 1 Playoffs (no league): Xan and Yan play 2 games against each other,
+ *                                          and Zed (team with no league mapping) plays 1 game
+ */
+describe('cross-conference (multi-league) tournaments', () => {
+  beforeAll(async () => {
+    const one = async (sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows[0].id as number
+    const lcs = await one(`INSERT INTO league (name, region) VALUES ('LCS','North America') RETURNING id`)
+    const cblol = await one(`INSERT INTO league (name, region) VALUES ('CBLOL','Brazil') RETURNING id`)
+    const team = (name: string) => one(`INSERT INTO team (name) VALUES ($1) RETURNING id`, [name])
+    const player = (name: string) => one(`INSERT INTO player (name, display_name) VALUES ($1,$1) RETURNING id`, [name])
+    const teamX = await team('Team X')
+    const teamY = await team('Team Y')
+    const teamZ = await team('Team Z')
+    const xan = await player('Xan')
+    const yan = await player('Yan')
+    const zed = await player('Zed')
+    const azir = (await pool.query(`SELECT id FROM champion WHERE name = 'Azir'`)).rows[0].id as number
+
+    const tour = (page: string, name: string, leagueId: number | null, start: string, end: string) =>
+      one(
+        `INSERT INTO tournament (leaguepedia_name, name, league_id, year, split, is_international, start_date, end_date)
+         VALUES ($1,$2,$3,2025,'Split 1',false,$4,$5) RETURNING id`,
+        [page, name, leagueId, start, end],
+      )
+    const north = await tour('LTA North/2025/Split 1', 'LTA North 2025 Split 1', lcs, '2025-01-25', '2025-02-09')
+    const south = await tour('LTA South/2025/Split 1', 'LTA South 2025 Split 1', cblol, '2025-01-25', '2025-02-09')
+    const playoffs = await tour('LTA/2025/Split 1 Playoffs', 'LTA 2025 Split 1 Playoffs', null, '2025-02-15', '2025-02-23')
+    await pool.query(
+      `INSERT INTO tournament_team_league (tournament_id, team_id, league_id) VALUES ($1,$2,$3),($1,$4,$5)`,
+      [playoffs, teamX, lcs, teamY, cblol],
+    )
+
+    let g = 0
+    const game = async (tournamentId: number, day: string, rows: [number, number][]) => {
+      const id = await one(
+        `INSERT INTO game (leaguepedia_id, tournament_id, patch, played_at, length_sec)
+         VALUES ($1,$2,'25.01',$3,1800) RETURNING id`,
+        [`LTA${++g}`, tournamentId, `2025-${day}T10:00:00Z`],
+      )
+      for (const [playerId, teamId] of rows) {
+        await pool.query(
+          `INSERT INTO player_game (game_id, player_id, team_id, champion_id, role, side, win, kills, deaths, assists)
+           VALUES ($1,$2,$3,$4,'Mid','blue',true,1,1,1)`,
+          [id, playerId, teamId, azir],
+        )
+      }
+    }
+    for (const day of ['01-26', '01-27']) await game(north, day, [[xan, teamX]])
+    for (const day of ['01-26', '01-27']) await game(south, day, [[yan, teamY]])
+    for (const day of ['02-16', '02-17']) await game(playoffs, day, [[xan, teamX], [yan, teamY]])
+    await game(playoffs, '02-18', [[zed, teamZ]])
+  })
+
+  const games = async (path: string) => (await api(path)).body.summary?.games ?? 0
+
+  it("counts a team's cross-conference games toward its own conference league", async () => {
+    // Default range = the player's most recent split in their own league: 2 regular + 2 playoff games.
+    const xan = (await api('/api/players/Xan')).body
+    expect(xan.range.label).toBe('LCS 2025 Split 1')
+    expect(xan.summary.games).toBe(4)
+    const yan = (await api('/api/players/Yan')).body
+    expect(yan.range.label).toBe('CBLOL 2025 Split 1')
+    expect(yan.summary.games).toBe(4)
+  })
+
+  it('puts each game in exactly the right league when filtering', async () => {
+    expect(await games('/api/players/Xan?league=LCS')).toBe(4)
+    expect(await games('/api/players/Xan?league=CBLOL')).toBe(0)
+    expect(await games('/api/players/Yan?league=CBLOL')).toBe(4)
+    expect(await games('/api/players/Yan?league=LCS')).toBe(0)
+  })
+
+  it('counts the same cross-conference game in both leagues (once per team)', async () => {
+    // The two playoff games contain Xan (LCS) and Yan (CBLOL): each side sees them in its own league.
+    expect(await games('/api/players/Xan?league=LCS&split=Split 1')).toBe(4)
+    expect(await games('/api/players/Yan?league=CBLOL&split=Split 1')).toBe(4)
+  })
+
+  it('leaves games of an unmapped team out of every league', async () => {
+    expect(await games('/api/players/Zed?league=LCS')).toBe(0)
+    expect(await games('/api/players/Zed?league=CBLOL')).toBe(0)
+    // With no filters the player still gets a page: it falls back to their latest tournament.
+    const zed = (await api('/api/players/Zed')).body
+    expect(zed.range.label).toBe('LTA 2025 Split 1 Playoffs')
+    expect(zed.summary.games).toBe(1)
+  })
+
+  it('applies to champions, matchups and bans endpoints through the same scope', async () => {
+    const champs = (await api('/api/players/Xan/champions?league=CBLOL')).body
+    expect(champs.empty).toBe(true)
+    const own = (await api('/api/players/Xan/champions?league=LCS')).body
+    expect(own.champions[0]).toMatchObject({ champion: 'Azir', games: 4 })
+  })
+})
+
 describe('other endpoints', () => {
   it('404s for an unknown player on every player endpoint', async () => {
     for (const path of ['', '/champions', '/matchups/players', '/matchups/champions', '/target-bans']) {

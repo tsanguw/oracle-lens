@@ -21,3 +21,6 @@ Thumbs.db
 
 # Local Claude tooling
 .claude/
+
+# Sync run logs
+sync/logs/

@@ -84,16 +84,27 @@ python -m venv .venv
 .venv\Scripts\activate          # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 
+python main.py backfill --all --list                               # show every in-scope tournament, load nothing
+python main.py backfill --all                                      # everything not yet done (resumable)
+python main.py backfill --all --year-from 2025 --year-to 2025      # just a slice
 python main.py backfill --latest                                   # most recent finished LCK regular-season split
 python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"  # a specific Leaguepedia page
-python main.py backfill --latest --force                           # re-sync even if already done
+python main.py backfill --all --force                              # re-sync even if already done
 ```
+
+A full run takes a few hours (roughly 10-20 seconds per tournament with the bot login). It writes a log to `sync/logs/` (gitignored), continues past individual failures, and picks up where it left off if you run it again.
+
+**What is in scope:** every official tournament of LCK, LPL, LEC, LCS, CBLOL and LCP (including their earlier names), the regional finals gauntlets, and all official internationals (Worlds including Play-In, MSI, First Stand, Rift Rivals, and so on). Showmatches and events with no recorded games are skipped.
 
 How it works:
 
 - Reads `ScoreboardGames`, `ScoreboardTeams`, `ScoreboardPlayers`, `PicksAndBansS7`, `MatchSchedule`, and `Tournaments`.
-- Resolves historical names to current ones: league names via `sync/league_aliases.yaml` (hand-written), player names via `PlayerRedirects`, team names by following `Teams.RenamedTo`.
-- Progress is tracked per tournament in the `sync_state` table. Re-running is idempotent.
+- Resolves historical names to current ones: league names via `sync/league_aliases.yaml` (hand-written), player names via `PlayerRedirects`, team names by following `Teams.RenamedTo`. Lookups are cached for the whole run.
+- Leagues roll up under their current name: EU LCS → LEC, NA LCS → LCS, 2025 LTA North → LCS, 2025 LTA South → CBLOL, and PCS/VCS/LJL → LCP (with the old name kept as `sub_region`).
+- **2025 LTA playoffs** include teams from both conferences. They have no single league; each team's games land in its own conference's league through the `tournament_team_league` table, so those games count toward both LCS and CBLOL history.
+- Leaguepedia tags each region's Worlds "Regional Finals" with `League = World Championship`; these are loaded as domestic events of that region's league, not as internationals.
+- For games without a `PicksAndBansS7` row (older eras) the draft comes from `ScoreboardTeams`: bans keep their slot order, and picks are stored with `draft_order = NULL` because their real order is unknown.
+- Progress is tracked per tournament in the `sync_state` table. Re-running is idempotent. A tournament that has not finished yet stays `pending` so a later run completes it.
 - Uses throttling and exponential backoff on rate limits.
 
 Run the sync unit tests with `python -m pytest` inside `sync/`.
@@ -163,8 +174,8 @@ sync/
 
 - **First blood is not available** in Leaguepedia's scoreboard tables, so `first_blood` is `NULL` and the stat shows "N/A".
 - **Draft order** for picks and bans is the slot within each team's picks or bans, not the true interleaved draft order.
-- Only league names verified against Leaguepedia are in `league_aliases.yaml`; historical names (EU LCS, NA LCS, 2025 LTA, …) come with the full backfill.
-- Only the LCK 2026 Rounds 3-4 tournament is loaded so far.
+- Leagues outside the six tracked ones (and their predecessors) are not loaded: for example LMS, OPL, TCL, LLA, and Challengers leagues. Predecessors that are not listed in `league_aliases.yaml` (such as LCK's pre-2016 "LoL The Champions") are not included.
+- For older games the draft comes from `ScoreboardTeams`, so the real pick order is not known there (stored as `NULL`).
 
 ## Data attribution
 

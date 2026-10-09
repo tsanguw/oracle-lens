@@ -26,12 +26,17 @@ export interface PlayerScope {
   range: ResolvedRange
 }
 
-/** Joins needed by every scope condition (aliases pgm, g, t, l). */
+/**
+ * Joins needed by every scope condition (aliases pgm, g, t, ttl, l). A game's league is the
+ * tournament's league, except in multi-league events (2025 LTA playoffs) where each team's games
+ * count toward that team's own conference league via tournament_team_league.
+ */
 const FROM_CORE = `
   FROM player_game pgm
   JOIN game g ON g.id = pgm.game_id
   JOIN tournament t ON t.id = g.tournament_id
-  LEFT JOIN league l ON l.id = t.league_id`
+  LEFT JOIN tournament_team_league ttl ON ttl.tournament_id = t.id AND ttl.team_id = pgm.team_id
+  LEFT JOIN league l ON l.id = COALESCE(ttl.league_id, t.league_id)`
 
 const FROM = `${FROM_CORE}
   LEFT JOIN team_game tg ON tg.game_id = pgm.game_id AND tg.team_id = pgm.team_id
@@ -81,9 +86,9 @@ export async function resolveScope(
   }
 
   const { rows } = await pool.query(
-    `SELECT t.league_id, l.name AS league, t.year, t.split
+    `SELECT l.id AS league_id, l.name AS league, t.year, t.split
      ${FROM}
-     WHERE pgm.player_id = $1 AND t.is_international = false
+     WHERE pgm.player_id = $1 AND t.is_international = false AND l.id IS NOT NULL
      ORDER BY g.played_at DESC NULLS LAST LIMIT 1`,
     [playerId],
   )
@@ -98,8 +103,10 @@ export async function resolveScope(
   if (rows[0]) {
     const { league_id, league, year, split } = rows[0]
     const tour = await pool.query(
-      `SELECT MIN(start_date) AS start, MAX(end_date) AS "end" FROM tournament
-       WHERE league_id = $1 AND year = $2 AND split IS NOT DISTINCT FROM $3`,
+      `SELECT MIN(t.start_date) AS start, MAX(t.end_date) AS "end" FROM tournament t
+       WHERE (t.league_id = $1 OR EXISTS (
+                SELECT 1 FROM tournament_team_league x WHERE x.tournament_id = t.id AND x.league_id = $1))
+         AND t.year = $2 AND t.split IS NOT DISTINCT FROM $3`,
       [league_id, year, split],
     )
     start = tour.rows[0].start
@@ -107,7 +114,7 @@ export async function resolveScope(
     internationalFrom = start
     resolved = { league, year, split }
     params.push(league_id, year, split)
-    splitFilter = `(t.league_id = $2 AND t.year = $3 AND t.split IS NOT DISTINCT FROM $4)`
+    splitFilter = `(l.id = $2 AND t.year = $3 AND t.split IS NOT DISTINCT FROM $4)`
     label = [league, year, split].filter(Boolean).join(' ')
   } else {
     // No domestic games at all: fall back to the player's most recent tournament.

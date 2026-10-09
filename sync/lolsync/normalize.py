@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -38,13 +39,13 @@ def length_sec(minutes: Any) -> int | None:
     return round(float(minutes) * 60)
 
 
-def team_side(value: str) -> str:
-    return {"blue": "blue", "red": "red"}[value.strip().lower()]
+def team_side(value: str) -> str | None:
+    return {"blue": "blue", "red": "red"}.get(str(value).strip().lower())
 
 
-def player_side(value: Any) -> str:
+def player_side(value: Any) -> str | None:
     """ScoreboardPlayers.Side: 1 = blue, 2 = red."""
-    return {"1": "blue", "2": "red"}[str(value).strip()]
+    return {"1": "blue", "2": "red"}.get(str(value).strip())
 
 
 def parse_utc(value: str | None) -> datetime | None:
@@ -53,27 +54,59 @@ def parse_utc(value: str | None) -> datetime | None:
     return datetime.strptime(value, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
 
 
+def split_list(value: str | None) -> list[str]:
+    """Cargo list fields arrive comma-joined."""
+    return [v.strip() for v in (value or "").split(",") if v.strip()]
+
+
 def cargo_quote(value: str) -> str:
     """Escape a string literal for a Cargo where clause."""
     return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
 
 
+@dataclass(frozen=True)
+class LeagueResolution:
+    """Where a tournament's games belong."""
+
+    league: str | None  # current league short name; None for internationals and multi-league events
+    is_international: bool
+    sub_region: str | None
+    multi_league: bool = False  # each team's games land in its own conference league
+
+
 class LeagueResolver:
-    """Maps Leaguepedia league long names to (current league, is_international, sub_region)."""
+    """Maps Leaguepedia tournaments to the current league identity (see league_aliases.yaml)."""
 
     def __init__(self, path: Path = ALIASES_PATH):
         cfg = yaml.safe_load(path.read_text(encoding="utf8"))
         self.leagues: dict[str, dict] = cfg["leagues"]
         self._by_long_name = {n: short for short, v in self.leagues.items() for n in v["names"]}
         self.predecessors: dict[str, str] = cfg["lcp_predecessors"]
-        self.internationals: set[str] = set(cfg["internationals"])
+        self.multi_league: dict[str, dict] = cfg["multi_league"]
+        self.regional_finals_name: str = cfg["regional_finals"]["league_name"]
+        self.regional_finals: dict[str, str] = cfg["regional_finals"]["region_to_league"]
+        self.international_region: str = cfg["international_region"]
 
-    def resolve(self, long_name: str, year: int) -> tuple[str | None, bool, str | None]:
-        if long_name in self.internationals:
-            return None, True, None
+    @property
+    def domestic_long_names(self) -> list[str]:
+        return [*self._by_long_name, *self.predecessors, *self.multi_league]
+
+    def conference_leagues(self, long_name: str) -> dict[str, str]:
+        """For a multi-league event: conference long league name -> league short name."""
+        return self.multi_league[long_name]["conference_leagues"]
+
+    def resolve(self, long_name: str, year: int, region: str | None = None) -> LeagueResolution:
+        if region == self.international_region:
+            return LeagueResolution(None, True, None)
+        if long_name == self.regional_finals_name:
+            if region in self.regional_finals:
+                return LeagueResolution(self.regional_finals[region], False, None)
+            raise KeyError(f"Regional finals for region {region!r} are out of scope")
+        if long_name in self.multi_league:
+            return LeagueResolution(None, False, None, multi_league=True)
         if long_name in self._by_long_name:
-            return self._by_long_name[long_name], False, None
+            return LeagueResolution(self._by_long_name[long_name], False, None)
         if long_name in self.predecessors:
             sub_region = self.predecessors[long_name] if year < 2025 else None
-            return "LCP", False, sub_region
+            return LeagueResolution("LCP", False, sub_region)
         raise KeyError(f"League {long_name!r} is not in league_aliases.yaml")
