@@ -556,11 +556,16 @@ def backfill_all(
     return dict(summary)
 
 
-def refresh_schedule(conn: psycopg.Connection, lp: Leaguepedia, log: Log = print) -> int:
-    """Fill series.scheduled_at from MatchSchedule for every series we already hold (no games are reloaded)."""
+def refresh_schedule(conn: psycopg.Connection, lp: Leaguepedia, log: Log = print, since: str | None = None) -> int:
+    """Fill series.scheduled_at from MatchSchedule for every series we already hold (no games are reloaded).
+
+    `since` ("YYYY-MM-DD HH:MM:SS", UTC) only looks at matches from then on; the full table is 170k rows and
+    takes about ten minutes, while dates of matches long past never change.
+    """
+    where = "DateTime_UTC IS NOT NULL" + (f" AND DateTime_UTC >= '{since}'" if since else "")
     rows = [
         (parse_utc(r["DateTime_UTC"]), r["MatchId"])
-        for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC", where="DateTime_UTC IS NOT NULL")
+        for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC", where=where)
         if r["MatchId"] and r["DateTime_UTC"]
     ]
     log(f"{len(rows)} scheduled matches fetched")

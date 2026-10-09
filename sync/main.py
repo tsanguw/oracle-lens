@@ -5,7 +5,7 @@
   python main.py backfill --all --list               # show what would run, load nothing
   python main.py backfill --latest                   # most recent finished LCK regular-season split
   python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"
-  python main.py nightly                             # not implemented yet
+  python main.py nightly                             # only what is new: unfinished tournaments, match dates, champion icons
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from lolsync.backfill import (
 )
 from lolsync.client import Leaguepedia
 from lolsync.images import sync_champion_icons, sync_player_photos, sync_team_logos
+from lolsync.nightly import nightly
 from lolsync.normalize import LeagueResolver
 from lolsync.resolve import ResolveCache
 
@@ -84,12 +85,8 @@ def main() -> int:
     im.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder for the cached images")
     im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
     sub.add_parser("schedule", help="refresh match dates for series already loaded (fast, no games reloaded)")
-    sub.add_parser("nightly", help="only new games (not implemented yet)")
+    sub.add_parser("nightly", help="load only new games and refresh match dates and champion icons (for a scheduled run)")
     args = parser.parse_args()
-
-    if args.mode == "nightly":
-        print("nightly mode is not implemented yet (later milestone)", file=sys.stderr)
-        return 2
 
     log, log_path = make_logger()
     lp = Leaguepedia()
@@ -104,6 +101,11 @@ def main() -> int:
             if "players" in kinds:
                 sync_player_photos(conn, lp, out_dir, log, args.limit)
         return 0
+    if args.mode == "nightly":
+        log(f"Leaguepedia login: {'bot account' if lp.authenticated else 'anonymous (slow, rate-limited)'}")
+        summary = nightly(connect, lp, LeagueResolver(), log)
+        log(f"SUMMARY {summary}")
+        return 1 if summary.get("failed") else 0
     if args.mode == "schedule":
         with connect() as conn:
             log(f"series dates updated: {refresh_schedule(conn, lp, log)}")

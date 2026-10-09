@@ -1,0 +1,37 @@
+name: Nightly sync
+
+# Loads new games from Leaguepedia into the production database.
+# Needs three repository secrets (Settings > Secrets and variables > Actions):
+#   DATABASE_URL, LEAGUEPEDIA_BOT_USER, LEAGUEPEDIA_BOT_PASSWORD
+# It is manual-only until those exist and the database has been migrated; then uncomment the schedule.
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: "0 12 * * *"   # daily, 12:00 UTC
+
+concurrency:
+  group: nightly-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: sync/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - name: Sync new games
+        run: python main.py nightly
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LEAGUEPEDIA_BOT_USER: ${{ secrets.LEAGUEPEDIA_BOT_USER }}
+          LEAGUEPEDIA_BOT_PASSWORD: ${{ secrets.LEAGUEPEDIA_BOT_PASSWORD }}

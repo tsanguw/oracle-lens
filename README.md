@@ -20,7 +20,7 @@ Leaguepedia Cargo API
 |---|---|
 | `frontend/` | React + Vite + TypeScript UI |
 | `api/` | Express + TypeScript API, SQL migrations, vitest suite |
-| `sync/` | Python loader (`backfill` mode implemented; `nightly` is a stub) |
+| `sync/` | Python loader (`backfill` mode implemented; `nightly` loads only new data) |
 | `docker-compose.yml` | Local Postgres 16 for development |
 
 Design decisions worth knowing:
@@ -91,9 +91,12 @@ python main.py backfill --latest                                   # most recent
 python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"  # a specific Leaguepedia page
 python main.py backfill --all --force                              # re-sync even if already done
 python main.py schedule                                            # refresh match dates (series.scheduled_at) without reloading games
+python main.py nightly                                             # only what is new: unfinished tournaments, match dates, champion icons (about 30 seconds)
 python main.py images                                              # cache team logos and player photos, and record champion icon keys
 python main.py images --only teams --limit 20                      # a quick trial
 ```
+
+**Nightly update.** `python main.py nightly` skips every tournament already marked `done`, loads new and still-running ones (a reload is idempotent), refreshes match dates for the last 14 days, and refreshes champion icon keys. It exits non-zero if a tournament failed, so a scheduler can flag it; run it again to retry. It deliberately leaves team logos and player photos out, because they are files and a scheduled runner has no permanent disk (they need somewhere to live in production; see the roadmap). `.github/workflows/nightly-sync.yml` runs it on GitHub Actions; it is manual-only until the three secrets it lists exist and the production database is migrated, then uncomment its `schedule`.
 
 A full run takes a few hours (roughly 10-20 seconds per tournament with the bot login). It writes a log to `sync/logs/` (gitignored), continues past individual failures, and picks up where it left off if you run it again.
 
@@ -206,7 +209,7 @@ sync/
 6. ✅ Champion page
 7. ✅ Tournament page
 8. ✅ List pages for teams, champions and tournaments (and name search on the player leaderboard), so every nav tab leads somewhere
-9. Nightly GitHub Actions sync and keep-awake ping
+9. 🟡 Nightly sync: `nightly` command and workflow done; waiting on the production database to switch on the schedule. Still to do: keep-awake ping (depends on the API host)
 10. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
 
 ## Scope decisions
