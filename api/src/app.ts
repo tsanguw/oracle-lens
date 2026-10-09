@@ -2,13 +2,17 @@ import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { ZodError } from 'zod'
 import { pool } from './db.js'
-import { filterSchema } from './filters.js'
+import { filterSchema, listFilterSchema } from './filters.js'
 import {
   findPlayer,
+  loadChampionMatchups,
   loadChampionPool,
   loadIdentity,
+  loadPlayerMatchups,
   loadSummary,
+  loadTargetBans,
   resolveScope,
+  type PlayerScope,
 } from './playerQueries.js'
 
 type Handler = (req: Request, res: Response) => Promise<void>
@@ -55,6 +59,31 @@ export function createApp() {
     const champions = await loadChampionPool(pool, scope)
     res.json({ range: scope.range, empty: champions.length === 0, champions })
   }))
+
+  /** Registers a list endpoint that resolves the player's scope and returns `{ range, empty, [key] }`. */
+  const playerList = <T>(
+    path: string,
+    key: string,
+    load: (scope: PlayerScope, limit: number | undefined) => Promise<T[]>,
+  ) =>
+    app.get(
+      `/api/players/:id/${path}`,
+      wrap(async (req, res) => {
+        const { limit, ...filters } = listFilterSchema.parse(req.query)
+        const player = await findPlayer(pool, String(req.params.id))
+        if (!player) {
+          res.status(404).json({ error: 'Player not found' })
+          return
+        }
+        const scope = await resolveScope(pool, player.id, filters)
+        const rows = await load(scope, limit)
+        res.json({ range: scope.range, empty: rows.length === 0, [key]: rows })
+      }),
+    )
+
+  playerList('matchups/players', 'matchups', (scope, limit) => loadPlayerMatchups(pool, scope, limit))
+  playerList('matchups/champions', 'matchups', (scope, limit) => loadChampionMatchups(pool, scope, limit))
+  playerList('target-bans', 'bans', (scope, limit) => loadTargetBans(pool, scope, limit))
 
   app.get('/api/filters', wrap(async (_req, res) => {
     const [leagues, years, splits, patches] = await Promise.all([

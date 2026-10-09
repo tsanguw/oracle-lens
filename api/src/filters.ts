@@ -16,6 +16,11 @@ export const filterSchema = z.object({
     .transform((v) => v === 'true'),
 })
 
+/** Filters plus an optional row limit, for list endpoints (matchups, target bans). */
+export const listFilterSchema = filterSchema.extend({
+  limit: z.coerce.number().int().min(1).max(20).optional(),
+})
+
 export type Filters = z.infer<typeof filterSchema>
 
 /** True when the visitor chose a league/year/split/tournament/patch, which replaces the default range. */

@@ -26,11 +26,14 @@ export interface PlayerScope {
   range: ResolvedRange
 }
 
-const FROM = `
+/** Joins needed by every scope condition (aliases pgm, g, t, l). */
+const FROM_CORE = `
   FROM player_game pgm
   JOIN game g ON g.id = pgm.game_id
   JOIN tournament t ON t.id = g.tournament_id
-  LEFT JOIN league l ON l.id = t.league_id
+  LEFT JOIN league l ON l.id = t.league_id`
+
+const FROM = `${FROM_CORE}
   LEFT JOIN team_game tg ON tg.game_id = pgm.game_id AND tg.team_id = pgm.team_id
   LEFT JOIN LATERAL (
     SELECT SUM(x.damage) AS dmg, SUM(x.gold) AS gld
@@ -277,6 +280,138 @@ export async function loadChampionPool(pool: pg.Pool, scope: PlayerScope): Promi
     winRate: r.wins / r.games,
     underMinSample: r.games < MIN_SAMPLE,
   }))
+}
+
+export const DEFAULT_LIST_LIMIT = 5
+
+export interface PlayerMatchupRow {
+  playerId: number
+  /** Unique page name, used for the /players/:name link. */
+  page: string
+  name: string
+  team: string | null
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  /** Average final gold difference for the player (positive = ahead); null when not tracked. */
+  goldDiff: number | null
+  underMinSample: boolean
+}
+
+/**
+ * Lane matchups are two player_game rows from the same game with the same role on opposite
+ * teams. Records are from the viewed player's perspective.
+ */
+const OPPONENT_JOIN = `
+  JOIN player_game opp ON opp.game_id = pgm.game_id AND opp.role = pgm.role AND opp.team_id <> pgm.team_id`
+
+export async function loadPlayerMatchups(
+  pool: pg.Pool,
+  scope: PlayerScope,
+  limit = DEFAULT_LIST_LIMIT,
+): Promise<PlayerMatchupRow[]> {
+  const params = [...scope.params, limit]
+  const { rows } = await pool.query(
+    `SELECT op.id AS "playerId", op.name AS page, COALESCE(op.display_name, op.name) AS name,
+       (ARRAY_AGG(ot.name ORDER BY g.played_at DESC NULLS LAST))[1] AS team,
+       COUNT(*)::int AS games,
+       COUNT(*) FILTER (WHERE pgm.win)::int AS wins,
+       AVG(pgm.gold - opp.gold)::float8 AS "goldDiff"
+     ${FROM_CORE}
+     ${OPPONENT_JOIN}
+     JOIN player op ON op.id = opp.player_id
+     JOIN team ot ON ot.id = opp.team_id
+     WHERE ${scope.conditions.join(' AND ')}
+     GROUP BY op.id, op.name, op.display_name
+     ORDER BY games DESC, wins DESC, name
+     LIMIT $${params.length}`,
+    params,
+  )
+  return rows.map((r) => ({
+    ...r,
+    losses: r.games - r.wins,
+    winRate: r.wins / r.games,
+    underMinSample: r.games < MIN_SAMPLE,
+  }))
+}
+
+export interface ChampionMatchupRow {
+  champion: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  goldDiff: number | null
+  underMinSample: boolean
+}
+
+export async function loadChampionMatchups(
+  pool: pg.Pool,
+  scope: PlayerScope,
+  limit = DEFAULT_LIST_LIMIT,
+): Promise<ChampionMatchupRow[]> {
+  const params = [...scope.params, limit]
+  const { rows } = await pool.query(
+    `SELECT c.name AS champion,
+       COUNT(*)::int AS games,
+       COUNT(*) FILTER (WHERE pgm.win)::int AS wins,
+       AVG(pgm.gold - opp.gold)::float8 AS "goldDiff"
+     ${FROM_CORE}
+     ${OPPONENT_JOIN}
+     JOIN champion c ON c.id = opp.champion_id
+     WHERE ${scope.conditions.join(' AND ')}
+     GROUP BY c.name
+     ORDER BY games DESC, wins DESC, c.name
+     LIMIT $${params.length}`,
+    params,
+  )
+  return rows.map((r) => ({
+    ...r,
+    losses: r.games - r.wins,
+    winRate: r.wins / r.games,
+    underMinSample: r.games < MIN_SAMPLE,
+  }))
+}
+
+export interface TargetBanRow {
+  champion: string
+  games: number
+  /** Share of the player's games in range where the opposing team banned this champion. */
+  rate: number
+}
+
+/**
+ * Target bans: champions the player has played in this range that the opposing team banned,
+ * ranked by how often. Bans by the player's own team never count, and neither do bans of
+ * champions the player hasn't played (those are general meta bans, not aimed at the player).
+ */
+export async function loadTargetBans(
+  pool: pg.Pool,
+  scope: PlayerScope,
+  limit = DEFAULT_LIST_LIMIT,
+): Promise<TargetBanRow[]> {
+  const params = [...scope.params, limit]
+  const { rows } = await pool.query(
+    `WITH mine AS (
+       SELECT pgm.game_id, pgm.team_id, pgm.champion_id
+       ${FROM_CORE}
+       WHERE ${scope.conditions.join(' AND ')}
+     ),
+     total AS (SELECT COUNT(*)::float8 AS n FROM mine)
+     SELECT c.name AS champion,
+            COUNT(DISTINCT m.game_id)::int AS games,
+            COUNT(DISTINCT m.game_id)::float8 / (SELECT n FROM total) AS rate
+     FROM mine m
+     JOIN pick_ban pb ON pb.game_id = m.game_id AND pb.action = 'ban' AND pb.team_id <> m.team_id
+     JOIN champion c ON c.id = pb.champion_id
+     WHERE pb.champion_id IN (SELECT champion_id FROM mine)
+     GROUP BY c.name
+     ORDER BY rate DESC, c.name
+     LIMIT $${params.length}`,
+    params,
+  )
+  return rows
 }
 
 export interface Identity {

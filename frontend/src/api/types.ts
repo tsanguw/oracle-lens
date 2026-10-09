@@ -66,6 +66,53 @@ export interface ChampionsResponse {
   champions: ChampionRow[]
 }
 
+export interface PlayerMatchup {
+  playerId: number
+  page: string
+  name: string
+  team: string | null
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  goldDiff: number | null
+  underMinSample: boolean
+}
+
+export interface ChampionMatchup {
+  champion: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  goldDiff: number | null
+  underMinSample: boolean
+}
+
+export interface PlayerMatchupsResponse {
+  range: Range
+  empty: boolean
+  matchups: PlayerMatchup[]
+}
+
+export interface ChampionMatchupsResponse {
+  range: Range
+  empty: boolean
+  matchups: ChampionMatchup[]
+}
+
+export interface TargetBan {
+  champion: string
+  games: number
+  rate: number
+}
+
+export interface TargetBansResponse {
+  range: Range
+  empty: boolean
+  bans: TargetBan[]
+}
+
 export interface FiltersResponse {
   leagues: string[]
   years: number[]

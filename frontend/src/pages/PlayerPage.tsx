@@ -1,11 +1,21 @@
 import { useSearchParams } from 'react-router-dom'
-import type { ChampionsResponse, FiltersResponse, PlayerResponse } from '../api/types'
+import type {
+  ChampionMatchupsResponse,
+  ChampionsResponse,
+  FiltersResponse,
+  PlayerMatchupsResponse,
+  PlayerResponse,
+  TargetBansResponse,
+} from '../api/types'
 import { useApi } from '../api/useApi'
 import ChampionPoolTable, { ChampionPoolSkeleton } from '../components/ChampionPoolTable'
 import EmptyState from '../components/EmptyState'
 import FilterBar from '../components/FilterBar'
+import MatchupPanel from '../components/MatchupPanel'
 import PlayerHeader, { PlayerHeaderSkeleton } from '../components/PlayerHeader'
 import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
+import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
+import { opposingLabel } from '../lib/format'
 
 export default function PlayerPage({ name }: { name: string }) {
   const [params, setParams] = useSearchParams()
@@ -15,6 +25,9 @@ export default function PlayerPage({ name }: { name: string }) {
 
   const player = useApi<PlayerResponse>(`${base}${qs}`)
   const champions = useApi<ChampionsResponse>(`${base}/champions${qs}`)
+  const vsPlayers = useApi<PlayerMatchupsResponse>(`${base}/matchups/players${qs}`)
+  const vsChampions = useApi<ChampionMatchupsResponse>(`${base}/matchups/champions${qs}`)
+  const bans = useApi<TargetBansResponse>(`${base}/target-bans${qs}`)
   const filters = useApi<FiltersResponse>('/api/filters')
 
   const reset = () => setParams(new URLSearchParams())
@@ -41,7 +54,8 @@ export default function PlayerPage({ name }: { name: string }) {
   }
 
   const data = player.data
-  const stale = player.loading || champions.loading
+  const stale =
+    player.loading || champions.loading || vsPlayers.loading || vsChampions.loading || bans.loading
 
   return (
     <>
@@ -81,6 +95,53 @@ export default function PlayerPage({ name }: { name: string }) {
                 )
               ) : (
                 <ChampionPoolSkeleton />
+              )}
+            </section>
+
+            <section aria-labelledby="matchups" className="section">
+              <h2 id="matchups" className="section__title">
+                Lane matchups
+              </h2>
+              <div className="panels">
+                <MatchupPanel
+                  title="Vs. opponents"
+                  subtitle={opposingLabel(data?.player.role)}
+                  loading={vsPlayers.loading}
+                  items={
+                    vsPlayers.data?.matchups.map((m) => ({
+                      ...m,
+                      key: m.page,
+                      to: `/players/${encodeURIComponent(m.page)}`,
+                      detail: m.team,
+                    })) ?? null
+                  }
+                />
+                <MatchupPanel
+                  title="Vs. champions faced"
+                  subtitle="Enemy laner’s champion"
+                  loading={vsChampions.loading}
+                  items={vsChampions.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion })) ?? null}
+                />
+              </div>
+            </section>
+
+            <section aria-labelledby="bans" className="section">
+              <div className="section__head">
+                <h2 id="bans" className="section__title">
+                  Target bans
+                </h2>
+                <span className="section__note">
+                  Champions this player has played that opponents banned, by share of games
+                </span>
+              </div>
+              {bans.data ? (
+                bans.data.empty ? (
+                  <p className="section__note">No bans against this player’s champions in this range.</p>
+                ) : (
+                  <TargetBans bans={bans.data.bans} />
+                )
+              ) : (
+                <TargetBansSkeleton />
               )}
             </section>
           </>

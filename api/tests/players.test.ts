@@ -4,17 +4,34 @@ import { createApp } from '../src/app.js'
 import { pool } from '../src/db.js'
 
 /*
- * Fixture for player "Pee" (teammate "Tee"). Every game: Pee 4/2/6, 1800s long, 6000 dmg (Tee 4000),
- * 12000 gold (Tee 8000), 300 CS, team kills 20. So KDA = 5, KP = 0.5, DPM = 200, damage share = 0.6,
- * GPM = 400, CS/min = 10. Vision is only recorded in the six Summer Azir games (60 each).
+ * Fixture for player "Pee" (Mid, Team A; teammate "Tee"). Every game: Pee 4/2/6, 1800s long, 6000 dmg
+ * (Tee 4000), 12000 gold (Tee 8000), 300 CS, team kills 20. So KDA = 5, KP = 0.5, DPM = 200,
+ * damage share = 0.6, GPM = 400, CS/min = 10. Vision is only recorded in the six Summer Azir games.
  *
  *  Spring  (LCK, 2026): 2 games Azir, both wins
  *  Summer  (LCK, 2026): 6 games Azir (4 wins) + 2 games Orianna (1 win)
  *  Worlds  (international, after Summer): 2 games Orianna, both losses
+ *
+ * Opponents (lane matchups and bans):
+ *  - Mid opponent every game has 11000 gold, so Pee's gold diff is +1000 everywhere.
+ *    Spring and Summer: "Rival" (Team B). Worlds: "Foreign" (Team C).
+ *    Opposing champion: Ahri in Spring and Summer Azir games, Yone in Summer Orianna and Worlds games.
+ *  - A Jungle opponent ("OffRole") plays every game and must never show up as a lane matchup.
+ *  - Bans: the opposing team bans Azir in Summer Azir games and Spring games, Orianna in Summer
+ *    game 6 and in both Worlds games, and Camille every game (never played by Pee: must be excluded).
+ *    Team A (Pee's own team) bans Orianna in Summer game 7 (must not count).
  */
 
 const app = createApp()
 const api = (path: string) => request(app).get(path)
+
+interface Ids {
+  pee: number
+  tee: number
+  teamA: number
+  offRole: number
+  camille: number
+}
 
 let n = 0
 async function addGame(opts: {
@@ -25,9 +42,13 @@ async function addGame(opts: {
   win: boolean
   side: 'blue' | 'red'
   vision: number | null
-  ids: { pee: number; tee: number; teamA: number }
+  ids: Ids
+  opp: { teamId: number; midId: number; midChampion: number }
+  oppBans: number[]
+  ownBans?: number[]
 }) {
-  const { ids } = opts
+  const { ids, opp } = opts
+  const oppSide = opts.side === 'blue' ? 'red' : 'blue'
   const g = await pool.query(
     `INSERT INTO game (leaguepedia_id, tournament_id, patch, played_at, length_sec)
      VALUES ($1,$2,$3,$4,1800) RETURNING id`,
@@ -45,29 +66,64 @@ async function addGame(opts: {
             ($1,$8,$3,$4,'Top',$5,$6,1,1,1,250,8000,4000,NULL)`,
     [gameId, ids.pee, ids.teamA, opts.champion, opts.side, opts.win, opts.vision, ids.tee],
   )
+  // Opposing team: a Mid (the lane opponent) and a Jungle (different role, so never a matchup).
+  await pool.query(
+    `INSERT INTO player_game (game_id, player_id, team_id, champion_id, role, side, win, gold)
+     VALUES ($1,$2,$3,$4,'Mid',$5,$6,11000),
+            ($1,$7,$3,$8,'Jungle',$5,$6,9000)`,
+    [gameId, opp.midId, opp.teamId, opp.midChampion, oppSide, !opts.win, ids.offRole, ids.camille],
+  )
+  const bans = [
+    ...opts.oppBans.map((c, i) => [opp.teamId, c, i + 1]),
+    ...(opts.ownBans ?? []).map((c, i) => [ids.teamA, c, i + 1]),
+  ]
+  for (const [teamId, championId, slot] of bans) {
+    await pool.query(
+      `INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES ($1,$2,$3,'ban',$4)`,
+      [gameId, teamId, championId, slot],
+    )
+  }
 }
 
 beforeAll(async () => {
-  const league = (await pool.query(`INSERT INTO league (name, region) VALUES ('LCK','Korea') RETURNING id`)).rows[0].id
-  const teamA = (await pool.query(`INSERT INTO team (name) VALUES ('Team A') RETURNING id`)).rows[0].id
-  const pee = (await pool.query(`INSERT INTO player (name, display_name, nationality) VALUES ('Pee','Pee','South Korea') RETURNING id`)).rows[0].id
-  const tee = (await pool.query(`INSERT INTO player (name, display_name) VALUES ('Tee','Tee') RETURNING id`)).rows[0].id
-  const azir = (await pool.query(`INSERT INTO champion (name) VALUES ('Azir') RETURNING id`)).rows[0].id
-  const orianna = (await pool.query(`INSERT INTO champion (name) VALUES ('Orianna') RETURNING id`)).rows[0].id
-  const ids = { pee, tee, teamA }
+  const one = async (sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows[0].id as number
+  const league = await one(`INSERT INTO league (name, region) VALUES ('LCK','Korea') RETURNING id`)
+  const team = (name: string) => one(`INSERT INTO team (name) VALUES ($1) RETURNING id`, [name])
+  const player = (name: string, nat: string | null = null) =>
+    one(`INSERT INTO player (name, display_name, nationality) VALUES ($1,$1,$2) RETURNING id`, [name, nat])
+  const champion = (name: string) => one(`INSERT INTO champion (name) VALUES ($1) RETURNING id`, [name])
 
-  const tour = async (page: string, name: string, leagueId: number | null, split: string | null, intl: boolean, start: string, end: string) =>
-    (await pool.query(
+  const teamA = await team('Team A')
+  const teamB = await team('Team B')
+  const teamC = await team('Team C')
+  const pee = await player('Pee', 'South Korea')
+  const tee = await player('Tee')
+  const rival = await player('Rival')
+  const foreign = await player('Foreign')
+  const offRole = await player('OffRole')
+  const azir = await champion('Azir')
+  const orianna = await champion('Orianna')
+  const ahri = await champion('Ahri')
+  const yone = await champion('Yone')
+  const camille = await champion('Camille')
+  const ids: Ids = { pee, tee, teamA, offRole, camille }
+
+  const tour = (page: string, name: string, leagueId: number | null, split: string | null, intl: boolean, start: string, end: string) =>
+    one(
       `INSERT INTO tournament (leaguepedia_name, name, league_id, year, split, is_international, start_date, end_date)
        VALUES ($1,$2,$3,2026,$4,$5,$6,$7) RETURNING id`,
       [page, name, leagueId, split, intl, start, end],
-    )).rows[0].id as number
+    )
   const spring = await tour('LCK/2026 Season/Spring', 'LCK 2026 Spring', league, 'Spring', false, '2026-01-14', '2026-03-01')
   const summer = await tour('LCK/2026 Season/Summer', 'LCK 2026 Summer', league, 'Summer', false, '2026-04-01', '2026-05-31')
   const worlds = await tour('Worlds/2026/Main Event', 'Worlds 2026 Main Event', null, null, true, '2026-10-01', '2026-11-01')
 
   for (let i = 0; i < 2; i++)
-    await addGame({ tournamentId: spring, playedAt: `2026-02-0${i + 1}T10:00:00Z`, patch: '26.03', champion: azir, win: true, side: 'blue', vision: null, ids })
+    await addGame({
+      tournamentId: spring, playedAt: `2026-02-0${i + 1}T10:00:00Z`, patch: '26.03', champion: azir,
+      win: true, side: 'blue', vision: null, ids,
+      opp: { teamId: teamB, midId: rival, midChampion: ahri }, oppBans: [azir, camille],
+    })
   for (let i = 0; i < 8; i++)
     await addGame({
       tournamentId: summer,
@@ -78,9 +134,16 @@ beforeAll(async () => {
       side: i % 2 === 0 ? 'blue' : 'red',
       vision: i < 6 ? 60 : null,
       ids,
+      opp: { teamId: teamB, midId: rival, midChampion: i < 6 ? ahri : yone },
+      oppBans: i < 6 ? [azir, camille] : i === 6 ? [orianna, camille] : [camille],
+      ownBans: i === 7 ? [orianna] : [],
     })
   for (let i = 0; i < 2; i++)
-    await addGame({ tournamentId: worlds, playedAt: `2026-10-0${i + 5}T10:00:00Z`, patch: '26.19', champion: orianna, win: false, side: 'blue', vision: null, ids })
+    await addGame({
+      tournamentId: worlds, playedAt: `2026-10-0${i + 5}T10:00:00Z`, patch: '26.19', champion: orianna,
+      win: false, side: 'blue', vision: null, ids,
+      opp: { teamId: teamC, midId: foreign, midChampion: yone }, oppBans: [orianna, camille],
+    })
 
   await pool.query(`INSERT INTO meta (key, value) VALUES ('last_synced_at', '2026-10-08T21:29:11Z')`)
 })
@@ -213,10 +276,110 @@ describe('GET /api/players/:id/champions', () => {
   })
 })
 
+describe('GET /api/players/:id/matchups/players', () => {
+  it('records Pee against each opposing laner in the same role', async () => {
+    const { body, status } = await api('/api/players/Pee/matchups/players')
+    expect(status).toBe(200)
+    expect(body.empty).toBe(false)
+    const [rival, foreign] = body.matchups
+    // Default range: 8 Summer games vs Rival (5-3), 2 Worlds games vs Foreign (0-2).
+    expect(rival).toMatchObject({ page: 'Rival', name: 'Rival', team: 'Team B', games: 8, wins: 5, losses: 3, underMinSample: false })
+    expect(rival.winRate).toBeCloseTo(5 / 8)
+    expect(foreign).toMatchObject({ page: 'Foreign', team: 'Team C', games: 2, wins: 0, losses: 2, underMinSample: true })
+    expect(foreign.winRate).toBe(0)
+  })
+
+  it('averages the final gold difference', async () => {
+    const { matchups } = (await api('/api/players/Pee/matchups/players')).body
+    expect(matchups[0].goldDiff).toBeCloseTo(1000) // 12000 - 11000
+  })
+
+  it('never counts opponents who played a different role', async () => {
+    const { matchups } = (await api('/api/players/Pee/matchups/players')).body
+    expect(matchups.map((m: { page: string }) => m.page)).not.toContain('OffRole')
+  })
+
+  it('respects domestic=true and the limit parameter', async () => {
+    const domestic = (await api('/api/players/Pee/matchups/players?domestic=true')).body
+    expect(domestic.matchups).toHaveLength(1)
+    expect(domestic.matchups[0]).toMatchObject({ page: 'Rival', games: 8 })
+    const limited = (await api('/api/players/Pee/matchups/players?limit=1')).body
+    expect(limited.matchups).toHaveLength(1)
+  })
+
+  it('rejects an out-of-range limit', async () => {
+    expect((await api('/api/players/Pee/matchups/players?limit=500')).status).toBe(400)
+  })
+})
+
+describe('GET /api/players/:id/matchups/champions', () => {
+  it('records Pee against the champion the lane opponent played', async () => {
+    const { body } = await api('/api/players/Pee/matchups/champions')
+    expect(body.empty).toBe(false)
+    const [ahri, yone] = body.matchups
+    // Ahri: Summer Azir games (4-2). Yone: 2 Summer Orianna games (1-1) + 2 Worlds (0-2) = 1-3.
+    expect(ahri).toMatchObject({ champion: 'Ahri', games: 6, wins: 4, losses: 2, underMinSample: false })
+    expect(yone).toMatchObject({ champion: 'Yone', games: 4, wins: 1, losses: 3, underMinSample: true })
+    expect(ahri.goldDiff).toBeCloseTo(1000)
+  })
+
+  it('never lists the off-role opponent champion', async () => {
+    const { matchups } = (await api('/api/players/Pee/matchups/champions')).body
+    // The Jungle opponent plays Camille every game; Camille is not a Mid-lane opponent champion.
+    expect(matchups.map((m: { champion: string }) => m.champion)).not.toContain('Camille')
+  })
+
+  it('is empty when filters match nothing', async () => {
+    const { body } = await api('/api/players/Pee/matchups/champions?year=2019')
+    expect(body.empty).toBe(true)
+    expect(body.matchups).toEqual([])
+  })
+})
+
+describe('GET /api/players/:id/target-bans', () => {
+  it('ranks opposing bans of champions Pee plays by share of his games', async () => {
+    const { body, status } = await api('/api/players/Pee/target-bans')
+    expect(status).toBe(200)
+    // Default range is 10 games. Azir banned by the opponent in 6 Summer games; Orianna in
+    // Summer game 6 plus both Worlds games = 3.
+    expect(body.bans).toHaveLength(2)
+    expect(body.bans[0]).toMatchObject({ champion: 'Azir', games: 6 })
+    expect(body.bans[0].rate).toBeCloseTo(0.6)
+    expect(body.bans[1]).toMatchObject({ champion: 'Orianna', games: 3 })
+    expect(body.bans[1].rate).toBeCloseTo(0.3)
+  })
+
+  it('excludes meta bans of champions the player does not play', async () => {
+    const { bans } = (await api('/api/players/Pee/target-bans')).body
+    expect(bans.map((b: { champion: string }) => b.champion)).not.toContain('Camille')
+  })
+
+  it("does not count bans made by the player's own team", async () => {
+    // Team A banned Orianna in Summer game 7; Orianna must still be 3 games, not 4.
+    const { bans } = (await api('/api/players/Pee/target-bans')).body
+    expect(bans.find((b: { champion: string }) => b.champion === 'Orianna').games).toBe(3)
+  })
+
+  it('uses the domestic range denominator with domestic=true', async () => {
+    const { bans } = (await api('/api/players/Pee/target-bans?domestic=true')).body
+    expect(bans[0]).toMatchObject({ champion: 'Azir', games: 6 })
+    expect(bans[0].rate).toBeCloseTo(6 / 8)
+    expect(bans[1]).toMatchObject({ champion: 'Orianna', games: 1 })
+    expect(bans[1].rate).toBeCloseTo(1 / 8)
+  })
+
+  it('is empty when filters match nothing', async () => {
+    const { body } = await api('/api/players/Pee/target-bans?year=2019')
+    expect(body.empty).toBe(true)
+    expect(body.bans).toEqual([])
+  })
+})
+
 describe('other endpoints', () => {
-  it('404s for an unknown player on both player endpoints', async () => {
-    expect((await api('/api/players/Nobody')).status).toBe(404)
-    expect((await api('/api/players/Nobody/champions')).status).toBe(404)
+  it('404s for an unknown player on every player endpoint', async () => {
+    for (const path of ['', '/champions', '/matchups/players', '/matchups/champions', '/target-bans']) {
+      expect((await api(`/api/players/Nobody${path}`)).status).toBe(404)
+    }
   })
 
   it('serves the last sync time', async () => {

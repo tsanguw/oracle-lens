@@ -2,7 +2,7 @@
 
 Browse professional League of Legends esports stats: players, teams, champions, and tournaments, with sortable leaderboards, matchup breakdowns, and shareable filters. All data comes from [Leaguepedia](https://lol.fandom.com)'s Cargo API, synced into our own Postgres database. The site never calls Leaguepedia when a visitor loads a page.
 
-> **Status: Milestone 1 (vertical slice).** The architecture is proven end to end for one tournament and one page: Leaguepedia → Python sync → Postgres → Express API → React player page. Teams, champions, tournaments, leaderboards, search, and the home page are not built yet (see [Roadmap](#roadmap)).
+> **Status: player page complete (vertical slice).** The architecture is proven end to end for one tournament and one page: Leaguepedia → Python sync → Postgres → Express API → React player page (overview, champion pool, lane matchups, target bans). Teams, champions, tournaments, leaderboards, search, and the home page are not built yet (see [Roadmap](#roadmap)).
 
 ## Architecture
 
@@ -108,10 +108,17 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 |---|---|
 | `GET /api/players/:id` | Profile, resolved range, summary stats. `:id` is the player's page name or numeric id. |
 | `GET /api/players/:id/champions` | Champion pool; entries under 5 games are included and flagged `underMinSample`. |
+| `GET /api/players/:id/matchups/players` | Record and average gold difference against each opposing laner in the same role. |
+| `GET /api/players/:id/matchups/champions` | Record and average gold difference against the champion the lane opponent played. |
+| `GET /api/players/:id/target-bans` | Champions the player has played that opponents banned, with the share of games. |
 | `GET /api/filters` | Available leagues, years, splits, patches. |
 | `GET /api/meta/last-updated` | Timestamp of the last successful sync (shown in the footer). |
 
 **Default range:** with none of `league`/`year`/`split`/`tournament`/`patch` set, a player's page shows their most recent domestic split plus any international events from that split's start onward. `domestic=true` restricts it to the league's split only. Any explicit filter replaces the default range.
+
+The three list endpoints also accept `limit` (1-20, default 5). Lane matchups pair two `player_game` rows from the same game with the same role on opposite teams, and records are from the viewed player's perspective. Rows under 5 games are included and flagged `underMinSample`.
+
+**Target bans** are bans by the opposing team of champions the player has played in the selected range, as a share of the player's games in that range. Bans by the player's own team, and bans of champions the player has not played (general meta bans), are excluded.
 
 When no games match, the API returns a normal response with `empty: true` (not an error) and the UI suggests widening the filters.
 
@@ -146,7 +153,7 @@ sync/
 ## Roadmap
 
 1. ✅ **Milestone 1:** monorepo, schema, one-tournament backfill, two player endpoints, player page (overview + champion pool)
-2. Player page matchups and target bans
+2. ✅ **Player page complete:** lane matchups (vs. opponents and vs. champions faced) and target bans
 3. Full backfill across all leagues and years
 4. Teams, champions, tournaments, leaderboards, search, and home page
 5. Nightly GitHub Actions sync and keep-awake ping
