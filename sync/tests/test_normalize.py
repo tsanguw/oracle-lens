@@ -85,6 +85,14 @@ class TestLeagueResolver:
         assert self.r.resolve("LoL Japan League", 2024).sub_region == "LJL"
         assert self.r.resolve("League of Legends Championship Pacific", 2025) == LeagueResolution("LCP", False, None)
 
+    def test_pcs_vcs_ljl_from_2025_are_second_tier_and_out_of_scope(self):
+        # They kept running as tier-2 leagues after LCP launched; they must not count as LCP history.
+        for name in ("Pacific Championship Series", "Vietnam Championship Series", "LoL Japan League"):
+            with pytest.raises(KeyError):
+                self.r.resolve(name, 2025)
+            with pytest.raises(KeyError):
+                self.r.resolve(name, 2026)
+
     def test_internationals_are_identified_by_region(self):
         assert self.r.resolve("World Championship", 2026, "International") == LeagueResolution(None, True, None)
         assert self.r.resolve("Mid-Season Invitational", 2025, "International").is_international

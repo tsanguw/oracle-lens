@@ -73,6 +73,10 @@ def list_scope_tournaments(
             continue
         if r["DateStart"] and r["DateStart"] > today.isoformat():
             continue  # not started yet
+        try:
+            resolver.resolve(r["League"], year, r["Region"])
+        except KeyError:
+            continue  # e.g. second-tier PCS/VCS/LJL from 2025, or regional finals outside our leagues
         out.append(r)
     # Cargo's DateStart ordering puts blank dates first; make the order deterministic.
     out.sort(key=lambda r: (r["DateStart"] or "0000", r["OverviewPage"]))

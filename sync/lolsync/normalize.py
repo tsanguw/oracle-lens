@@ -81,7 +81,8 @@ class LeagueResolver:
         cfg = yaml.safe_load(path.read_text(encoding="utf8"))
         self.leagues: dict[str, dict] = cfg["leagues"]
         self._by_long_name = {n: short for short, v in self.leagues.items() for n in v["names"]}
-        self.predecessors: dict[str, str] = cfg["lcp_predecessors"]
+        self.predecessors: dict[str, str] = cfg["lcp_predecessors"]["leagues"]
+        self.lcp_first_year: int = cfg["lcp_predecessors"]["first_lcp_year"]
         self.multi_league: dict[str, dict] = cfg["multi_league"]
         self.regional_finals_name: str = cfg["regional_finals"]["league_name"]
         self.regional_finals: dict[str, str] = cfg["regional_finals"]["region_to_league"]
@@ -107,6 +108,9 @@ class LeagueResolver:
         if long_name in self._by_long_name:
             return LeagueResolution(self._by_long_name[long_name], False, None)
         if long_name in self.predecessors:
-            sub_region = self.predecessors[long_name] if year < 2025 else None
-            return LeagueResolution("LCP", False, sub_region)
+            # From 2025 PCS, VCS and LJL continue only as second-tier leagues, so only their
+            # earlier tournaments (the tier-1 era) belong to LCP's history.
+            if year >= self.lcp_first_year:
+                raise KeyError(f"{long_name!r} in {year} is a second-tier league, out of scope")
+            return LeagueResolution("LCP", False, self.predecessors[long_name])
         raise KeyError(f"League {long_name!r} is not in league_aliases.yaml")

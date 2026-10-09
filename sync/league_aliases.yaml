@@ -12,11 +12,14 @@ leagues:
   CBLOL: { region: Brazil,        names: ["Circuit Brazilian League of Legends", "League of Legends Championship of The Americas South"] }
   LCP:   { region: Asia Pacific,  names: ["League of Legends Championship Pacific"] }
 
-# Pre-2025 leagues that roll up into LCP; the old short name is kept as sub_region.
+# Leagues that roll up into LCP; the old short name is kept as sub_region. Only tournaments before
+# first_lcp_year count: from 2025 on PCS, VCS and LJL are second-tier leagues and are not loaded.
 lcp_predecessors:
-  "Pacific Championship Series": PCS
-  "Vietnam Championship Series": VCS
-  "LoL Japan League": LJL
+  first_lcp_year: 2025
+  leagues:
+    "Pacific Championship Series": PCS
+    "Vietnam Championship Series": VCS
+    "LoL Japan League": LJL
 
 # 2025 LTA playoff events with teams from both conferences. The tournament has no single league;
 # each team's games count toward its own conference's league (LTA North -> LCS, LTA South -> CBLOL).

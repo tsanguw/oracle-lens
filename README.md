@@ -100,7 +100,7 @@ How it works:
 
 - Reads `ScoreboardGames`, `ScoreboardTeams`, `ScoreboardPlayers`, `PicksAndBansS7`, `MatchSchedule`, and `Tournaments`.
 - Resolves historical names to current ones: league names via `sync/league_aliases.yaml` (hand-written), player names via `PlayerRedirects`, team names by following `Teams.RenamedTo`. Lookups are cached for the whole run.
-- Leagues roll up under their current name: EU LCS → LEC, NA LCS → LCS, 2025 LTA North → LCS, 2025 LTA South → CBLOL, and PCS/VCS/LJL → LCP (with the old name kept as `sub_region`).
+- Leagues roll up under their current name: EU LCS → LEC, NA LCS → LCS, 2025 LTA North → LCS, 2025 LTA South → CBLOL, and pre-2025 PCS/VCS/LJL → LCP (with the old name kept as `sub_region`). From 2025 PCS, VCS and LJL continue as second-tier leagues, so those tournaments are not loaded.
 - **2025 LTA playoffs** include teams from both conferences. They have no single league; each team's games land in its own conference's league through the `tournament_team_league` table, so those games count toward both LCS and CBLOL history.
 - Leaguepedia tags each region's Worlds "Regional Finals" with `League = World Championship`; these are loaded as domestic events of that region's league, not as internationals.
 - For games without a `PicksAndBansS7` row (older eras) the draft comes from `ScoreboardTeams`: bans keep their slot order, and picks are stored with `draft_order = NULL` because their real order is unknown.
