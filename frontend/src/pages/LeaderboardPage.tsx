@@ -3,6 +3,7 @@ import type { FiltersResponse, LeaderboardResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { SearchField } from '../components/ListParts'
+import { dropInvalid, splitsFor, yearsFor } from '../lib/filterOptions'
 import { decimal, percent, whole } from '../lib/format'
 import { PlayerPhoto, TeamLogo } from '../components/Images'
 
@@ -71,7 +72,7 @@ export default function LeaderboardPage() {
       else next.delete(k)
     }
     if (resetPage) next.delete('page')
-    setParams(next)
+    setParams(rangeKeys.some((k) => k in changes) ? dropInvalid(next, filters.data) : next)
   }
 
   const shown = (key: 'league' | 'year' | 'split'): string => {
@@ -86,8 +87,8 @@ export default function LeaderboardPage() {
 
   const selects: { key: 'league' | 'year' | 'split' | 'role' | 'patch'; label: string; blank: string; values: string[] }[] = [
     { key: 'league', label: 'League', blank: 'All leagues', values: filters.data?.leagues ?? [] },
-    { key: 'year', label: 'Year', blank: 'All years', values: (filters.data?.years ?? []).map(String) },
-    { key: 'split', label: 'Split', blank: 'All splits', values: filters.data?.splits ?? [] },
+    { key: 'year', label: 'Year', blank: 'All years', values: (filters.data ? yearsFor(filters.data, shown('league'), shown('split')) : []).map(String) },
+    { key: 'split', label: 'Split', blank: 'All splits', values: filters.data ? splitsFor(filters.data, shown('league'), shown('year')) : [] },
     { key: 'role', label: 'Role', blank: 'All roles', values: ROLES },
     { key: 'patch', label: 'Patch', blank: 'All patches', values: filters.data?.patches ?? [] },
   ]

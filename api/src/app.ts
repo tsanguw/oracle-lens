@@ -302,7 +302,7 @@ export function createApp() {
 
 
   app.get('/api/filters', wrap(async (_req, res) => {
-    const [leagues, years, splits, patches] = await Promise.all([
+    const [leagues, years, splits, patches, combos] = await Promise.all([
       pool.query(`SELECT name FROM league ORDER BY name`),
       pool.query(
         `SELECT DISTINCT t.year FROM tournament t
@@ -315,12 +315,19 @@ export function createApp() {
          ORDER BY NULLIF(regexp_replace(split_part(patch, '.', 1), '\\D', '', 'g'), '')::int DESC NULLS LAST,
                   NULLIF(regexp_replace(split_part(patch, '.', 2), '\\D', '', 'g'), '')::int DESC NULLS LAST, patch DESC`,
       ),
+      // Which league/year/split combinations actually have games, so the filter bar only offers choices that exist.
+      pool.query(
+        `SELECT DISTINCT l.name AS league, t.year, t.split FROM tournament t LEFT JOIN league l ON l.id = t.league_id
+         WHERE t.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id)
+         ORDER BY l.name NULLS LAST, t.year DESC, t.split`,
+      ),
     ])
     res.json({
       leagues: leagues.rows.map((r) => r.name),
       years: years.rows.map((r) => r.year),
       splits: splits.rows.map((r) => r.split),
       patches: patches.rows.map((r) => r.patch),
+      combos: combos.rows.map((r) => ({ league: r.league, year: r.year, split: r.split })),
     })
   }))
 

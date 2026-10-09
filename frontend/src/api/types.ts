@@ -118,6 +118,8 @@ export interface FiltersResponse {
   years: number[]
   splits: string[]
   patches: string[]
+  /** League/year/split combinations that have games; league is null for internationals. */
+  combos: { league: string | null; year: number; split: string | null }[]
 }
 
 export interface LastUpdatedResponse {

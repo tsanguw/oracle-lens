@@ -139,4 +139,12 @@ describe('default range once splits are assigned', () => {
     const { body } = await api('/api/filters')
     expect(body.splits).toEqual(expect.arrayContaining(['Spring', 'Summer', 'Split 1', 'Split 3']))
   })
+
+  it('lists which league/year/split combinations have games, so a league only offers its own splits', async () => {
+    const { body } = await api('/api/filters')
+    const splitsOf = (league: string) => body.combos.filter((c: { league: string }) => c.league === league).map((c: { split: string }) => c.split)
+    expect(splitsOf('LPL')).toEqual(expect.arrayContaining(['Summer']))
+    expect(splitsOf('LPL')).not.toContain('Split 1')
+    for (const c of body.combos) expect(Object.keys(c).sort()).toEqual(['league', 'split', 'year'])
+  })
 })
