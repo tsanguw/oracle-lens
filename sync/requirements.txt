@@ -5,3 +5,4 @@ python-dotenv
 pyyaml
 pytest
 pillow
+boto3

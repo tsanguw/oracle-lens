@@ -84,6 +84,8 @@ def main() -> int:
     im.add_argument("--only", choices=["teams", "players", "champions"], action="append", help="repeat to pick several; default is all")
     im.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder for the cached images")
     im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
+    up = sub.add_parser("upload-images", help="upload cached logos and photos to Cloudflare R2 (needs the R2_* settings)")
+    up.add_argument("--from", dest="src", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"))
     sub.add_parser("schedule", help="refresh match dates for series already loaded (fast, no games reloaded)")
     sub.add_parser("nightly", help="load only new games and refresh match dates and champion icons (for a scheduled run)")
     args = parser.parse_args()
@@ -100,6 +102,11 @@ def main() -> int:
                 sync_team_logos(conn, lp, out_dir, log, args.limit)
             if "players" in kinds:
                 sync_player_photos(conn, lp, out_dir, log, args.limit)
+        return 0
+    if args.mode == "upload-images":
+        from lolsync.r2 import client_from_env, upload_images
+
+        upload_images(client_from_env(), os.environ["R2_BUCKET"], Path(args.src), log)
         return 0
     if args.mode == "nightly":
         log(f"Leaguepedia login: {'bot account' if lp.authenticated else 'anonymous (slow, rate-limited)'}")
