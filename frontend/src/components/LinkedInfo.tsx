@@ -72,6 +72,31 @@ export function ContextSkeleton() {
   )
 }
 
+/** "Current events" while something is running, otherwise the most recent events. */
+export function EventsPanel({ events }: { events: ContextEvent[] }) {
+  return (
+    <ContextPanel title={events.some((e) => e.status === 'In progress') ? 'Current events' : 'Recent events'}>
+      {events.length > 0 ? <EventList events={events} /> : <p className="ctx__empty">No recent events.</p>}
+    </ContextPanel>
+  )
+}
+
+/** Upcoming series plus the last few results, from the team's side. */
+export function SchedulePanel({ upcoming, results }: { upcoming: ContextMatch[]; results: ContextMatch[] }) {
+  return (
+    <ContextPanel title="Schedule">
+      <h3 className="ctx__sub">Upcoming</h3>
+      {upcoming.length > 0 ? <MatchList matches={upcoming} /> : <p className="ctx__empty">No upcoming matches scheduled.</p>}
+      {results.length > 0 && (
+        <>
+          <h3 className="ctx__sub">Recent results</h3>
+          <MatchList matches={results.slice(0, 3)} result />
+        </>
+      )}
+    </ContextPanel>
+  )
+}
+
 export function RosterList({ roster }: { roster: RosterPlayer[] }) {
   const starters = roster.filter((p) => p.starter)
   const subs = roster.filter((p) => !p.starter)

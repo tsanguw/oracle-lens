@@ -2,7 +2,7 @@
 
 Browse professional League of Legends esports stats: players, teams, champions, and tournaments, with sortable leaderboards, matchup breakdowns, and shareable filters. All data comes from [Leaguepedia](https://lol.fandom.com)'s Cargo API, synced into our own Postgres database. The site never calls Leaguepedia when a visitor loads a page.
 
-> **Status: the home page (search and recent tournaments), player page and player leaderboard are built**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
+> **Status: the home page (search and recent tournaments), player page, team page and player leaderboard are built**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
 
 ## Architecture
 
@@ -133,6 +133,11 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/players/:id/matchups/champions` | Record and average gold difference against the champion the lane opponent played. |
 | `GET /api/players/:id/target-bans` | Champions the player has played that opponents banned, with the share of games. |
 | `GET /api/players/:id/context` | The related-info strip on the player page: current (or last) team and its roster, running events, upcoming series and recent results. Ignores the stat filters. |
+| `GET /api/teams/:id` | Team profile (`:id` is the exact team name or numeric id), resolved range and summary: record, side split, game length, kills and deaths per game, gold per minute and difference, objectives per game. Same filters as players except `role`. |
+| `GET /api/teams/:id/players` | Everyone who played for the team in the range, with their stats for this team only (entries under 5 games are flagged). |
+| `GET /api/teams/:id/draft` | Most picked champions with records, the team's own most frequent bans and the bans made against it (`limit`, default 8). |
+| `GET /api/teams/:id/opponents` | Head-to-head game record and average gold difference per opposing team (`limit`, default 8). |
+| `GET /api/teams/:id/context` | The related-info strip on the team page: latest roster, running events, upcoming series and results. Ignores the stat filters. |
 | `GET /api/search?q=` | Players (including old names), teams, champions and tournaments matching `q` (2+ characters), grouped by type, prefix matches first. `limit` per group (default 4). |
 | `GET /api/tournaments/recent` | The newest official events with games, qualifiers excluded. Each has a status (`In progress` while today is inside its dates) and a standing: the current leader while running, the champion for finished playoffs and internationals, otherwise the team with the best record. `limit` default 5. |
 | `GET /api/leaderboard/players` | Ranked players for the leaderboard page (see below). |
@@ -146,6 +151,8 @@ The three list endpoints also accept `limit` (1-20, default 5). Lane matchups pa
 **Target bans** are bans by the opposing team of champions the player has played in the selected range, as a share of the player's games in that range. Bans by the player's own team, and bans of champions the player has not played (general meta bans), are excluded.
 
 **Player leaderboard** (`/api/leaderboard/players`) accepts the same filters plus `sort` (`kda` default, `winRate`, `games`, `killParticipation`, `damagePerMin`, `csPerMin`, `visionPerMin`), `dir` (`asc`/`desc`), `page`, `pageSize` (default 25, max 100) and `qualifiers=true` to include qualifiers. Players under 5 games in the range are not ranked at all. With no range filter the default is each league's most recent split (playoffs included) from the most recent year, plus international events from the earliest of those splits onward; `domestic=true` drops the internationals. Each row's team, league and role are the ones the player used most in the range, and players with only international games show league `INTL`. A missing stat is `null`, never 0, and sorts last.
+
+**Team default range** is the same as for players: the team's most recent domestic split plus internationals from that split's start (`domestic=true` narrows it). Team stats come from `team_game`, so objectives and gold use the team totals; player rows on a team page only count games with that team.
 
 When no games match, the API returns a normal response with `empty: true` (not an error) and the UI suggests widening the filters.
 
@@ -183,9 +190,10 @@ sync/
 2. ✅ **Player page complete:** lane matchups (vs. opponents and vs. champions faced) and target bans
 3. Full backfill across all leagues and years
 4. ✅ Player leaderboard and home page (search, recent tournaments)
-5. Teams, champions, and tournaments pages (search results already link to their future routes)
-6. Nightly GitHub Actions sync and keep-awake ping
-7. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
+5. ✅ Team page
+6. Champions and tournaments pages (search results already link to their future routes), and a teams list
+7. Nightly GitHub Actions sync and keep-awake ping
+8. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
 
 ## Scope decisions
 

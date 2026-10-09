@@ -195,6 +195,101 @@ export interface PlayerContextResponse {
   results: ContextMatch[]
 }
 
+export interface TeamSummary {
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  blueGames: number
+  blueWins: number
+  redGames: number
+  redWins: number
+  avgGameLengthSec: number | null
+  killsPerGame: number | null
+  deathsPerGame: number | null
+  goldPerMin: number | null
+  towersPerGame: number | null
+  dragonsPerGame: number | null
+  baronsPerGame: number | null
+  heraldsPerGame: number | null
+  voidGrubsPerGame: number | null
+  goldDiff: number | null
+}
+
+export interface TeamResponse {
+  team: { id: number; name: string; region: string | null; league: string | null }
+  range: Range
+  empty: boolean
+  summary: TeamSummary | null
+}
+
+export interface TeamPlayer {
+  page: string
+  name: string
+  role: string | null
+  games: number
+  wins: number
+  winRate: number
+  kda: number | null
+  killParticipation: number | null
+  damagePerMin: number | null
+  csPerMin: number | null
+  underMinSample: boolean
+}
+
+export interface TeamPlayersResponse {
+  range: Range
+  empty: boolean
+  players: TeamPlayer[]
+}
+
+export interface TeamPick {
+  champion: string
+  games: number
+  wins: number
+  winRate: number
+  underMinSample: boolean
+}
+
+export interface TeamBan {
+  champion: string
+  games: number
+  rate: number
+}
+
+export interface TeamDraftResponse {
+  range: Range
+  empty: boolean
+  picks: TeamPick[]
+  bans: TeamBan[]
+  bansAgainst: TeamBan[]
+}
+
+export interface TeamOpponent {
+  team: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  goldDiff: number | null
+  underMinSample: boolean
+}
+
+export interface TeamOpponentsResponse {
+  range: Range
+  empty: boolean
+  opponents: TeamOpponent[]
+}
+
+export interface TeamContextResponse {
+  team: { id: number; name: string; region: string | null }
+  league: string | null
+  roster: RosterPlayer[]
+  events: ContextEvent[]
+  upcoming: ContextMatch[]
+  results: ContextMatch[]
+}
+
 export interface SearchResponse {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]

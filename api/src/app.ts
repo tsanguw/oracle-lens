@@ -5,6 +5,17 @@ import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerContext } from './playerContext.js'
+import { loadTeamContext } from './teamContext.js'
+import {
+  findTeam,
+  loadOpponents,
+  loadTeamDraft,
+  loadTeamLeague,
+  loadTeamPlayers,
+  loadTeamSummary,
+  teamFilterSchema,
+  teamListFilterSchema,
+} from './teamQueries.js'
 import { leaderboardSchema, loadLeaderboard } from './leaderboardQueries.js'
 import {
   findPlayer,
@@ -97,6 +108,52 @@ export function createApp() {
   playerList('matchups/players', 'matchups', (scope, limit) => loadPlayerMatchups(pool, scope, limit))
   playerList('matchups/champions', 'matchups', (scope, limit) => loadChampionMatchups(pool, scope, limit))
   playerList('target-bans', 'bans', (scope, limit) => loadTargetBans(pool, scope, limit))
+
+  /** Resolves :id to a team and its stat scope (default range = latest split plus internationals), or sends 404. */
+  const teamRoute = <T>(
+    path: string,
+    load: (ctx: { team: NonNullable<Awaited<ReturnType<typeof findTeam>>>; scope: PlayerScope; limit: number | undefined }) => Promise<T>,
+  ) =>
+    app.get(
+      `/api/teams/:id${path}`,
+      wrap(async (req, res) => {
+        const { limit, ...filters } = teamListFilterSchema.parse(req.query)
+        const team = await findTeam(pool, String(req.params.id))
+        if (!team) {
+          res.status(404).json({ error: 'Team not found' })
+          return
+        }
+        const scope = await resolveScope(pool, team.id, filters, 'team_id')
+        res.json({ range: scope.range, ...(await load({ team, scope, limit })) })
+      }),
+    )
+
+  teamRoute('', async ({ team, scope }) => {
+    const [summary, league] = await Promise.all([loadTeamSummary(pool, scope), loadTeamLeague(pool, scope)])
+    return { team: { ...team, league }, empty: summary === null, summary }
+  })
+  teamRoute('/players', async ({ scope }) => {
+    const players = await loadTeamPlayers(pool, scope)
+    return { empty: players.length === 0, players }
+  })
+  teamRoute('/draft', async ({ scope, limit }) => {
+    const draft = await loadTeamDraft(pool, scope, limit)
+    return { empty: draft.picks.length === 0 && draft.bans.length === 0, ...draft }
+  })
+  teamRoute('/opponents', async ({ scope, limit }) => {
+    const opponents = await loadOpponents(pool, scope, limit)
+    return { empty: opponents.length === 0, opponents }
+  })
+
+  /** Roster, running events and schedule. Independent of the stat filters. */
+  app.get('/api/teams/:id/context', wrap(async (req, res) => {
+    const team = await findTeam(pool, String(req.params.id))
+    if (!team) {
+      res.status(404).json({ error: 'Team not found' })
+      return
+    }
+    res.json({ team, ...(await loadTeamContext(pool, team.id)) })
+  }))
 
   app.get('/api/leaderboard/players', wrap(async (req, res) => {
     res.json(await loadLeaderboard(pool, leaderboardSchema.parse(req.query)))

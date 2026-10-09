@@ -31,7 +31,7 @@ export interface PlayerScope {
  * tournament's league, except in multi-league events (2025 LTA playoffs) where each team's games
  * count toward that team's own conference league via tournament_team_league.
  */
-const FROM_CORE = `
+export const FROM_CORE = `
   FROM player_game pgm
   JOIN game g ON g.id = pgm.game_id
   JOIN tournament t ON t.id = g.tournament_id
@@ -63,9 +63,11 @@ export async function resolveScope(
   pool: pg.Pool,
   playerId: number,
   filters: Filters,
+  /** The player_game column that ties rows to the subject: a player by default, or a team's games. */
+  column: 'player_id' | 'team_id' = 'player_id',
 ): Promise<PlayerScope> {
   const params: unknown[] = [playerId]
-  const base = ['pgm.player_id = $1']
+  const base = [`pgm.${column} = $1`]
 
   if (hasRangeFilter(filters)) {
     const conds = [...base, ...buildConditions(filters, params)]
@@ -88,7 +90,7 @@ export async function resolveScope(
   const { rows } = await pool.query(
     `SELECT l.id AS league_id, l.name AS league, t.year, t.split
      ${FROM}
-     WHERE pgm.player_id = $1 AND t.is_international = false AND l.id IS NOT NULL
+     WHERE pgm.${column} = $1 AND t.is_international = false AND l.id IS NOT NULL
      ORDER BY g.played_at DESC NULLS LAST LIMIT 1`,
     [playerId],
   )
@@ -120,7 +122,7 @@ export async function resolveScope(
     // No domestic games at all: fall back to the player's most recent tournament.
     const latest = await pool.query(
       `SELECT t.id, t.name, t.start_date, t.end_date ${FROM}
-       WHERE pgm.player_id = $1 ORDER BY g.played_at DESC NULLS LAST LIMIT 1`,
+       WHERE pgm.${column} = $1 ORDER BY g.played_at DESC NULLS LAST LIMIT 1`,
       [playerId],
     )
     if (!latest.rows[0]) {

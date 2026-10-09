@@ -2,7 +2,7 @@ import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import LeaderboardPage from './pages/LeaderboardPage'
-import { ComingSoon, PlayerRoute } from './pages/Stubs'
+import { ComingSoon, PlayerRoute, TeamRoute } from './pages/Stubs'
 
 export default function App() {
   return (
@@ -14,7 +14,7 @@ export default function App() {
         <Route path="/teams" element={<ComingSoon title="Teams" />} />
         <Route path="/champions" element={<ComingSoon title="Champions" />} />
         <Route path="/tournaments" element={<ComingSoon title="Tournaments" />} />
-        <Route path="/teams/:name" element={<ComingSoon title="Team" />} />
+        <Route path="/teams/:name" element={<TeamRoute />} />
         <Route path="/champions/:name" element={<ComingSoon title="Champion" />} />
         <Route path="/tournaments/:id" element={<ComingSoon title="Tournament" />} />
         <Route path="*" element={<ComingSoon title="Page not found" />} />

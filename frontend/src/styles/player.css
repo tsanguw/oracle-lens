@@ -59,6 +59,20 @@
   font-size: 80px;
   line-height: 0.9;
 }
+.hero__name--team {
+  font-size: 64px;
+  line-height: 0.95;
+}
+.pool__role {
+  color: var(--text-muted);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+}
+.pool__link:hover {
+  color: var(--gold);
+}
 .hero__team {
   font-size: 18px;
   color: var(--text-soft);
@@ -365,4 +379,16 @@
 .ban__rate {
   font-size: 13px;
   color: var(--text-muted);
+}
+
+/* Ban lists sitting in a half-width panel (team page) wrap instead of forcing five columns. */
+.panels > * {
+  min-width: 0;
+}
+.panels .bans {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+.ban__text {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
