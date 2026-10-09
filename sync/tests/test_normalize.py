@@ -51,6 +51,14 @@ def test_split_list():
     assert split_list("") == [] and split_list(None) == []
 
 
+def test_placeholder_names_are_recognised():
+    from lolsync.normalize import is_placeholder, real_names
+
+    assert all(is_placeholder(n) for n in ["", "None", "none", " NONE ", "Missing Data", "TBD", "tba", None])
+    assert not any(is_placeholder(n) for n in ["Azir", "MISSING", "Nonesuch", "Tbd Gaming"])  # MISSING is a real player
+    assert real_names(["Sion", "None", "Zoe", "Missing Data", ""]) == ["Sion", "Zoe"]
+
+
 def test_cargo_quote_escapes():
     assert cargo_quote("Faker's \\ page") == "'Faker\\'s \\\\ page'"
 
@@ -66,6 +74,11 @@ class TestLeagueResolver:
         # EU LCS -> LEC, NA LCS -> LCS
         assert self.r.resolve("Europe League Championship Series", 2016).league == "LEC"
         assert self.r.resolve("North America League Championship Series", 2016).league == "LCS"
+
+    def test_ogn_champions_roll_up_into_lck(self):
+        # LCK's predecessor, so LCK shows its full history from 2012.
+        for year in (2012, 2013, 2014, 2015):
+            assert self.r.resolve("LoL The Champions", year, "Korea") == LeagueResolution("LCK", False, None)
 
     def test_2025_lta_conferences_map_to_lcs_and_cblol(self):
         assert self.r.resolve("League of Legends Championship of The Americas North", 2025).league == "LCS"

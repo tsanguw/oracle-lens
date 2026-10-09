@@ -2,7 +2,8 @@
 # Every name below was verified against the live Leagues/Tournaments tables (2026-10-08).
 
 leagues:
-  LCK:   { region: Korea,         names: ["LoL Champions Korea"] }
+  # "LoL The Champions" (OGN Champions, 2012-2015) is LCK's predecessor, before the LCK name in 2016.
+  LCK:   { region: Korea,         names: ["LoL Champions Korea", "LoL The Champions"] }
   LPL:   { region: China,         names: ["Tencent LoL Pro League"] }
   # EU LCS -> LEC
   LEC:   { region: Europe,        names: ["LoL EMEA Championship", "Europe League Championship Series"] }
