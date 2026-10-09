@@ -90,6 +90,7 @@ python main.py backfill --all --year-from 2025 --year-to 2025      # just a slic
 python main.py backfill --latest                                   # most recent finished LCK regular-season split
 python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"  # a specific Leaguepedia page
 python main.py backfill --all --force                              # re-sync even if already done
+python main.py schedule                                            # refresh match dates (series.scheduled_at) without reloading games
 ```
 
 A full run takes a few hours (roughly 10-20 seconds per tournament with the bot login). It writes a log to `sync/logs/` (gitignored), continues past individual failures, and picks up where it left off if you run it again.
@@ -131,6 +132,7 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/players/:id/matchups/players` | Record and average gold difference against each opposing laner in the same role. |
 | `GET /api/players/:id/matchups/champions` | Record and average gold difference against the champion the lane opponent played. |
 | `GET /api/players/:id/target-bans` | Champions the player has played that opponents banned, with the share of games. |
+| `GET /api/players/:id/context` | The related-info strip on the player page: current (or last) team and its roster, running events, upcoming series and recent results. Ignores the stat filters. |
 | `GET /api/search?q=` | Players (including old names), teams, champions and tournaments matching `q` (2+ characters), grouped by type, prefix matches first. `limit` per group (default 4). |
 | `GET /api/tournaments/recent` | The newest official events with games, qualifiers excluded. Each has a status (`In progress` while today is inside its dates) and a standing: the current leader while running, the champion for finished playoffs and internationals, otherwise the team with the best record. `limit` default 5. |
 | `GET /api/leaderboard/players` | Ranked players for the leaderboard page (see below). |
@@ -188,9 +190,12 @@ sync/
 ## Scope decisions
 
 - **Qualifiers and promotions are not considered on the default leaderboard.** Events Leaguepedia flags as qualifiers (Worlds Play-In, Regional Finals, promotion and relegation series, and similar) are stored with `tournament.stage = 'Qualifier'`, and the default leaderboards exclude them. The leaderboard pages carry a note saying so. They stay in the database, so they can be included by choosing them explicitly.
+- **Detail pages show related info near the top.** Player, team, champion and tournament pages each carry a strip of linked context under the header (for a player: current team and roster, running events, schedule and results), and every entity in it links to its own page. The shared building blocks are in `frontend/src/components/LinkedInfo.tsx`.
 - Everything is rolled up under each league's current name (see [Sync](#sync)); pre-2025 PCS, VCS and LJL count as LCP, and from 2025 they are second-tier leagues that are not loaded.
 
 ## Known limitations
+
+- **Upcoming matches only exist for events we already hold.** An event is loaded once it has recorded games, so the schedule of an event that has not started yet (or a bracket slot whose teams are still TBD) is not shown until the sync sees it.
 
 - **First blood is not available** in Leaguepedia's scoreboard tables, so `first_blood` is `NULL` and the stat shows "N/A".
 - **Draft order** for picks and bans is the slot within each team's picks or bans, not the true interleaved draft order.

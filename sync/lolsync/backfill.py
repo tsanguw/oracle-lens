@@ -39,7 +39,7 @@ PICKBAN_FIELDS = (
     + ","
     + ",".join(f"Team{t}Pick{n}" for t in (1, 2) for n in range(1, 6))
 )
-MATCH_FIELDS = "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,BestOf,IsNullified"
+MATCH_FIELDS = "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,BestOf,IsNullified,DateTime_UTC"
 TOURNAMENT_FIELDS = "Name,OverviewPage,DateStart,Date,League,Region,Split,Year,IsPlayoffs,IsQualifier"
 
 Log = Callable[[str], None]
@@ -346,21 +346,22 @@ def _load(
 
         series_ids: dict[str, int] = {}
 
-        def upsert_series(match_id: str, t1: str, t2: str, winner: str, s1, s2, best_of) -> int:
+        def upsert_series(match_id: str, t1: str, t2: str, winner: str, s1, s2, best_of, scheduled_at=None) -> int:
             if match_id in series_ids:
                 return series_ids[match_id]
             t1_id, t2_id = team_id(t1), team_id(t2)
             win_id = {"1": t1_id, "2": t2_id}.get(str(winner))
             score = f"{s1}-{s2}" if s1 not in (None, "") and s2 not in (None, "") else None
             cur.execute(
-                """INSERT INTO series (leaguepedia_id, tournament_id, team1_id, team2_id, winner_id, score, best_of)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s)
+                """INSERT INTO series (leaguepedia_id, tournament_id, team1_id, team2_id, winner_id, score, best_of, scheduled_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (leaguepedia_id) DO UPDATE SET
                      tournament_id = EXCLUDED.tournament_id,
                      team1_id = EXCLUDED.team1_id, team2_id = EXCLUDED.team2_id,
-                     winner_id = EXCLUDED.winner_id, score = EXCLUDED.score, best_of = EXCLUDED.best_of
+                     winner_id = EXCLUDED.winner_id, score = EXCLUDED.score, best_of = EXCLUDED.best_of,
+                     scheduled_at = COALESCE(EXCLUDED.scheduled_at, series.scheduled_at)
                    RETURNING id""",
-                (match_id, tournament_id, t1_id, t2_id, win_id, score, to_int(best_of)),
+                (match_id, tournament_id, t1_id, t2_id, win_id, score, to_int(best_of), scheduled_at),
             )
             series_ids[match_id] = cur.fetchone()[0]
             counts["series"] += 1
@@ -369,7 +370,8 @@ def _load(
         for m in matches:
             # A bracket slot whose teams are not decided yet ("TBD") is not a series.
             if m["MatchId"] and not is_placeholder(m["Team1"]) and not is_placeholder(m["Team2"]):
-                upsert_series(m["MatchId"], m["Team1"], m["Team2"], m["Winner"], m["Team1Score"], m["Team2Score"], m["BestOf"])
+                upsert_series(m["MatchId"], m["Team1"], m["Team2"], m["Winner"], m["Team1Score"], m["Team2Score"], m["BestOf"],
+                              parse_utc(m["DateTime_UTC"]))
 
         participating: set[str] = set()
         for g in games:
@@ -552,3 +554,21 @@ def backfill_all(
     except psycopg.Error:
         pass
     return dict(summary)
+
+
+def refresh_schedule(conn: psycopg.Connection, lp: Leaguepedia, log: Log = print) -> int:
+    """Fill series.scheduled_at from MatchSchedule for every series we already hold (no games are reloaded)."""
+    rows = [
+        (parse_utc(r["DateTime_UTC"]), r["MatchId"])
+        for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC", where="DateTime_UTC IS NOT NULL")
+        if r["MatchId"] and r["DateTime_UTC"]
+    ]
+    log(f"{len(rows)} scheduled matches fetched")
+    with conn.cursor() as cur:
+        cur.executemany(
+            """UPDATE series SET scheduled_at = %s WHERE leaguepedia_id = %s AND scheduled_at IS DISTINCT FROM %s""",
+            [(when, match_id, when) for when, match_id in rows],
+        )
+        updated = cur.rowcount
+    conn.commit()
+    return updated

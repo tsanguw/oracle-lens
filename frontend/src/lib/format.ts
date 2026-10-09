@@ -41,6 +41,15 @@ export const opposingLabel = (role: string | null | undefined): string => {
 
 export const rate =(wins: number, games: number): number | null => (games > 0 ? wins / games : null)
 
+/** "Sat, Oct 10 · 9:00 AM" in the visitor's own time zone. */
+export const matchTime = (iso: string | null): string => {
+  if (!iso) return 'Date TBD'
+  const d = new Date(iso)
+  const day = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${day} · ${time}`
+}
+
 /** "Sep 5 – Oct 10, 2026" from two ISO dates (YYYY-MM-DD); either may be missing. */
 export const dateRange = (start: string | null, end: string | null): string => {
   if (!start && !end) return NA

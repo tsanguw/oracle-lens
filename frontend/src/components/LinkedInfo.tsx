@@ -1,0 +1,143 @@
+import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import type { ContextEvent, ContextMatch, RosterPlayer } from '../api/types'
+import { dateRange, matchTime } from '../lib/format'
+
+/*
+ * Building blocks for the "related info" strip under the header of every detail page
+ * (player, team, champion, tournament). Every entity named here links to its own page.
+ */
+
+const STORAGE_KEY = 'related-info-hidden'
+
+/** Remembered per browser (never required): storage can be blocked or throw, so every access is guarded. */
+const readHidden = (): boolean => {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Wraps the related-info panels with a show/hide toggle. The choice is shared by every detail page,
+ * and the "Related info" bar stays visible while the panels are hidden.
+ */
+export function ContextStrip({ children }: { children: ReactNode }) {
+  const [hidden, setHidden] = useState(readHidden)
+  const toggle = () => {
+    const next = !hidden
+    setHidden(next)
+    try {
+      localStorage.setItem(STORAGE_KEY, next ? '1' : '0')
+    } catch {
+      /* the toggle still works for this visit */
+    }
+  }
+  return (
+    <div className="container ctx-wrap">
+      <div className="ctx-bar">
+        <span className="ctx-bar__summary">Related info</span>
+        <button type="button" className="ctx-bar__toggle" aria-expanded={!hidden} aria-controls="related-info" onClick={toggle}>
+          {hidden ? 'Show' : 'Hide'}
+          <span aria-hidden="true"> {hidden ? '▾' : '▴'}</span>
+        </button>
+      </div>
+      <div id="related-info" className="ctx" hidden={hidden}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+export function ContextPanel({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
+  return (
+    <section className="ctx__panel" aria-label={title}>
+      <h2 className="ctx__title">{title}</h2>
+      {children}
+      {note && <p className="ctx__note">{note}</p>}
+    </section>
+  )
+}
+
+export function ContextSkeleton() {
+  return (
+    <div className="container ctx-wrap" aria-busy="true">
+      <div className="ctx">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="ctx__panel skeleton" style={{ height: 230 }} />
+      ))}
+      </div>
+    </div>
+  )
+}
+
+export function RosterList({ roster }: { roster: RosterPlayer[] }) {
+  const starters = roster.filter((p) => p.starter)
+  const subs = roster.filter((p) => !p.starter)
+  const row = (p: RosterPlayer) => (
+    <li key={p.page}>
+      <Link to={`/players/${encodeURIComponent(p.page)}`} className={`ctx__row${p.isViewed ? ' is-viewed' : ''}`}>
+        <span className="ctx__role">{p.role ?? '—'}</span>
+        <span className="ctx__name">{p.name}</span>
+        <span className="ctx__meta">{p.games} games</span>
+      </Link>
+    </li>
+  )
+  return (
+    <>
+      <ul className="ctx__list">{starters.map(row)}</ul>
+      {subs.length > 0 && (
+        <>
+          <h3 className="ctx__sub">Substitutes</h3>
+          <ul className="ctx__list">{subs.map(row)}</ul>
+        </>
+      )}
+    </>
+  )
+}
+
+export function EventList({ events }: { events: ContextEvent[] }) {
+  return (
+    <ul className="ctx__list">
+      {events.map((e) => (
+        <li key={e.id}>
+          <Link to={`/tournaments/${e.id}`} className="ctx__event">
+            <span className="ctx__event-top">
+              <span className="tag tag--small">{e.league}</span>
+              <span className={`badge${e.status === 'In progress' ? ' badge--live' : ''}`}>{e.status}</span>
+            </span>
+            <span className="ctx__name">{e.name}</span>
+            <span className="ctx__meta">{dateRange(e.startDate, e.endDate)}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+export function MatchList({ matches, result }: { matches: ContextMatch[]; result?: boolean }) {
+  return (
+    <ul className="ctx__list">
+      {matches.map((m) => (
+        <li key={m.seriesId}>
+          <Link to={`/tournaments/${m.tournamentId}`} className="ctx__match">
+            <span>
+              <span className="ctx__meta">vs.</span> <span className="ctx__name">{m.opponent ?? 'TBD'}</span>
+            </span>
+            {result ? (
+              <span className={`ctx__result ${m.won ? 'is-win' : 'is-loss'}`}>
+                {m.won ? 'W' : 'L'} {m.score ?? ''}
+              </span>
+            ) : (
+              <span className="ctx__meta">{m.bestOf ? `Bo${m.bestOf}` : ''}</span>
+            )}
+            <span className="ctx__meta ctx__match-when">
+              {matchTime(m.scheduledAt)} · {m.tournament}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}

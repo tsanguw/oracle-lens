@@ -3,6 +3,7 @@ import type {
   ChampionMatchupsResponse,
   ChampionsResponse,
   FiltersResponse,
+  PlayerContextResponse,
   PlayerMatchupsResponse,
   PlayerResponse,
   TargetBansResponse,
@@ -12,6 +13,7 @@ import ChampionPoolTable, { ChampionPoolSkeleton } from '../components/ChampionP
 import EmptyState from '../components/EmptyState'
 import FilterBar from '../components/FilterBar'
 import MatchupPanel from '../components/MatchupPanel'
+import PlayerContext from '../components/PlayerContext'
 import PlayerHeader, { PlayerHeaderSkeleton } from '../components/PlayerHeader'
 import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
 import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
@@ -28,6 +30,7 @@ export default function PlayerPage({ name }: { name: string }) {
   const vsPlayers = useApi<PlayerMatchupsResponse>(`${base}/matchups/players${qs}`)
   const vsChampions = useApi<ChampionMatchupsResponse>(`${base}/matchups/champions${qs}`)
   const bans = useApi<TargetBansResponse>(`${base}/target-bans${qs}`)
+  const context = useApi<PlayerContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
 
   const reset = () => setParams(new URLSearchParams())
@@ -60,6 +63,7 @@ export default function PlayerPage({ name }: { name: string }) {
   return (
     <>
       {data ? <PlayerHeader data={data} /> : <PlayerHeaderSkeleton />}
+      <PlayerContext data={context.data} />
       <FilterBar
         params={params}
         onChange={(next) => setParams(next)}

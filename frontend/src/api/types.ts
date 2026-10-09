@@ -158,6 +158,43 @@ export interface LeaderboardResponse {
   players: LeaderboardRow[]
 }
 
+export interface ContextEvent {
+  id: number
+  name: string
+  league: string
+  status: 'In progress' | 'Completed'
+  startDate: string | null
+  endDate: string | null
+}
+
+export interface ContextMatch {
+  seriesId: number
+  scheduledAt: string | null
+  tournamentId: number
+  tournament: string
+  opponent: string | null
+  bestOf: number | null
+  score: string | null
+  won: boolean | null
+}
+
+export interface RosterPlayer {
+  page: string
+  name: string
+  role: string | null
+  games: number
+  starter: boolean
+  isViewed: boolean
+}
+
+export interface PlayerContextResponse {
+  team: { name: string; league: string | null; isCurrent: boolean; lastPlayed: string | null } | null
+  roster: RosterPlayer[]
+  events: ContextEvent[]
+  upcoming: ContextMatch[]
+  results: ContextMatch[]
+}
+
 export interface SearchResponse {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]

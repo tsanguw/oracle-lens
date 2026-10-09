@@ -26,6 +26,7 @@ from lolsync.backfill import (
     fetch_tournament,
     list_scope_tournaments,
     pick_latest_tournament,
+    refresh_schedule,
 )
 from lolsync.client import Leaguepedia
 from lolsync.normalize import LeagueResolver
@@ -77,6 +78,7 @@ def main() -> int:
     bf.add_argument("--list", action="store_true", help="with --all: list tournaments and exit")
     bf.add_argument("--year-from", type=int)
     bf.add_argument("--year-to", type=int)
+    sub.add_parser("schedule", help="refresh match dates for series already loaded (fast, no games reloaded)")
     sub.add_parser("nightly", help="only new games (not implemented yet)")
     args = parser.parse_args()
 
@@ -86,6 +88,10 @@ def main() -> int:
 
     log, log_path = make_logger()
     lp = Leaguepedia()
+    if args.mode == "schedule":
+        with connect() as conn:
+            log(f"series dates updated: {refresh_schedule(conn, lp, log)}")
+        return 0
     log(f"Leaguepedia login: {'bot account' if lp.authenticated else 'anonymous (slow, rate-limited)'}")
     resolver = LeagueResolver()
 

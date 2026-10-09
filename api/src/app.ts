@@ -4,6 +4,7 @@ import { ZodError } from 'zod'
 import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
+import { loadPlayerContext } from './playerContext.js'
 import { leaderboardSchema, loadLeaderboard } from './leaderboardQueries.js'
 import {
   findPlayer,
@@ -60,6 +61,16 @@ export function createApp() {
     const scope = await resolveScope(pool, player.id, filters)
     const champions = await loadChampionPool(pool, scope)
     res.json({ range: scope.range, empty: champions.length === 0, champions })
+  }))
+
+  /** Current team, roster, running events and schedule. Independent of the stat filters. */
+  app.get('/api/players/:id/context', wrap(async (req, res) => {
+    const player = await findPlayer(pool, String(req.params.id))
+    if (!player) {
+      res.status(404).json({ error: 'Player not found' })
+      return
+    }
+    res.json(await loadPlayerContext(pool, player.id))
   }))
 
   /** Registers a list endpoint that resolves the player's scope and returns `{ range, empty, [key] }`. */
