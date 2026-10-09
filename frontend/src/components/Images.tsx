@@ -56,6 +56,14 @@ export function initials(name: string): string {
   return letters.join('').toUpperCase()
 }
 
+const ROLE_CLASS: Record<string, string> = { top: 'top', jungle: 'jungle', mid: 'mid', bot: 'bot', support: 'support' }
+
+/** Players with no photo get an initials avatar tinted by role, so a list of them is still easy to scan. */
+function roleClass(role?: string | null): string {
+  const key = role ? ROLE_CLASS[role.toLowerCase()] : undefined
+  return key ? `avatar--${key}` : ''
+}
+
 interface BaseProps {
   size?: number
   className?: string
@@ -106,15 +114,16 @@ export function TeamLogo({ name, size = 28, className = '' }: BaseProps & { name
 }
 
 /** `page` is the player's unique page name (the key photos are stored under); `name` is what to show initials for. */
-export function PlayerPhoto({ page, name, size = 36, className = '' }: BaseProps & { page: string; name: string }) {
+export function PlayerPhoto({ page, name, role, size = 36, className = '' }: BaseProps & { page: string; name: string; role?: string | null }) {
   const { players } = useImages()
   const [failed, setFailed] = useState(false)
   const file = players[page]
   const style = { width: size, height: size }
   if (!file || failed) {
     return (
-      <span className={`avatar ${className}`} style={{ ...style, fontSize: Math.max(10, size * 0.38) }} aria-hidden="true">
+      <span className={`avatar ${roleClass(role)} ${className}`} style={{ ...style, fontSize: Math.max(10, size * 0.38) }} aria-hidden="true">
         {initials(name)}
+        {size >= 96 && role && <span className="avatar__role">{role}</span>}
       </span>
     )
   }

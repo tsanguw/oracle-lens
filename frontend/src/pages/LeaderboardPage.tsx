@@ -160,7 +160,7 @@ export default function LeaderboardPage() {
                   <td className={`lb__rank${r.rank <= 3 ? ' lb__rank--top' : ''}`}>{r.rank}</td>
                   <td className="lb__left lb__player">
                     <span className="with-img">
-                      <PlayerPhoto page={r.page} name={r.name} size={32} />
+                      <PlayerPhoto page={r.page} name={r.name} role={r.role} size={32} />
                       <Link to={`/players/${encodeURIComponent(r.page)}`}>{r.name}</Link>
                     </span>
                   </td>

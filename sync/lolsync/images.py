@@ -86,6 +86,7 @@ def _sync_kind(
     max_px: int,
     log: Log,
     limit: int | None,
+    priority: dict[str, int] | None = None,
 ) -> dict[str, int]:
     """Download and store the image for every entity of ours that Leaguepedia has a file name for."""
     folder = out_dir / kind
@@ -94,7 +95,9 @@ def _sync_kind(
     log(f"{kind}: {len(todo)} of {len(ours)} have an image on Leaguepedia")
     infos = image_infos(lp, todo.values())
     counts = {"downloaded": 0, "unchanged": 0, "missing": 0, "failed": 0}
-    for name, image in sorted(todo.items()):
+    # Lower priority numbers go first (the players who matter most to visitors); the rest follow alphabetically.
+    order = sorted(todo.items(), key=lambda kv: ((priority or {}).get(kv[0], 10**9), kv[0]))
+    for name, image in order:
         info = infos.get(_normalize(image))
         entity_id, current_file, current_sha = ours[name]
         if not info:
@@ -129,12 +132,44 @@ def sync_team_logos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, lo
     )
 
 
+# Photo types that suit a small square avatar; full-body and half-length shots crop badly.
+FACE_TYPES = {"headshot": 0, "portrait": 1, "profile": 2, "": 3}
+
+
+def pick_photo(rows: Iterable[dict[str, str]]) -> str | None:
+    """The newest face photo among one player's PlayerImages rows (any photo if they only have full-body shots)."""
+    def rank(r: dict[str, str]) -> tuple[bool, str, int]:
+        kind = (r.get("ImageType") or "").strip().lower()
+        # Face photos beat the rest, then the newest date wins, then headshot over portrait over profile.
+        return (kind in FACE_TYPES, r.get("SortDate") or "", -FACE_TYPES.get(kind, 9))
+
+    usable = [r for r in rows if r.get("FileName")]
+    return max(usable, key=rank)["FileName"] if usable else None
+
+
+def player_photo_choices(lp: Leaguepedia) -> dict[str, str]:
+    """player page -> chosen Leaguepedia file: newest PlayerImages face photo, else the player's own profile image."""
+    by_player: dict[str, list[dict[str, str]]] = {}
+    for r in lp.cargo("PlayerImages", "Link,FileName,ImageType,SortDate", where="FileName IS NOT NULL AND FileName != ''"):
+        if r.get("Link"):
+            by_player.setdefault(r["Link"], []).append(r)
+    chosen = {page: pick for page, rows in by_player.items() if (pick := pick_photo(rows))}
+    for r in lp.cargo("Players", "OverviewPage,Image", where="Image IS NOT NULL AND Image != ''"):
+        chosen.setdefault(r["OverviewPage"], r["Image"])
+    return chosen
+
+
 def sync_player_photos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, log: Log = print, limit: int | None = None) -> dict[str, int]:
     ours = {name: (id_, f, sha) for id_, name, f, sha in conn.execute("SELECT id, name, photo_file, photo_sha1 FROM player")}
-    wanted = {r["OverviewPage"]: r["Image"] for r in lp.cargo("Players", "OverviewPage,Image", where="Image IS NOT NULL AND Image != ''")}
+    # Most recently active players first, so the current rosters get their photos before the long tail.
+    recent = conn.execute(
+        """SELECT p.name FROM player p JOIN player_game pg ON pg.player_id = p.id JOIN game g ON g.id = pg.game_id
+           GROUP BY p.name ORDER BY max(g.played_at) DESC NULLS LAST"""
+    ).fetchall()
+    priority = {name: i for i, (name,) in enumerate(recent)}
     return _sync_kind(
-        conn, lp, out_dir, kind="players", ours=ours, wanted=wanted, max_px=PHOTO_MAX_PX, log=log, limit=limit,
-        update_sql="UPDATE player SET photo_file = %s, photo_sha1 = %s WHERE id = %s",
+        conn, lp, out_dir, kind="players", ours=ours, wanted=player_photo_choices(lp), max_px=PHOTO_MAX_PX, log=log,
+        limit=limit, priority=priority, update_sql="UPDATE player SET photo_file = %s, photo_sha1 = %s WHERE id = %s",
     )
 
 

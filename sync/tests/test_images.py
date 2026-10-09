@@ -54,3 +54,22 @@ def test_image_infos_maps_back_by_normalised_title_and_skips_missing_files():
     }
     infos = image_infos(FakeLp(pages), ["t1logo_profile.png", "Nope.png"])
     assert infos == {"T1logo profile.png": {"url": "https://cdn/x.png", "sha1": "abc"}}
+
+
+def test_pick_photo_prefers_newest_face_photo_over_full_body_shots():
+    from lolsync.images import pick_photo
+
+    rows = [
+        {"FileName": "old.png", "ImageType": "Headshot", "SortDate": "2016-01-01"},
+        {"FileName": "new.png", "ImageType": "Headshot", "SortDate": "2020-01-01"},
+        {"FileName": "body.png", "ImageType": "Bodyshot", "SortDate": "2024-01-01"},
+        {"FileName": "", "ImageType": "Headshot", "SortDate": "2025-01-01"},
+    ]
+    assert pick_photo(rows) == "new.png"
+    assert pick_photo([rows[2]]) == "body.png"  # only full-body shots: still better than nothing
+    assert pick_photo([]) is None
+    tie = [
+        {"FileName": "prof.png", "ImageType": "Profile", "SortDate": "2020-01-01"},
+        {"FileName": "head.png", "ImageType": "Headshot", "SortDate": "2020-01-01"},
+    ]
+    assert pick_photo(tie) == "head.png"

@@ -242,6 +242,23 @@
   letter-spacing: 0.04em;
   line-height: 1;
 }
+.avatar--top { --role: #e5694f; }
+.avatar--jungle { --role: #4fb06d; }
+.avatar--mid { --role: #4f9be5; }
+.avatar--bot { --role: #e5b84f; }
+.avatar--support { --role: #a779e0; }
+.avatar--top, .avatar--jungle, .avatar--mid, .avatar--bot, .avatar--support {
+  border-color: color-mix(in srgb, var(--role) 55%, transparent);
+  background: color-mix(in srgb, var(--role) 14%, var(--bg-raised));
+  color: var(--role);
+}
+.avatar__role {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 .avatar--team {
   background: var(--bg-raised);
 }

@@ -106,7 +106,7 @@ export function RosterList({ roster }: { roster: RosterPlayer[] }) {
       <Link to={`/players/${encodeURIComponent(p.page)}`} className={`ctx__row${p.isViewed ? ' is-viewed' : ''}`}>
         <span className="ctx__role">{p.role ?? '—'}</span>
         <span className="ctx__name with-img">
-          <PlayerPhoto page={p.page} name={p.name} size={26} />
+          <PlayerPhoto page={p.page} name={p.name} role={p.role} size={26} />
           {p.name}
         </span>
         <span className="ctx__meta">{p.games} games</span>

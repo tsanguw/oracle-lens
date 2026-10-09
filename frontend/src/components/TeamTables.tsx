@@ -65,7 +65,7 @@ export function TeamPlayersTable({ players }: { players: TeamPlayer[] }) {
               <td className="pool__champ pool__role">{p.role ?? 'N/A'}</td>
               <td className="pool__champ">
                 <span className="with-img">
-                  <PlayerPhoto page={p.page} name={p.name} size={28} />
+                  <PlayerPhoto page={p.page} name={p.name} role={p.role} size={28} />
                   <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
                     {p.name}
                   </Link>

@@ -8,7 +8,7 @@ export default function PlayerHeader({ data }: { data: PlayerResponse }) {
       <div className="container hero__inner">
         <div className="hero__who">
           <div className="hero-img">
-            <PlayerPhoto page={player.name} name={player.displayName} size={128} />
+            <PlayerPhoto page={player.name} name={player.displayName} role={player.role} size={128} />
           </div>
           <div className="hero__text">
             <div className="tags">
