@@ -199,6 +199,7 @@ sync/
 
 - **Qualifiers and promotions are not considered on the default leaderboard.** Events Leaguepedia flags as qualifiers (Worlds Play-In, Regional Finals, promotion and relegation series, and similar) are stored with `tournament.stage = 'Qualifier'`, and the default leaderboards exclude them. The leaderboard pages carry a note saying so. They stay in the database, so they can be included by choosing them explicitly.
 - **Detail pages show related info near the top.** Player, team, champion and tournament pages each carry a strip of linked context under the header (for a player: current team and roster, running events, schedule and results), and every entity in it links to its own page. The shared building blocks are in `frontend/src/components/LinkedInfo.tsx`.
+- **Filters are docked to the bottom of the viewport** on the player, team and leaderboard pages (`FilterDock`), so they stay reachable while scrolling the stats they control. The dock can be collapsed to a slim bar that still shows the range being viewed, and starts collapsed on phones.
 - Everything is rolled up under each league's current name (see [Sync](#sync)); pre-2025 PCS, VCS and LJL count as LCP, and from 2025 they are second-tier leagues that are not loaded.
 
 ## Known limitations

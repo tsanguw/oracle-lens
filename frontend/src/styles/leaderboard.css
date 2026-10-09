@@ -17,19 +17,6 @@
   line-height: 0.9;
 }
 
-.lb-filters {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  padding: 16px;
-  border: 1px solid var(--border);
-  background: var(--bg-bar);
-  margin-top: -16px;
-}
-.lb-filters .btn-reset {
-  margin-left: 0;
-}
 .lb-note {
   margin: 0 0 0 auto;
   max-width: 260px;

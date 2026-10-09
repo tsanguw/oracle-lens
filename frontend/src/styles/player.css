@@ -103,16 +103,72 @@
 
 /* Filter bar */
 .filters {
-  border-bottom: 1px solid var(--border);
   background: var(--bg-bar);
 }
+/* Docked to the bottom of the viewport; it comes after the page content so the sticky position holds. */
+.filters--dock {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  border-top: 1px solid var(--border-strong);
+  box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.45);
+}
+.filters__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.filters__showing {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.filters__eyebrow {
+  margin-right: 6px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+.filters__toggle {
+  flex: none;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+  height: 34px;
+  padding: 0 14px;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.filters__toggle:hover {
+  color: var(--text);
+  border-color: var(--gold);
+}
 .filters__inner {
-  padding-top: 16px;
-  padding-bottom: 16px;
+  padding-top: 4px;
+  padding-bottom: 14px;
   display: flex;
   gap: 12px;
   align-items: flex-end;
   flex-wrap: wrap;
+}
+.filters__inner[hidden] {
+  display: none;
+}
+.filters .lb-note {
+  margin-left: auto;
 }
 .field {
   display: flex;

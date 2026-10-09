@@ -64,12 +64,6 @@ export default function PlayerPage({ name }: { name: string }) {
     <>
       {data ? <PlayerHeader data={data} /> : <PlayerHeaderSkeleton />}
       <PlayerContext data={context.data} />
-      <FilterBar
-        params={params}
-        onChange={(next) => setParams(next)}
-        options={filters.data}
-        range={data?.range ?? null}
-      />
       <main className="main container" style={{ opacity: data && stale ? 0.6 : 1 }}>
         {data?.empty ? (
           <EmptyState onReset={reset} />
@@ -151,6 +145,12 @@ export default function PlayerPage({ name }: { name: string }) {
           </>
         )}
       </main>
+      <FilterBar
+        params={params}
+        onChange={(next) => setParams(next)}
+        options={filters.data}
+        range={data?.range ?? null}
+      />
     </>
   )
 }

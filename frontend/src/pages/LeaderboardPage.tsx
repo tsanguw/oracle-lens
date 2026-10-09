@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import type { FiltersResponse, LeaderboardResponse } from '../api/types'
 import { useApi } from '../api/useApi'
+import FilterDock from '../components/FilterDock'
 import { decimal, percent, whole } from '../lib/format'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
@@ -97,6 +98,7 @@ export default function LeaderboardPage() {
   const last = data ? Math.min(data.total, data.page * data.pageSize) : 0
 
   return (
+    <>
     <main className="main container">
       <section className="lb-head">
         <div>
@@ -109,40 +111,6 @@ export default function LeaderboardPage() {
         </div>
       </section>
 
-      <form className="lb-filters" aria-label="Filters" onSubmit={(e) => e.preventDefault()}>
-        {selects.map(({ key, label, blank, values }) => {
-          const value = key === 'league' || key === 'year' || key === 'split' ? shown(key) : (params.get(key) ?? '')
-          const all = value && !values.includes(value) ? [value, ...values] : values
-          return (
-            <label key={key} className="field">
-              <span className="field__label">{label}</span>
-              <select value={value} onChange={(e) => update({ [key]: e.target.value })}>
-                <option value="">{blank}</option>
-                {all.map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )
-        })}
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={params.get('domestic') === 'true'}
-            onChange={(e) => update({ domestic: e.target.checked ? 'true' : '' })}
-          />
-          Domestic only
-        </label>
-        <button type="button" className="btn-reset" onClick={() => setParams(new URLSearchParams())}>
-          Reset
-        </button>
-        <p className="lb-note">
-          Minimum {data?.minGames ?? 5} games to be ranked. Qualifiers and promotion series are not
-          considered.
-        </p>
-      </form>
 
       {board.error ? (
         <div className="empty" role="alert">
@@ -246,5 +214,40 @@ export default function LeaderboardPage() {
         </nav>
       )}
     </main>
+      <FilterDock showing={range?.label ?? null}>
+        {selects.map(({ key, label, blank, values }) => {
+          const value = key === 'league' || key === 'year' || key === 'split' ? shown(key) : (params.get(key) ?? '')
+          const all = value && !values.includes(value) ? [value, ...values] : values
+          return (
+            <label key={key} className="field">
+              <span className="field__label">{label}</span>
+              <select value={value} onChange={(e) => update({ [key]: e.target.value })}>
+                <option value="">{blank}</option>
+                {all.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )
+        })}
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={params.get('domestic') === 'true'}
+            onChange={(e) => update({ domestic: e.target.checked ? 'true' : '' })}
+          />
+          Domestic only
+        </label>
+        <button type="button" className="btn-reset" onClick={() => setParams(new URLSearchParams())}>
+          Reset
+        </button>
+        <p className="lb-note">
+          Minimum {data?.minGames ?? 5} games to be ranked. Qualifiers and promotion series are not
+          considered.
+        </p>
+      </FilterDock>
+    </>
   )
 }

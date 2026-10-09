@@ -1,4 +1,5 @@
 import type { FiltersResponse, Range } from '../api/types'
+import FilterDock from './FilterDock'
 
 const KEYS = ['league', 'year', 'split', 'patch', 'side'] as const
 type Key = (typeof KEYS)[number]
@@ -53,8 +54,7 @@ export default function FilterBar({ params, onChange, options, range }: Props) {
   ]
 
   return (
-    <form className="filters" aria-label="Filters" onSubmit={(e) => e.preventDefault()}>
-      <div className="container filters__inner">
+    <FilterDock showing={range?.label ?? null}>
         {selects.map(({ key, label, blank, values }) => {
           const value = shown(key)
           // Keep a resolved value selectable even if the options list has not loaded yet.
@@ -89,7 +89,6 @@ export default function FilterBar({ params, onChange, options, range }: Props) {
         <button type="button" className="btn-reset" onClick={() => onChange(new URLSearchParams())}>
           Reset
         </button>
-      </div>
-    </form>
+    </FilterDock>
   )
 }
