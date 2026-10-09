@@ -87,6 +87,7 @@ def _sync_kind(
     log: Log,
     limit: int | None,
     priority: dict[str, int] | None = None,
+    remote: set[str] | None = None,
 ) -> dict[str, int]:
     """Download and store the image for every entity of ours that Leaguepedia has a file name for."""
     folder = out_dir / kind
@@ -104,7 +105,7 @@ def _sync_kind(
             counts["missing"] += 1
             continue
         target = file_name(name)
-        if current_file == target and current_sha == info["sha1"] and (folder / target).exists():
+        if current_file == target and current_sha == info["sha1"] and ((folder / target).exists() or (remote is not None and f"{kind}/{target}" in remote)):
             counts["unchanged"] += 1
             continue
         if limit is not None and counts["downloaded"] >= limit:
@@ -123,11 +124,11 @@ def _sync_kind(
     return counts
 
 
-def sync_team_logos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, log: Log = print, limit: int | None = None) -> dict[str, int]:
+def sync_team_logos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, log: Log = print, limit: int | None = None, remote: set[str] | None = None) -> dict[str, int]:
     ours = {name: (id_, f, sha) for id_, name, f, sha in conn.execute("SELECT id, name, logo_file, logo_sha1 FROM team")}
     wanted = {r["Name"]: r["Image"] for r in lp.cargo("Teams", "Name,Image", where="Image IS NOT NULL AND Image != ''")}
     return _sync_kind(
-        conn, lp, out_dir, kind="teams", ours=ours, wanted=wanted, max_px=LOGO_MAX_PX, log=log, limit=limit,
+        conn, lp, out_dir, kind="teams", ours=ours, wanted=wanted, max_px=LOGO_MAX_PX, log=log, limit=limit, remote=remote,
         update_sql="UPDATE team SET logo_file = %s, logo_sha1 = %s WHERE id = %s",
     )
 
@@ -159,7 +160,7 @@ def player_photo_choices(lp: Leaguepedia) -> dict[str, str]:
     return chosen
 
 
-def sync_player_photos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, log: Log = print, limit: int | None = None) -> dict[str, int]:
+def sync_player_photos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, log: Log = print, limit: int | None = None, remote: set[str] | None = None) -> dict[str, int]:
     ours = {name: (id_, f, sha) for id_, name, f, sha in conn.execute("SELECT id, name, photo_file, photo_sha1 FROM player")}
     # Most recently active players first, so the current rosters get their photos before the long tail.
     recent = conn.execute(
@@ -169,7 +170,7 @@ def sync_player_photos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path,
     priority = {name: i for i, (name,) in enumerate(recent)}
     return _sync_kind(
         conn, lp, out_dir, kind="players", ours=ours, wanted=player_photo_choices(lp), max_px=PHOTO_MAX_PX, log=log,
-        limit=limit, priority=priority, update_sql="UPDATE player SET photo_file = %s, photo_sha1 = %s WHERE id = %s",
+        limit=limit, priority=priority, remote=remote, update_sql="UPDATE player SET photo_file = %s, photo_sha1 = %s WHERE id = %s",
     )
 
 

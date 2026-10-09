@@ -83,6 +83,7 @@ def main() -> int:
     im = sub.add_parser("images", help="cache team logos and player photos locally, and record champion icon keys")
     im.add_argument("--only", choices=["teams", "players", "champions"], action="append", help="repeat to pick several; default is all")
     im.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder for the cached images")
+    im.add_argument("--r2", action="store_true", help="treat images already in the R2 bucket as present (for a runner with no local image folder)")
     im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
     up = sub.add_parser("upload-images", help="upload cached logos and photos to Cloudflare R2 (needs the R2_* settings)")
     up.add_argument("--from", dest="src", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"))
@@ -95,13 +96,19 @@ def main() -> int:
     if args.mode == "images":
         kinds = set(args.only or ["teams", "players", "champions"])
         out_dir = Path(args.out)
+        remote = None
+        if args.r2:
+            from lolsync.r2 import client_from_env, existing_keys
+
+            remote = existing_keys(client_from_env(), os.environ["R2_BUCKET"], ["teams/", "players/"])
+            log(f"{len(remote)} images already in R2")
         with connect() as conn:
             if "champions" in kinds:
                 sync_champion_icons(conn, log)
             if "teams" in kinds:
-                sync_team_logos(conn, lp, out_dir, log, args.limit)
+                sync_team_logos(conn, lp, out_dir, log, args.limit, remote)
             if "players" in kinds:
-                sync_player_photos(conn, lp, out_dir, log, args.limit)
+                sync_player_photos(conn, lp, out_dir, log, args.limit, remote)
         return 0
     if args.mode == "upload-images":
         from lolsync.r2 import client_from_env, upload_images

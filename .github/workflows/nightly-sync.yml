@@ -2,7 +2,8 @@ name: Nightly sync
 
 # Loads new games from Leaguepedia into the production database.
 # Needs three repository secrets (Settings > Secrets and variables > Actions):
-#   DATABASE_URL, LEAGUEPEDIA_BOT_USER, LEAGUEPEDIA_BOT_PASSWORD
+#   DATABASE_URL (the Neon string), LEAGUEPEDIA_BOT_USER, LEAGUEPEDIA_BOT_PASSWORD,
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
 # It is manual-only until those exist and the database has been migrated; then uncomment the schedule.
 on:
   workflow_dispatch:
@@ -35,3 +36,15 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LEAGUEPEDIA_BOT_USER: ${{ secrets.LEAGUEPEDIA_BOT_USER }}
           LEAGUEPEDIA_BOT_PASSWORD: ${{ secrets.LEAGUEPEDIA_BOT_PASSWORD }}
+      - name: Fetch new logos and photos, upload them to R2
+        run: |
+          python main.py images --only teams --only players --r2 --out ../img-cache
+          python main.py upload-images --from ../img-cache
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          LEAGUEPEDIA_BOT_USER: ${{ secrets.LEAGUEPEDIA_BOT_USER }}
+          LEAGUEPEDIA_BOT_PASSWORD: ${{ secrets.LEAGUEPEDIA_BOT_PASSWORD }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
