@@ -38,7 +38,7 @@ const FROM_CORE = `
   LEFT JOIN tournament_team_league ttl ON ttl.tournament_id = t.id AND ttl.team_id = pgm.team_id
   LEFT JOIN league l ON l.id = COALESCE(ttl.league_id, t.league_id)`
 
-const FROM = `${FROM_CORE}
+export const FROM = `${FROM_CORE}
   LEFT JOIN team_game tg ON tg.game_id = pgm.game_id AND tg.team_id = pgm.team_id
   LEFT JOIN LATERAL (
     SELECT SUM(x.damage) AS dmg, SUM(x.gold) AS gld
@@ -173,16 +173,16 @@ export async function resolveScope(
   }
 }
 
-const ok = 'pgm.kills IS NOT NULL AND pgm.deaths IS NOT NULL AND pgm.assists IS NOT NULL'
-const ka = '(pgm.kills + pgm.assists)'
+export const ok = 'pgm.kills IS NOT NULL AND pgm.deaths IS NOT NULL AND pgm.assists IS NOT NULL'
+export const ka = '(pgm.kills + pgm.assists)'
 
 /** Sum of `col` per minute, over only the games where both `col` and length are known. */
-const perMin = (col: string) =>
+export const perMin = (col: string) =>
   `(SUM(${col}) FILTER (WHERE ${col} IS NOT NULL AND g.length_sec > 0)::float8
     / NULLIF(SUM(g.length_sec) FILTER (WHERE ${col} IS NOT NULL AND g.length_sec > 0) / 60.0, 0))`
 
 /** Player's share of team total; teamCol comes from the lateral `tm` subquery. */
-const share = (col: string, teamCol: string) =>
+export const share = (col: string, teamCol: string) =>
   `(SUM(${col}) FILTER (WHERE ${col} IS NOT NULL AND ${teamCol} > 0)::float8
     / NULLIF(SUM(${teamCol}) FILTER (WHERE ${col} IS NOT NULL AND ${teamCol} > 0), 0))`
 

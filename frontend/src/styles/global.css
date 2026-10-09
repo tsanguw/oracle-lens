@@ -1,6 +1,7 @@
 @import './tokens.css';
 @import './layout.css';
 @import './player.css';
+@import './leaderboard.css';
 
 *,
 *::before,

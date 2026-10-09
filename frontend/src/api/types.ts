@@ -123,3 +123,37 @@ export interface FiltersResponse {
 export interface LastUpdatedResponse {
   lastUpdated: string | null
 }
+
+export interface LeaderboardRow {
+  rank: number
+  page: string
+  name: string
+  team: string | null
+  league: string | null
+  role: string | null
+  games: number
+  wins: number
+  winRate: number
+  kda: number | null
+  killParticipation: number | null
+  damagePerMin: number | null
+  csPerMin: number | null
+  visionPerMin: number | null
+}
+
+export interface LeaderboardRange {
+  label: string
+  isDefault: boolean
+  resolved: { year: number; split: string | null } | null
+  leagues: { league: string; year: number; split: string | null }[]
+}
+
+export interface LeaderboardResponse {
+  range: LeaderboardRange
+  minGames: number
+  total: number
+  page: number
+  pageSize: number
+  empty: boolean
+  players: LeaderboardRow[]
+}

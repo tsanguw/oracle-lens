@@ -2,7 +2,7 @@
 
 Browse professional League of Legends esports stats: players, teams, champions, and tournaments, with sortable leaderboards, matchup breakdowns, and shareable filters. All data comes from [Leaguepedia](https://lol.fandom.com)'s Cargo API, synced into our own Postgres database. The site never calls Leaguepedia when a visitor loads a page.
 
-> **Status: player page complete (vertical slice).** The architecture is proven end to end for one tournament and one page: Leaguepedia → Python sync → Postgres → Express API → React player page (overview, champion pool, lane matchups, target bans). Teams, champions, tournaments, leaderboards, search, and the home page are not built yet (see [Roadmap](#roadmap)).
+> **Status: the player page and player leaderboard are built**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
 
 ## Architecture
 
@@ -131,7 +131,8 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/players/:id/matchups/players` | Record and average gold difference against each opposing laner in the same role. |
 | `GET /api/players/:id/matchups/champions` | Record and average gold difference against the champion the lane opponent played. |
 | `GET /api/players/:id/target-bans` | Champions the player has played that opponents banned, with the share of games. |
-| `GET /api/filters` | Available leagues, years, splits, patches. |
+| `GET /api/leaderboard/players` | Ranked players for the leaderboard page (see below). |
+| `GET /api/filters` | Available leagues, years, splits, patches. Years with only qualifier games are left out. |
 | `GET /api/meta/last-updated` | Timestamp of the last successful sync (shown in the footer). |
 
 **Default range:** with none of `league`/`year`/`split`/`tournament`/`patch` set, a player's page shows their most recent domestic split plus any international events from that split's start onward. `domestic=true` restricts it to the league's split only. Any explicit filter replaces the default range.
@@ -139,6 +140,8 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 The three list endpoints also accept `limit` (1-20, default 5). Lane matchups pair two `player_game` rows from the same game with the same role on opposite teams, and records are from the viewed player's perspective. Rows under 5 games are included and flagged `underMinSample`.
 
 **Target bans** are bans by the opposing team of champions the player has played in the selected range, as a share of the player's games in that range. Bans by the player's own team, and bans of champions the player has not played (general meta bans), are excluded.
+
+**Player leaderboard** (`/api/leaderboard/players`) accepts the same filters plus `sort` (`kda` default, `winRate`, `games`, `killParticipation`, `damagePerMin`, `csPerMin`, `visionPerMin`), `dir` (`asc`/`desc`), `page`, `pageSize` (default 25, max 100) and `qualifiers=true` to include qualifiers. Players under 5 games in the range are not ranked at all. With no range filter the default is each league's most recent split (playoffs included) from the most recent year, plus international events from the earliest of those splits onward; `domestic=true` drops the internationals. Each row's team, league and role are the ones the player used most in the range, and players with only international games show league `INTL`. A missing stat is `null`, never 0, and sorts last.
 
 When no games match, the API returns a normal response with `empty: true` (not an error) and the UI suggests widening the filters.
 
@@ -175,9 +178,10 @@ sync/
 1. ✅ **Milestone 1:** monorepo, schema, one-tournament backfill, two player endpoints, player page (overview + champion pool)
 2. ✅ **Player page complete:** lane matchups (vs. opponents and vs. champions faced) and target bans
 3. Full backfill across all leagues and years
-4. Teams, champions, tournaments, leaderboards, search, and home page
-5. Nightly GitHub Actions sync and keep-awake ping
-6. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
+4. ✅ Player leaderboard
+5. Teams, champions, tournaments, search, and home page
+6. Nightly GitHub Actions sync and keep-awake ping
+7. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
 
 ## Scope decisions
 

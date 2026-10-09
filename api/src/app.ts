@@ -3,6 +3,7 @@ import express, { type NextFunction, type Request, type Response } from 'express
 import { ZodError } from 'zod'
 import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
+import { leaderboardSchema, loadLeaderboard } from './leaderboardQueries.js'
 import {
   findPlayer,
   loadChampionMatchups,
@@ -85,12 +86,24 @@ export function createApp() {
   playerList('matchups/champions', 'matchups', (scope, limit) => loadChampionMatchups(pool, scope, limit))
   playerList('target-bans', 'bans', (scope, limit) => loadTargetBans(pool, scope, limit))
 
+  app.get('/api/leaderboard/players', wrap(async (req, res) => {
+    res.json(await loadLeaderboard(pool, leaderboardSchema.parse(req.query)))
+  }))
+
   app.get('/api/filters', wrap(async (_req, res) => {
     const [leagues, years, splits, patches] = await Promise.all([
       pool.query(`SELECT name FROM league ORDER BY name`),
-      pool.query(`SELECT DISTINCT year FROM tournament ORDER BY year DESC`),
+      pool.query(
+        `SELECT DISTINCT t.year FROM tournament t
+         WHERE t.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id) ORDER BY t.year DESC`,
+      ),
       pool.query(`SELECT DISTINCT split FROM tournament WHERE split IS NOT NULL ORDER BY split`),
-      pool.query(`SELECT DISTINCT patch FROM game WHERE patch IS NOT NULL ORDER BY patch DESC`),
+      // Numeric order (26.10 after 26.9), newest first; patch labels look like "26.14".
+      pool.query(
+        `SELECT patch FROM (SELECT DISTINCT patch FROM game WHERE patch IS NOT NULL) p
+         ORDER BY NULLIF(regexp_replace(split_part(patch, '.', 1), '\\D', '', 'g'), '')::int DESC NULLS LAST,
+                  NULLIF(regexp_replace(split_part(patch, '.', 2), '\\D', '', 'g'), '')::int DESC NULLS LAST, patch DESC`,
+      ),
     ])
     res.json({
       leagues: leagues.rows.map((r) => r.name),
