@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiUrl } from '../api/base'
 
 /*
  * Champion icons come from Riot's Data Dragon CDN; team logos and player photos are files cached by the sync
@@ -23,7 +24,7 @@ let loaded: Manifest | null = null
 let pending: Promise<Manifest> | null = null
 
 function loadManifest(): Promise<Manifest> {
-  pending ??= fetch('/api/assets/images')
+  pending ??= fetch(apiUrl('/api/assets/images'))
     .then((res) => (res.ok ? (res.json() as Promise<Manifest>) : Promise.reject(new Error('manifest'))))
     .then((m) => (loaded = m))
     .catch(() => {

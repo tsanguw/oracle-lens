@@ -62,6 +62,8 @@ const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) 
 export function createApp() {
   const app = express()
   app.use(cors())
+  // Cheap liveness check for the host and the keep-awake ping; does not touch the database.
+  app.get('/healthz', (_req, res) => void res.json({ ok: true }))
 
   app.get('/api/meta/last-updated', wrap(async (_req, res) => {
     const { rows } = await pool.query(`SELECT value FROM meta WHERE key = 'last_synced_at'`)

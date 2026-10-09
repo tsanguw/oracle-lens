@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiUrl } from './base'
 
 export class ApiError extends Error {
   status: number
@@ -21,7 +22,7 @@ export function useApi<T>(path: string): State<T> {
   useEffect(() => {
     const controller = new AbortController()
     setState((s) => ({ ...s, loading: true, error: null }))
-    fetch(path, { signal: controller.signal })
+    fetch(apiUrl(path), { signal: controller.signal })
       .then(async (res) => {
         if (!res.ok) throw new ApiError(res.status, res.status === 404 ? 'Not found' : 'Request failed')
         return (await res.json()) as T

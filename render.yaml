@@ -1,0 +1,15 @@
+# Render blueprint for the API. The frontend is on Cloudflare Pages and the database on Neon.
+services:
+  - type: web
+    name: lol-stats-api
+    runtime: node
+    plan: free
+    rootDir: api
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        sync: false # paste the Neon connection string in the Render dashboard

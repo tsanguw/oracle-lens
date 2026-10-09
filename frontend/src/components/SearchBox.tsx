@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { SearchResponse } from '../api/types'
+import { apiUrl } from '../api/base'
 
 interface Item {
   group: 'Players' | 'Teams' | 'Champions' | 'Tournaments'
@@ -61,7 +62,7 @@ export default function SearchBox() {
     }
     const controller = new AbortController()
     const timer = setTimeout(() => {
-      fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+      fetch(apiUrl(`/api/search?q=${encodeURIComponent(q)}`), { signal: controller.signal })
         .then((res) => (res.ok ? (res.json() as Promise<SearchResponse>) : Promise.reject(new Error('search failed'))))
         .then((data) => {
           setItems(toItems(data))
