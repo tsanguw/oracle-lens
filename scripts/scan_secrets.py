@@ -18,6 +18,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SKIP_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".woff", ".woff2", ".svg", ".lock"}
 SKIP_NAMES = {"package-lock.json"}
+# The scanner's own tests hold fake keys on purpose, to prove the patterns catch them. Nothing else is exempt.
+SKIP_PATHS = {"sync/tests/test_scan_secrets.py"}
 # .env entries that are public by design (a bucket name, the bucket's public address) or not secrets at all
 PUBLIC_KEYS = {"R2_BUCKET", "R2_PUBLIC_URL", "PORT"}
 LOCAL_HOSTS = ("localhost", "127.0.0.1", "[::1]", "db", "example.com", "host")
@@ -76,7 +78,7 @@ def scan_history() -> list[str]:
         elif line.startswith("+++ b/"):
             path = line[6:]
         elif line.startswith("+") and not line.startswith("+++"):
-            if Path(path).suffix.lower() in SKIP_SUFFIXES or Path(path).name in SKIP_NAMES:
+            if Path(path).suffix.lower() in SKIP_SUFFIXES or Path(path).name in SKIP_NAMES or path in SKIP_PATHS:
                 continue
             for hit in scan_text(f"{commit} {path}", line[1:]):
                 found.append(hit.replace(":1:", ":", 1))
@@ -103,6 +105,8 @@ def main(argv: list[str]) -> int:
     secrets = env_values() if "--env" in argv else {}
     for path in tracked_files():
         if path.suffix.lower() in SKIP_SUFFIXES or path.name in SKIP_NAMES or not path.is_file():
+            continue
+        if path.relative_to(ROOT).as_posix() in SKIP_PATHS:
             continue
         try:
             text = path.read_text(encoding="utf-8")
