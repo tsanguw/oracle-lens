@@ -35,6 +35,21 @@ export function buildSitemap(origin, data) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join('\n')}\n</urlset>\n`
 }
 
+/**
+ * Cloudflare Pages falls through to the app's HTML page for any method a function does not handle, so a HEAD request
+ * (which crawlers send) would get the home page. Both functions handle GET and HEAD, and refuse everything else.
+ * Returns a ready Response for a refused method, otherwise null.
+ */
+export function refuseOtherMethods(request) {
+  if (request.method === 'GET' || request.method === 'HEAD') return null
+  return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD', 'Content-Type': 'text/plain; charset=utf-8' } })
+}
+
+/** The same response for HEAD as for GET, without the body. */
+export function forMethod(response, method) {
+  return method === 'HEAD' ? new Response(null, { status: response.status, headers: response.headers }) : response
+}
+
 /** The robots.txt body: everything may be crawled, and the sitemap is on the same site. */
 export function buildRobots(origin) {
   return `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`
