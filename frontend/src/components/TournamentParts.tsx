@@ -6,7 +6,6 @@ import type {
   TournamentContextResponse,
   TournamentPlayer,
   TournamentResponse,
-  TournamentSummary,
 } from '../api/types'
 import { dateRange, decimal, duration, matchTime, NA, percent, whole } from '../lib/format'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
@@ -28,6 +27,32 @@ export function TournamentHeader({ data }: { data: TournamentResponse }) {
           </div>
           <h1 className="hero__name hero__name--team">{t.name}</h1>
           <span className="hero__team">{dateRange(t.startDate, t.endDate)}</span>
+          {summary && (
+            <>
+              <dl className="form">
+                <div className="form__stat">
+                  <dd className="form__value">{summary.games}</dd>
+                  <dt className="form__label">Games</dt>
+                </div>
+                <div className="form__stat">
+                  <dd className="form__value">{summary.series}</dd>
+                  <dt className="form__label">Series</dt>
+                </div>
+                <div className="form__stat">
+                  <dd className="form__value">{summary.teams}</dd>
+                  <dt className="form__label">Teams</dt>
+                </div>
+                <div className="form__stat">
+                  <dd className="form__value">{duration(summary.avgGameLengthSec)}</dd>
+                  <dt className="form__label">Avg game</dt>
+                </div>
+              </dl>
+              <p className="form__note">
+                Blue side wins {percent(summary.blueWinRate)}, {decimal(summary.killsPerGame)} kills per game
+                {summary.patches.length > 0 && `, patch ${patchLabel(summary.patches)}`}
+              </p>
+            </>
+          )}
         </div>
         {summary?.standingTeam && (
           <div className="showing">
@@ -125,28 +150,65 @@ export function TournamentContext({ data }: { data: TournamentContextResponse | 
   )
 }
 
-export function TournamentTiles({ summary }: { summary: TournamentSummary }) {
-  const tiles = [
-    { label: 'Games', value: String(summary.games), sub: 'Played' },
-    { label: 'Series', value: String(summary.series), sub: 'With games played' },
-    { label: 'Teams', value: String(summary.teams), sub: 'Took part' },
-    { label: 'Avg game', value: duration(summary.avgGameLengthSec), sub: 'Game length' },
-    { label: 'Blue side', value: percent(summary.blueWinRate), sub: 'Win rate' },
-    { label: 'Kills / game', value: decimal(summary.killsPerGame), sub: 'Both teams combined' },
-  ]
+/** One patch, or the first few of a long event. */
+function patchLabel(patches: string[]): string {
+  return patches.length <= 3 ? patches.join(', ') : `${patches.slice(0, 3).join(', ')} and ${patches.length - 3} more`
+}
+
+/** The five best players by KDA as photo cards. */
+export function TournamentPlayerCards({ players }: { players: TournamentPlayer[] }) {
   return (
-    <>
-      <div className="tiles">
-        {tiles.map((t) => (
-          <div key={t.label} className="tile">
-            <span className="tile__label">{t.label}</span>
-            <span className="tile__value">{t.value}</span>
-            <span className="tile__sub">{t.sub}</span>
-          </div>
-        ))}
-      </div>
-      {summary.patches.length > 0 && <p className="section__note">Patches: {summary.patches.join(', ')}</p>}
-    </>
+    <ol className="lineup">
+      {players.map((p, i) => (
+        <li key={p.page} style={{ ['--i' as string]: i }}>
+          <Link to={`/players/${encodeURIComponent(p.page)}`} className="lineup__card">
+            <span className="lineup__role with-img">
+              {p.team && <TeamLogo name={p.team} size={16} />}
+              {p.team ?? NA}
+            </span>
+            <PlayerPhoto page={p.page} name={p.name} role={p.role} size={96} />
+            <span className="lineup__name">{p.name}</span>
+            <span className="lineup__record">
+              {p.role ?? NA}, {p.games} games
+            </span>
+            <dl className="lineup__stats">
+              <div>
+                <dt>KDA</dt>
+                <dd>{decimal(p.kda)}</dd>
+              </div>
+              <div>
+                <dt>KP</dt>
+                <dd>{percent(p.killParticipation)}</dd>
+              </div>
+              <div>
+                <dt>DPM</dt>
+                <dd>{whole(p.damagePerMin)}</dd>
+              </div>
+            </dl>
+          </Link>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+/** The eight champions with the highest presence, as an icon grid. */
+export function TournamentChampionTiles({ champions }: { champions: TournamentChampion[] }) {
+  return (
+    <ul className="champs">
+      {champions.map((c, i) => (
+        <li key={c.champion} style={{ ['--i' as string]: i }}>
+          <Link to={`/champions/${encodeURIComponent(c.champion)}`} className="champs__tile">
+            <ChampionIcon name={c.champion} size={56} />
+            <span className="champs__name">{c.champion}</span>
+            <span className="champs__stat">{percent(c.presence)} presence</span>
+            <span className="champs__stat">
+              {c.picks} {c.picks === 1 ? 'pick' : 'picks'}, {c.bans} {c.bans === 1 ? 'ban' : 'bans'}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }
 

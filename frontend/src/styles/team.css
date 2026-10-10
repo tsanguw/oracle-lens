@@ -289,3 +289,28 @@
     text-align: left;
   }
 }
+
+/* Tournament page: standings narrower than results. */
+.duo--flip {
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+}
+@media (max-width: 1100px) {
+  .duo--flip {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Long event and team names must fit a phone: smaller headings, and the form line wraps instead of widening the page. */
+@media (max-width: 720px) {
+  .hero__name {
+    font-size: 56px;
+  }
+  .hero__name--team {
+    font-size: 44px;
+    overflow-wrap: anywhere;
+  }
+  .form {
+    flex-wrap: wrap;
+    gap: 14px 24px;
+  }
+}

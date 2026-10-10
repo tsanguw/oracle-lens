@@ -8,16 +8,16 @@ import type {
   TournamentResponse,
 } from '../api/types'
 import { useApi } from '../api/useApi'
-import { StatTilesSkeleton } from '../components/StatTiles'
 import {
   ResultsTable,
   StandingsTable,
   TournamentChampionsTable,
+  TournamentChampionTiles,
   TournamentContext,
   TournamentHeader,
   TournamentHeaderSkeleton,
+  TournamentPlayerCards,
   TournamentPlayersTable,
-  TournamentTiles,
 } from '../components/TournamentParts'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
@@ -69,46 +69,35 @@ export default function TournamentPage({ id }: { id: string }) {
           </div>
         ) : (
           <>
-            <section aria-labelledby="overview" className="section">
-              <h2 id="overview" className="section__title">
-                Overview
-              </h2>
-              {data?.summary ? <TournamentTiles summary={data.summary} /> : <StatTilesSkeleton />}
-            </section>
-
             <section aria-labelledby="records" className="section">
-              <div className="section__head">
-                <h2 id="records" className="section__title">
-                  Team records
-                </h2>
-                <span className="section__note">Series record first, then game difference</span>
+              <h2 id="records" className="section__title">
+                Standings and results
+              </h2>
+              <div className="duo duo--flip">
+                <div className="section">
+                  <h3 className="ctx__sub">Team records (series record first, then game difference)</h3>
+                  {standings.data ? <StandingsTable standings={standings.data.standings} /> : <Skeleton />}
+                </div>
+                <div className="section">
+                  <h3 className="ctx__sub">Results (newest first)</h3>
+                  {matches.data ? (
+                    results.length === 0 ? (
+                      <p className="section__note">No results yet.</p>
+                    ) : (
+                      <>
+                        <ResultsTable results={results} />
+                        {!showAll && results.length >= 20 && (
+                          <button type="button" className="btn-reset btn-reset--inline" onClick={() => setShowAll(true)}>
+                            Show all results
+                          </button>
+                        )}
+                      </>
+                    )
+                  ) : (
+                    <Skeleton />
+                  )}
+                </div>
               </div>
-              {standings.data ? <StandingsTable standings={standings.data.standings} /> : <Skeleton />}
-            </section>
-
-            <section aria-labelledby="results" className="section">
-              <div className="section__head">
-                <h2 id="results" className="section__title">
-                  Results
-                </h2>
-                <span className="section__note">Newest first</span>
-              </div>
-              {matches.data ? (
-                results.length === 0 ? (
-                  <p className="section__note">No results yet.</p>
-                ) : (
-                  <>
-                    <ResultsTable results={results} />
-                    {!showAll && results.length >= 20 && (
-                      <button type="button" className="btn-reset btn-reset--inline" onClick={() => setShowAll(true)}>
-                        Show all results
-                      </button>
-                    )}
-                  </>
-                )
-              ) : (
-                <Skeleton />
-              )}
             </section>
 
             <section aria-labelledby="players" className="section">
@@ -122,7 +111,19 @@ export default function TournamentPage({ id }: { id: string }) {
                     : 'Ranked by KDA, minimum 5 games'}
                 </span>
               </div>
-              {players.data ? <TournamentPlayersTable players={players.data.players} /> : <Skeleton />}
+              {players.data ? (
+                <>
+                  <TournamentPlayerCards players={players.data.players.slice(0, 5)} />
+                  {players.data.players.length > 5 && (
+                    <details className="more">
+                      <summary>All {players.data.players.length} ranked players</summary>
+                      <TournamentPlayersTable players={players.data.players} />
+                    </details>
+                  )}
+                </>
+              ) : (
+                <Skeleton />
+              )}
             </section>
 
             <section aria-labelledby="champions" className="section">
@@ -132,7 +133,19 @@ export default function TournamentPage({ id }: { id: string }) {
                 </h2>
                 <span className="section__note">Presence is the share of games where it was picked or banned</span>
               </div>
-              {champions.data ? <TournamentChampionsTable champions={champions.data.champions} /> : <Skeleton />}
+              {champions.data ? (
+                <>
+                  <TournamentChampionTiles champions={champions.data.champions.slice(0, 8)} />
+                  {champions.data.champions.length > 8 && (
+                    <details className="more">
+                      <summary>All {champions.data.champions.length} champions</summary>
+                      <TournamentChampionsTable champions={champions.data.champions} />
+                    </details>
+                  )}
+                </>
+              ) : (
+                <Skeleton />
+              )}
             </section>
           </>
         )}
