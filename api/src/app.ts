@@ -1,6 +1,6 @@
 import cors from 'cors'
 import express, { type NextFunction, type Request, type Response } from 'express'
-import { ZodError } from 'zod'
+import { z, ZodError } from 'zod'
 import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
@@ -55,6 +55,17 @@ import {
   resolveScope,
   type PlayerScope,
 } from './playerQueries.js'
+
+/** Numeric order (26.10 after 26.9), newest first; patch labels look like "26.14". */
+const PATCH_ORDER = `NULLIF(regexp_replace(split_part(patch, '.', 1), '\\D', '', 'g'), '')::int DESC NULLS LAST,
+                  NULLIF(regexp_replace(split_part(patch, '.', 2), '\\D', '', 'g'), '')::int DESC NULLS LAST, patch DESC`
+
+const blank = (v: unknown) => (v === '' ? undefined : v)
+const patchFilterSchema = z.object({
+  league: z.preprocess(blank, z.string().optional()),
+  year: z.preprocess(blank, z.coerce.number().int().optional()),
+  split: z.preprocess(blank, z.string().optional()),
+})
 
 type Handler = (req: Request, res: Response) => Promise<void>
 const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) =>
@@ -309,6 +320,21 @@ export function createApp() {
   })
 
 
+  /** Patches that have games in the chosen league, year and split (each optional), so the patch filter offers only real choices. */
+  app.get('/api/filters/patches', wrap(async (req, res) => {
+    const { league, year, split } = patchFilterSchema.parse(req.query)
+    const { rows } = await pool.query<{ patch: string }>(
+      `SELECT patch FROM (
+         SELECT DISTINCT g.patch FROM game g
+         JOIN tournament t ON t.id = g.tournament_id LEFT JOIN league l ON l.id = t.league_id
+         WHERE g.patch IS NOT NULL AND t.stage IS DISTINCT FROM 'Qualifier'
+           AND ($1::text IS NULL OR l.name = $1) AND ($2::int IS NULL OR t.year = $2) AND ($3::text IS NULL OR t.split = $3)
+       ) p ORDER BY ${PATCH_ORDER}`,
+      [league ?? null, year ?? null, split ?? null],
+    )
+    res.json({ patches: rows.map((r) => r.patch) })
+  }))
+
   app.get('/api/filters', wrap(async (_req, res) => {
     const [leagues, years, splits, patches, combos] = await Promise.all([
       pool.query(`SELECT name FROM league ORDER BY name`),
@@ -317,12 +343,7 @@ export function createApp() {
          WHERE t.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id) ORDER BY t.year DESC`,
       ),
       pool.query(`SELECT DISTINCT split FROM tournament WHERE split IS NOT NULL ORDER BY split`),
-      // Numeric order (26.10 after 26.9), newest first; patch labels look like "26.14".
-      pool.query(
-        `SELECT patch FROM (SELECT DISTINCT patch FROM game WHERE patch IS NOT NULL) p
-         ORDER BY NULLIF(regexp_replace(split_part(patch, '.', 1), '\\D', '', 'g'), '')::int DESC NULLS LAST,
-                  NULLIF(regexp_replace(split_part(patch, '.', 2), '\\D', '', 'g'), '')::int DESC NULLS LAST, patch DESC`,
-      ),
+      pool.query(`SELECT patch FROM (SELECT DISTINCT patch FROM game WHERE patch IS NOT NULL) p ORDER BY ${PATCH_ORDER}`),
       // Which league/year/split combinations actually have games, so the filter bar only offers choices that exist.
       pool.query(
         `SELECT DISTINCT l.name AS league, t.year, t.split FROM tournament t LEFT JOIN league l ON l.id = t.league_id

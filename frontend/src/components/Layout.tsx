@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { LastUpdatedResponse } from '../api/types'
 import { useApi } from '../api/useApi'
+import { preloadRoute } from '../lib/routeChunks'
 
 const TABS = [
   { to: '/players', label: 'Players' },
@@ -60,7 +61,7 @@ function Header() {
         </Link>
         <nav aria-label="Primary" className="tabs">
           {TABS.map((tab) => (
-            <NavLink key={tab.to} to={tab.to} className="tabs__link">
+            <NavLink key={tab.to} to={tab.to} className="tabs__link" onPointerEnter={() => preloadRoute(tab.to)} onFocus={() => preloadRoute(tab.to)}>
               {tab.label}
             </NavLink>
           ))}
@@ -101,7 +102,9 @@ export default function Layout() {
       <SkipLink />
       <RouteEffects />
       <Header />
-      <Outlet />
+      <Suspense fallback={<main className="main container"><div className="skeleton" style={{ height: 320 }} aria-busy="true" /></main>}>
+        <Outlet />
+      </Suspense>
       <Footer />
     </div>
   )

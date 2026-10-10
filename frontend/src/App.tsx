@@ -1,11 +1,19 @@
+import { lazy } from 'react'
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
-import ChampionsListPage from './pages/ChampionsListPage'
-import LeaderboardPage from './pages/LeaderboardPage'
-import TeamsListPage from './pages/TeamsListPage'
-import TournamentsListPage from './pages/TournamentsListPage'
-import { ChampionRoute, ComingSoon, PlayerRoute, TeamRoute, TournamentRoute } from './pages/Stubs'
+import { detailPages, listPages } from './lib/routeChunks'
+import { ComingSoon } from './pages/Stubs'
+
+// Every page but the home page is its own chunk, fetched when its route is first visited (Layout shows a placeholder meanwhile).
+const ChampionsListPage = lazy(listPages['/champions'])
+const LeaderboardPage = lazy(listPages['/players'])
+const TeamsListPage = lazy(listPages['/teams'])
+const TournamentsListPage = lazy(listPages['/tournaments'])
+const PlayerRoute = lazy(() => detailPages().then((m) => ({ default: m.PlayerRoute })))
+const TeamRoute = lazy(() => detailPages().then((m) => ({ default: m.TeamRoute })))
+const ChampionRoute = lazy(() => detailPages().then((m) => ({ default: m.ChampionRoute })))
+const TournamentRoute = lazy(() => detailPages().then((m) => ({ default: m.TournamentRoute })))
 
 export default function App() {
   return (

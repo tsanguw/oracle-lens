@@ -1,5 +1,6 @@
 import type { FilterRange, FiltersResponse } from '../api/types'
 import { dropInvalid, splitsFor, yearsFor } from '../lib/filterOptions'
+import { usePatchOptions } from '../lib/usePatchOptions'
 import FilterDock from './FilterDock'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
@@ -60,12 +61,13 @@ export default function FilterBar({ params, onChange, options, range, withRole =
   }
 
   const league = shown('league')
+  const patches = usePatchOptions(options, league, shown('year'), shown('split'))
   const selects: { key: Key; label: string; blank: string; values: string[] }[] = [
     { key: 'league', label: 'League', blank: 'All leagues', values: options?.leagues ?? [] },
     { key: 'year', label: 'Year', blank: 'All years', values: (options ? yearsFor(options, league, shown('split')) : []).map(String) },
     { key: 'split', label: 'Split', blank: 'All splits', values: options ? splitsFor(options, league, shown('year')) : [] },
     ...(withRole ? [{ key: 'role' as const, label: 'Role', blank: 'All roles', values: ROLES }] : []),
-    { key: 'patch', label: 'Patch', blank: 'All patches', values: options?.patches ?? [] },
+    { key: 'patch', label: 'Patch', blank: 'All patches', values: patches },
     { key: 'side', label: 'Side', blank: 'Both sides', values: ['blue', 'red'] },
   ]
 

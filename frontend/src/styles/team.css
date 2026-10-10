@@ -17,7 +17,7 @@
   line-height: 1;
 }
 .form__label {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -69,7 +69,7 @@
   opacity: 0.55;
 }
 .lineup__role {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -103,7 +103,7 @@
   width: 100%;
 }
 .lineup__stats dt {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -151,7 +151,7 @@
   border-left: 1px solid var(--border);
 }
 .sides__name {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -436,7 +436,7 @@
 }
 .live__label {
   display: block;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);

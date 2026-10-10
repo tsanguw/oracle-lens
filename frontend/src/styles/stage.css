@@ -585,7 +585,7 @@
 }
 .strip__label {
   margin-right: 6px;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -597,7 +597,7 @@
   height: 20px;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   font-style: normal;
   color: #06120d;
 }

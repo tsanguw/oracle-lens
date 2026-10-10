@@ -8,6 +8,7 @@ import { decimal, percent, shortTeam, whole } from '../lib/format'
 import Podium from '../components/Podium'
 import { PlayerPhoto, TeamLogo } from '../components/Images'
 import { usePageTitle } from '../lib/usePageTitle'
+import { usePatchOptions } from '../lib/usePatchOptions'
 import ErrorState from '../components/ErrorState'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
@@ -89,12 +90,13 @@ export default function LeaderboardPage() {
     return ''
   }
 
+  const patches = usePatchOptions(filters.data, shown('league'), shown('year'), shown('split'))
   const selects: { key: 'league' | 'year' | 'split' | 'role' | 'patch'; label: string; blank: string; values: string[] }[] = [
     { key: 'league', label: 'League', blank: 'All leagues', values: filters.data?.leagues ?? [] },
     { key: 'year', label: 'Year', blank: 'All years', values: (filters.data ? yearsFor(filters.data, shown('league'), shown('split')) : []).map(String) },
     { key: 'split', label: 'Split', blank: 'All splits', values: filters.data ? splitsFor(filters.data, shown('league'), shown('year')) : [] },
     { key: 'role', label: 'Role', blank: 'All roles', values: ROLES },
-    { key: 'patch', label: 'Patch', blank: 'All patches', values: filters.data?.patches ?? [] },
+    { key: 'patch', label: 'Patch', blank: 'All patches', values: patches },
   ]
 
   const onSort = (key: SortKey) =>

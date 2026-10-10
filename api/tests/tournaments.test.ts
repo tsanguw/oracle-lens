@@ -234,3 +234,19 @@ describe('GET /api/tournaments/:id/stages', () => {
     expect((await api('/api/tournaments/999999/stages')).status).toBe(404)
   })
 })
+
+describe('GET /api/filters/patches', () => {
+  it('offers only the patches that exist for the chosen league, year and split, newest first', async () => {
+    expect((await api('/api/filters/patches?league=LCK&year=2026&split=Summer')).body.patches).toEqual(['26.10', '26.9', '26.1'])
+    expect((await api('/api/filters/patches?league=LCK&year=2026&split=Winter')).body.patches).toEqual([])
+    // the Worlds play-in has no league, so its 26.19 shows only when no league is chosen
+    expect((await api('/api/filters/patches?league=LCK')).body.patches).toEqual(['26.10', '26.9', '26.1'])
+    expect((await api('/api/filters/patches')).body.patches).toEqual(['26.19', '26.10', '26.9', '26.1'])
+  })
+
+  it('treats blank values as no filter, and gives nothing for a combination with no games', async () => {
+    expect((await api('/api/filters/patches?league=&year=&split=')).body.patches).toEqual((await api('/api/filters/patches')).body.patches)
+    expect((await api('/api/filters/patches?league=LCK&year=1999')).body.patches).toEqual([])
+    expect((await api('/api/filters/patches?year=abc')).status).toBe(400)
+  })
+})

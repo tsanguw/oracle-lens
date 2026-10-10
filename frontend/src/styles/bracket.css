@@ -33,7 +33,7 @@
   border-bottom-color: var(--gold);
 }
 .stagetabs__count {
-  font: 500 12px var(--font-body);
+  font: 500 13px var(--font-body);
   color: var(--text-dim);
   background: var(--bg-chip);
   border-radius: 9px;
@@ -125,7 +125,7 @@
   place-items: center;
   background: var(--bg-chip);
   color: var(--text-muted);
-  font: 700 10px var(--font-display);
+  font: 700 11px var(--font-display);
   letter-spacing: 0.04em;
   overflow: hidden;
 }
@@ -240,7 +240,7 @@ a.brk__name:hover {
   letter-spacing: 0.04em;
 }
 .swiss__tag {
-  font: 600 11px var(--font-body);
+  font: 600 13px var(--font-body);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-muted);

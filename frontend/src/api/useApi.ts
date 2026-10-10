@@ -17,12 +17,16 @@ export interface ApiState<T> {
   reload: () => void
 }
 
-/** Fetches `path` (relative, e.g. /api/players/x?year=2026); refetches when it changes. */
-export function useApi<T>(path: string): ApiState<T> {
+/** Fetches `path` (relative, e.g. /api/players/x?year=2026); refetches when it changes. A null path fetches nothing. */
+export function useApi<T>(path: string | null): ApiState<T> {
   const [state, setState] = useState<Omit<ApiState<T>, 'reload'>>({ data: null, error: null, loading: true })
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
+    if (path === null) {
+      setState({ data: null, error: null, loading: false })
+      return
+    }
     const controller = new AbortController()
     setState((s) => ({ ...s, loading: true, error: null }))
     fetch(apiUrl(path), { signal: controller.signal })

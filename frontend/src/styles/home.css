@@ -348,7 +348,7 @@
   min-width: 0;
 }
 .trn__label {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -360,7 +360,7 @@
 .badge {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);

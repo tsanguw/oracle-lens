@@ -59,7 +59,7 @@
 }
 .ctx__sub {
   margin: 8px 0 0;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-dim);
@@ -106,7 +106,7 @@
   color: var(--gold);
 }
 .ctx__role {
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-muted);
@@ -255,7 +255,7 @@
 .avatar__role {
   display: block;
   margin-top: 6px;
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
