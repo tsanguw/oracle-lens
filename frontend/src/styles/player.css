@@ -482,3 +482,10 @@
     text-align: left;
   }
 }
+
+/* Ban tiles wrap to as many columns as fit instead of squeezing five into a phone. */
+@media (max-width: 1100px) {
+  .bans {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+}

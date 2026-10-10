@@ -225,3 +225,67 @@
     font-size: 32px;
   }
 }
+
+.form__note {
+  margin: 8px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.hero__team.with-img {
+  gap: 8px;
+}
+.hero__team.with-img:hover {
+  color: var(--gold);
+}
+
+/* Featured champions reuse the lineup cards at a smaller size. */
+.lineup--champs .lineup__name {
+  font-size: 24px;
+}
+.lineup--champs .lineup__card .img--icon {
+  margin-bottom: 2px;
+}
+
+/* A native disclosure for the long list that sits behind the featured cards. */
+.more {
+  margin-top: 4px;
+}
+.more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border: 1px solid var(--border-strong);
+}
+.more > summary::-webkit-details-marker {
+  display: none;
+}
+.more > summary::after {
+  content: '▾';
+}
+.more[open] > summary::after {
+  content: '▴';
+}
+.more > summary:hover {
+  color: var(--text);
+  border-color: var(--gold);
+}
+.more[open] > summary {
+  margin-bottom: 16px;
+}
+
+/* On phones the "Showing" label lines up with the content above it instead of hugging the right edge. */
+@media (max-width: 720px) {
+  .showing {
+    align-items: flex-start;
+    text-align: left;
+  }
+}

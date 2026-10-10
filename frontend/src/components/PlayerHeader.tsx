@@ -1,8 +1,10 @@
+import { Link } from 'react-router-dom'
 import type { PlayerResponse } from '../api/types'
-import { PlayerPhoto } from './Images'
+import { decimal, percent, rate } from '../lib/format'
+import { PlayerPhoto, TeamLogo } from './Images'
 
 export default function PlayerHeader({ data }: { data: PlayerResponse }) {
-  const { player, range } = data
+  const { player, range, summary } = data
   return (
     <section className="hero">
       <div className="container hero__inner">
@@ -16,7 +18,33 @@ export default function PlayerHeader({ data }: { data: PlayerResponse }) {
               {player.league && <span className="tag">{player.league}</span>}
             </div>
             <h1 className="hero__name">{player.displayName}</h1>
-            {player.team && <span className="hero__team">{player.team}</span>}
+            {player.team && (
+              <Link to={`/teams/${encodeURIComponent(player.team)}`} className="hero__team with-img">
+                <TeamLogo name={player.team} size={22} />
+                {player.team}
+              </Link>
+            )}
+            {summary && (
+              <>
+                <dl className="form">
+                  <div className="form__stat">
+                    <dd className="form__value">{percent(summary.winRate)}</dd>
+                    <dt className="form__label">Win rate</dt>
+                  </div>
+                  <div className="form__stat">
+                    <dd className="form__value">{decimal(summary.kda)}</dd>
+                    <dt className="form__label">KDA</dt>
+                  </div>
+                  <div className="form__stat">
+                    <dd className="form__value">{summary.games}</dd>
+                    <dt className="form__label">Games</dt>
+                  </div>
+                </dl>
+                <p className="form__note">
+                  Blue side {percent(rate(summary.blueWins, summary.blueGames))}, red side {percent(rate(summary.redWins, summary.redGames))}
+                </p>
+              </>
+            )}
           </div>
         </div>
         <div className="showing">

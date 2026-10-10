@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { ChampionRow } from '../api/types'
 import { decimal, percent, whole } from '../lib/format'
 import { ChampionIcon } from './Images'
@@ -33,7 +34,9 @@ export default function ChampionPoolTable({ champions }: { champions: ChampionRo
               <td className="pool__champ">
                 <span className="pool__champ-inner">
                   <ChampionIcon name={c.champion} />
-                  {c.champion}
+                  <Link to={`/champions/${encodeURIComponent(c.champion)}`} className="pool__link">
+                    {c.champion}
+                  </Link>
                 </span>
               </td>
               <td>{c.games}</td>
@@ -65,5 +68,32 @@ export function ChampionPoolSkeleton() {
         <div key={i} className="skeleton" style={{ height: 61, borderTop: '1px solid var(--border)' }} />
       ))}
     </div>
+  )
+}
+
+/** The most played champions as cards, so the pool starts with the picks that define the player. */
+export function ChampionFeatured({ champions }: { champions: ChampionRow[] }) {
+  return (
+    <ol className="lineup lineup--champs">
+      {champions.map((c, i) => (
+        <li key={c.champion} style={{ ['--i' as string]: i }}>
+          <Link to={`/champions/${encodeURIComponent(c.champion)}`} className={`lineup__card${c.underMinSample ? ' is-dim' : ''}`}>
+            <ChampionIcon name={c.champion} size={64} />
+            <span className="lineup__name">{c.champion}</span>
+            <span className="lineup__record">{`${c.wins}-${c.losses}`} in {c.games} games</span>
+            <dl className="lineup__stats">
+              <div>
+                <dt>Win rate</dt>
+                <dd>{percent(c.winRate)}</dd>
+              </div>
+              <div>
+                <dt>KDA</dt>
+                <dd>{decimal(c.kda)}</dd>
+              </div>
+            </dl>
+          </Link>
+        </li>
+      ))}
+    </ol>
   )
 }

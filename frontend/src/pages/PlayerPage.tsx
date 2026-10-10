@@ -9,7 +9,7 @@ import type {
   TargetBansResponse,
 } from '../api/types'
 import { useApi } from '../api/useApi'
-import ChampionPoolTable, { ChampionPoolSkeleton } from '../components/ChampionPoolTable'
+import ChampionPoolTable, { ChampionFeatured, ChampionPoolSkeleton } from '../components/ChampionPoolTable'
 import EmptyState from '../components/EmptyState'
 import FilterBar from '../components/FilterBar'
 import MatchupPanel from '../components/MatchupPanel'
@@ -83,14 +83,22 @@ export default function PlayerPage({ name }: { name: string }) {
                   Champion pool
                 </h2>
                 <span className="section__note">
-                  Grayed rows have fewer than 5 games and are excluded from winrate rankings
+                  Grayed cards and rows have fewer than 5 games and are excluded from winrate rankings
                 </span>
               </div>
               {champions.data ? (
                 champions.data.empty ? (
                   <EmptyState onReset={reset} />
                 ) : (
-                  <ChampionPoolTable champions={champions.data.champions} />
+                  <>
+                    <ChampionFeatured champions={champions.data.champions.slice(0, 5)} />
+                    {champions.data.champions.length > 5 && (
+                      <details className="more">
+                        <summary>All {champions.data.champions.length} champions</summary>
+                        <ChampionPoolTable champions={champions.data.champions} />
+                      </details>
+                    )}
+                  </>
                 )
               ) : (
                 <ChampionPoolSkeleton />
