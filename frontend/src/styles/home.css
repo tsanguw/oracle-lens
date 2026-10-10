@@ -373,6 +373,14 @@
   border-color: var(--gold);
   color: var(--on-gold);
 }
+/* A final placement replaces "Completed"; first place is outlined in gold. */
+.badge--place {
+  color: var(--text);
+}
+.badge--first {
+  color: var(--gold);
+  border-color: var(--gold);
+}
 
 /* Champions: an icon grid */
 .champs {

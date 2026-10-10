@@ -6,7 +6,8 @@ services:
     plan: free
     rootDir: api
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: npm start
+    # Apply any new database migration first, so a new API version never runs against the old schema.
+    startCommand: node dist/migrate.js && node dist/index.js
     healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION

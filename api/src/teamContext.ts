@@ -19,6 +19,10 @@ export interface ContextEvent {
   status: 'In progress' | 'Completed'
   startDate: string | null
   endDate: string | null
+  /** The team's final placement, once the event is over and Leaguepedia has it. */
+  placement: { place: string; group: string | null } | null
+  /** The team the player played for in this event (player pages only; team pages leave it out). */
+  team?: string
 }
 
 export interface ContextMatch {
@@ -42,9 +46,18 @@ export interface TeamContext {
   results: ContextMatch[]
 }
 
+const EVENT_LIMIT = 5
+
+/** Row from the events queries -> ContextEvent: the placement columns become one object. */
+export function toEvent({ place, group, ...event }: Omit<ContextEvent, 'placement'> & { place: string | null; group: string | null }): ContextEvent {
+  return { ...event, placement: place ? { place, group } : null }
+}
+
 const ROLE_ORDER = `CASE pgm.role WHEN 'Top' THEN 1 WHEN 'Jungle' THEN 2 WHEN 'Mid' THEN 3 WHEN 'Bot' THEN 4 WHEN 'Support' THEN 5 ELSE 6 END`
 
 /** Roster, running events, upcoming series and recent results for one team. Shared by the player and team pages. */
+export { EVENT_LIMIT }
+
 export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlayerId?: number): Promise<TeamContext> {
   const [league, roster, events, upcoming, results] = await Promise.all([
     pool.query(
@@ -73,12 +86,14 @@ export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlaye
     // Events the team is playing right now; if none, the ones it played most recently.
     pool.query(
       `SELECT t.id, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
-              to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate"
+              to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
+              tr.place, tr.group_name AS "group"
        FROM tournament t LEFT JOIN league l ON l.id = t.league_id
+       LEFT JOIN tournament_result tr ON tr.tournament_id = t.id AND tr.team_id = $1
        WHERE t.id IN (SELECT DISTINCT g.tournament_id FROM team_game tg JOIN game g ON g.id = tg.game_id WHERE tg.team_id = $1)
          AND t.stage IS DISTINCT FROM 'Qualifier'
        ORDER BY (${STATUS_SQL} = 'In progress') DESC, t.start_date DESC NULLS LAST
-       LIMIT 3`,
+       LIMIT ${EVENT_LIMIT}`,
       [teamId],
     ),
     pool.query(
@@ -126,7 +141,7 @@ export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlaye
       starter: starters.has(p.page),
       isViewed: p.id === viewedPlayerId,
     })),
-    events: events.rows,
+    events: events.rows.map(toEvent),
     upcoming: upcoming.rows.map((m) => ({ ...m, score: null, won: null })),
     results: results.rows.map(({ isTeam1, score, ...m }) => ({
       ...m,

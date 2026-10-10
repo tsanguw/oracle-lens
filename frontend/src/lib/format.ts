@@ -67,3 +67,20 @@ export const dateRange = (start: string | null, end: string | null): string => {
 
 /** "LYON (2024 American Team)" -> "LYON": Leaguepedia adds the bracket to tell same-named teams apart; it is noise on screen. */
 export const shortTeam = (name: string): string => name.replace(/\s*\([^)]*\)\s*$/, '') || name
+
+const ordinal = (n: number): string => {
+  const v = n % 100
+  if (v >= 11 && v <= 13) return `${n}th`
+  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`
+}
+
+/** "1" -> "1st", "3-4" -> "3rd-4th", "Q" -> "Qualified"; anything unexpected is shown as written. */
+export function placeLabel(place: string): string {
+  const text = place.trim()
+  if (/^\d+$/.test(text)) return ordinal(Number(text))
+  const range = text.match(/^(\d+)\s*-\s*(\d+)$/)
+  if (range) return `${ordinal(Number(range[1]))}-${ordinal(Number(range[2]))}`
+  if (text === 'Q') return 'Qualified'
+  if (text === 'NQ') return 'Not qualified'
+  return text
+}

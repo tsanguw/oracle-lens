@@ -30,7 +30,8 @@ def test_nightly_loads_pending_then_refreshes_dates_and_icons(monkeypatch):
     monkeypatch.setattr(mod, "list_scope_tournaments", lambda lp, resolver: tournaments("A", "B", "C"))
     monkeypatch.setattr(mod, "backfill_all", lambda connect, lp, todo, resolver, log: calls.append(("backfill", [t["OverviewPage"] for t in todo])) or {"synced": 1})
     monkeypatch.setattr(mod, "refresh_schedule", lambda conn, lp, log, since=None: calls.append(("schedule", bool(since))) or 7)
+    monkeypatch.setattr(mod, "refresh_results", lambda conn, lp, log, recent_days=None: calls.append(("results", recent_days)) or {})
     monkeypatch.setattr(mod, "sync_champion_icons", lambda conn, log: calls.append(("icons",)))
     summary = mod.nightly(lambda: FakeConn({"A"}), object(), object(), lambda m: None)
-    assert calls == [("backfill", ["B", "C"]), ("schedule", True), ("icons",)]
+    assert calls == [("backfill", ["B", "C"]), ("schedule", True), ("results", mod.RESULTS_DAYS), ("icons",)]
     assert summary == {"synced": 1, "schedules": 7}

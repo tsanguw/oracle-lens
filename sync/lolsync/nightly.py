@@ -16,7 +16,9 @@ from .backfill import Log, backfill_all, list_scope_tournaments, refresh_schedul
 from .client import Leaguepedia
 from .images import sync_champion_icons
 from .normalize import LeagueResolver
+from .results import refresh_results
 
+RESULTS_DAYS = 45  # placements appear when an event ends; events older than this are only checked if they have none
 RESCHEDULE_DAYS = 14  # match times can move until the day; older ones are settled
 
 
@@ -38,5 +40,6 @@ def nightly(
     with connect() as conn:
         since = (datetime.now(timezone.utc) - timedelta(days=RESCHEDULE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
         summary["schedules"] = refresh_schedule(conn, lp, log, since=since)
+        refresh_results(conn, lp, log, recent_days=RESULTS_DAYS)
         sync_champion_icons(conn, log)
     return summary

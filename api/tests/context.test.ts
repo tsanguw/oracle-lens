@@ -72,6 +72,12 @@ beforeAll(async () => {
   await series(summer, bravo, charlie, null, null, day(4)) // not Alpha's
   await series(summer, alpha, bravo, null, null, day(-3)) // scheduled in the past, never played: not "upcoming"
 
+  // Final placements: Alpha won Spring, Bravo finished 2nd. The running Summer has none yet.
+  await pool.query(
+    `INSERT INTO tournament_result (tournament_id, team_id, place, place_number, group_name) VALUES ($1,$2,'1',1,NULL), ($1,$3,'2',2,NULL)`,
+    [spring, alpha, bravo],
+  )
+
   const sOld = await series(spring, bravo, charlie, bravo, '2-0', day(-300))
   await game(spring, sOld, day(-300), bravo, [[oldTimer, 'Top']])
 })
@@ -104,6 +110,19 @@ describe('GET /api/players/:id/context', () => {
     expect(body.events[1]).toMatchObject({ name: 'LCK 2026 Spring', status: 'Completed' })
   })
 
+  it('shows the final placement of finished events and none for the running one', async () => {
+    const { body } = await api('/api/players/Alpha%20Mid/context')
+    expect(body.events[0]).toMatchObject({ name: 'LCK 2026 Summer', placement: null })
+    expect(body.events[1]).toMatchObject({ name: 'LCK 2026 Spring', placement: { place: '1', group: null } })
+  })
+
+  it('lists the player\'s own events with the team they played for, so the placement is theirs', async () => {
+    const { body } = await api('/api/players/Old%20Timer/context')
+    // Old Timer only ever played Spring, for Bravo, who finished 2nd (not Alpha's 1st).
+    expect(body.events).toHaveLength(1)
+    expect(body.events[0]).toMatchObject({ name: 'LCK 2026 Spring', team: 'Bravo', placement: { place: '2' } })
+  })
+
   it('lists only the team\'s future unplayed series as upcoming', async () => {
     const { body } = await api('/api/players/Alpha%20Mid/context')
     expect(body.upcoming).toHaveLength(1)
@@ -126,5 +145,16 @@ describe('GET /api/players/:id/context', () => {
     await pool.query(`INSERT INTO player (name, display_name) VALUES ('Ghost','Ghost')`)
     const { body } = await api('/api/players/Ghost/context')
     expect(body).toEqual({ team: null, roster: [], events: [], upcoming: [], results: [] })
+  })
+})
+
+describe('GET /api/teams/:id/context placements', () => {
+  it("shows each event's final placement for the team", async () => {
+    const { body } = await api('/api/teams/Alpha/context')
+    expect(body.events[0]).toMatchObject({ name: 'LCK 2026 Summer', placement: null })
+    expect(body.events[1]).toMatchObject({ name: 'LCK 2026 Spring', placement: { place: '1', group: null } })
+    expect(body.events[1].team).toBeUndefined() // the team is the page itself
+    const bravo = await api('/api/teams/Bravo/context')
+    expect(bravo.body.events.find((e: { name: string }) => e.name === 'LCK 2026 Spring').placement.place).toBe('2')
   })
 })

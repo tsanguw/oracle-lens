@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ContextEvent, ContextMatch, RosterPlayer } from '../api/types'
-import { dateRange, matchTime } from '../lib/format'
+import { dateRange, matchTime, placeLabel } from '../lib/format'
 import { PlayerPhoto } from './Images'
 
 /*
@@ -134,10 +134,23 @@ export function EventList({ events }: { events: ContextEvent[] }) {
           <Link to={`/tournaments/${e.id}`} className="ctx__event">
             <span className="ctx__event-top">
               <span className="tag tag--small">{e.league}</span>
-              <span className={`badge${e.status === 'In progress' ? ' badge--live' : ''}`}>{e.status}</span>
+              {e.status === 'Completed' && e.placement ? (
+                <span
+                  className={`badge badge--place${e.placement.place === '1' ? ' badge--first' : ''}`}
+                  title={`Finished ${placeLabel(e.placement.place)}${e.placement.group ? ` in ${e.placement.group}` : ''}`}
+                >
+                  {placeLabel(e.placement.place)}
+                </span>
+              ) : (
+                <span className={`badge${e.status === 'In progress' ? ' badge--live' : ''}`}>{e.status}</span>
+              )}
             </span>
             <span className="ctx__name">{e.name}</span>
-            <span className="ctx__meta">{dateRange(e.startDate, e.endDate)}</span>
+            <span className="ctx__meta">
+              {dateRange(e.startDate, e.endDate)}
+              {e.team ? `, ${e.team}` : ''}
+              {e.placement?.group ? `, ${e.placement.group}` : ''}
+            </span>
           </Link>
         </li>
       ))}

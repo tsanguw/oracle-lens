@@ -90,13 +90,14 @@ python main.py backfill --all --year-from 2025 --year-to 2025      # just a slic
 python main.py backfill --latest                                   # most recent finished LCK regular-season split
 python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"  # a specific Leaguepedia page
 python main.py backfill --all --force                              # re-sync even if already done
+python main.py results                                             # fetch final placements (1st, 3rd-4th, ...) for every event
 python main.py schedule                                            # refresh match dates (series.scheduled_at) without reloading games
 python main.py nightly                                             # only what is new: unfinished tournaments, match dates, champion icons (about 30 seconds)
 python main.py images                                              # cache team logos and player photos, and record champion icon keys
 python main.py images --only teams --limit 20                      # a quick trial
 ```
 
-**Nightly update.** `python main.py nightly` skips every tournament already marked `done`, loads new and still-running ones (a reload is idempotent), refreshes match dates for the last 14 days, and refreshes champion icon keys. It exits non-zero if a tournament failed, so a scheduler can flag it; run it again to retry. It deliberately leaves team logos and player photos out, because they are files and a scheduled runner has no permanent disk (they need somewhere to live in production; see the roadmap). `.github/workflows/nightly-sync.yml` runs it on GitHub Actions; it is manual-only until the three secrets it lists exist and the production database is migrated, then uncomment its `schedule`.
+**Nightly update.** `python main.py nightly` skips every tournament already marked `done`, loads new and still-running ones (a reload is idempotent), refreshes match dates for the last 14 days, and refreshes champion icon keys. It also refreshes final placements (from Leaguepedia's `TournamentResults`) for events that ended in the last 45 days or have none yet; the recent-events panels on player and team pages show them in place of "Completed". It exits non-zero if a tournament failed, so a scheduler can flag it; run it again to retry. It deliberately leaves team logos and player photos out, because they are files and a scheduled runner has no permanent disk (they need somewhere to live in production; see the roadmap). `.github/workflows/nightly-sync.yml` runs it on GitHub Actions; it is manual-only until the three secrets it lists exist and the production database is migrated, then uncomment its `schedule`.
 
 A full run takes a few hours (roughly 10-20 seconds per tournament with the bot login). It writes a log to `sync/logs/` (gitignored), continues past individual failures, and picks up where it left off if you run it again.
 

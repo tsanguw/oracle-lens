@@ -161,6 +161,10 @@ export interface LeaderboardResponse {
 }
 
 export interface ContextEvent {
+  /** The team's final placement as Leaguepedia writes it ("1", "3-4", "Q"); null while the event runs or when unknown. */
+  placement?: { place: string; group: string | null } | null
+  /** The team the player played for in this event (player pages). */
+  team?: string
   id: number
   name: string
   league: string

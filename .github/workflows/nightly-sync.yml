@@ -28,6 +28,18 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: sync/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - name: Apply database migrations
+        working-directory: api
+        run: |
+          npm ci
+          npm run migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
       - name: Sync new games

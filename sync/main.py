@@ -32,6 +32,7 @@ from lolsync.client import Leaguepedia
 from lolsync.images import sync_champion_icons, sync_player_photos, sync_team_logos
 from lolsync.nightly import nightly
 from lolsync.normalize import LeagueResolver
+from lolsync.results import refresh_results
 from lolsync.resolve import ResolveCache
 
 ROOT = Path(__file__).resolve().parent
@@ -87,6 +88,7 @@ def main() -> int:
     im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
     up = sub.add_parser("upload-images", help="upload cached logos and photos to Cloudflare R2 (needs the R2_* settings)")
     up.add_argument("--from", dest="src", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"))
+    sub.add_parser("results", help="fetch final placements for every event we hold (fast)")
     sub.add_parser("schedule", help="refresh match dates for series already loaded (fast, no games reloaded)")
     sub.add_parser("nightly", help="load only new games and refresh match dates and champion icons (for a scheduled run)")
     args = parser.parse_args()
@@ -120,6 +122,10 @@ def main() -> int:
         summary = nightly(connect, lp, LeagueResolver(), log)
         log(f"SUMMARY {summary}")
         return 1 if summary.get("failed") else 0
+    if args.mode == "results":
+        with connect() as conn:
+            refresh_results(conn, lp, log)
+        return 0
     if args.mode == "schedule":
         with connect() as conn:
             log(f"series dates updated: {refresh_schedule(conn, lp, log)}")
