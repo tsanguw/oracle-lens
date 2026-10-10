@@ -11,7 +11,7 @@ from pathlib import Path
 
 from dotenv import dotenv_values
 
-REPO = "tsanguw/lol-esports-stats-site"
+REPO = "tsanguw/oracle-lens"
 SECRETS = {  # secret name -> key in .env
     "DATABASE_URL": "PROD_DATABASE_URL",
     "LEAGUEPEDIA_BOT_USER": "LEAGUEPEDIA_BOT_USER",
