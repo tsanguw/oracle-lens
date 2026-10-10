@@ -3,6 +3,7 @@
   python prod.py migrate     # apply any new SQL migration (api/migrations) to Neon
   python prod.py results     # fetch final placements into Neon
   python prod.py logo-tones  # measure team logos (reads them from R2 when you have R2_* in .env)
+  python prod.py schedule-recent  # the same for matches since 2023 only (about a third of the time)
   python prod.py schedule    # fetch every series' round and date from Leaguepedia (the full table takes about ten minutes)
   python prod.py migrate results logo-tones
 
@@ -24,6 +25,7 @@ STEPS = {
     "migrate": (["npm", "run", "migrate"], ROOT / "api"),
     "results": ([PYTHON, "main.py", "results"], ROOT / "sync"),
     "logo-tones": ([PYTHON, "main.py", "logo-tones"], ROOT / "sync"),
+    "schedule-recent": ([PYTHON, "main.py", "schedule", "--since", "2023-01-01"], ROOT / "sync"),
     "schedule": ([PYTHON, "main.py", "schedule"], ROOT / "sync"),
 }
 

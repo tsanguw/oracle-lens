@@ -577,9 +577,12 @@ def refresh_schedule(
     where = "DateTime_UTC IS NOT NULL" + (f" AND DateTime_UTC >= '{since}'" if since else "")
     if pages:
         where += " AND OverviewPage IN (" + ",".join(cargo_quote(p) for p in pages) + ")"
-    fetched = [
-        r for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC,Tab,N_TabInPage,N_MatchInTab", where=where) if r["MatchId"]
-    ]
+    fetched = []
+    for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC,Tab,N_TabInPage,N_MatchInTab", where=where):
+        if r["MatchId"]:
+            fetched.append(r)
+        if len(fetched) % 5000 == 0 and fetched and fetched[-1] is r:
+            log(f"  {len(fetched)} matches fetched so far...")
     rows = [(parse_utc(r["DateTime_UTC"]), r["MatchId"]) for r in fetched if r["DateTime_UTC"]]
     stages = [(*stage_of(r), r["MatchId"]) for r in fetched if (r.get("Tab") or "").strip()]
     log(f"{len(rows)} scheduled matches fetched, {len(stages)} with a round")

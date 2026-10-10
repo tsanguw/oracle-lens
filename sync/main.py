@@ -94,6 +94,7 @@ def main() -> int:
     lt.add_argument("--redo", action="store_true", help="measure every logo again, not only the ones with no tone yet")
     sub.add_parser("results", help="fetch final placements for every event we hold (fast)")
     sc = sub.add_parser("schedule", help="refresh match dates and rounds for series already loaded (no games reloaded)")
+    sc.add_argument("--since", help="only matches from this date on (YYYY-MM-DD); the full history takes about ten minutes")
     sc.add_argument("--tournament", action="append", help="only this OverviewPage (repeat for several); default is every event")
     sub.add_parser("nightly", help="load only new games and refresh match dates and champion icons (for a scheduled run)")
     args = parser.parse_args()
@@ -142,7 +143,8 @@ def main() -> int:
         return 0
     if args.mode == "schedule":
         with connect() as conn:
-            log(f"series dates updated: {refresh_schedule(conn, lp, log, pages=args.tournament)}")
+            since = f"{args.since} 00:00:00" if args.since else None
+            log(f"series dates updated: {refresh_schedule(conn, lp, log, since=since, pages=args.tournament)}")
         return 0
     log(f"Leaguepedia login: {'bot account' if lp.authenticated else 'anonymous (slow, rate-limited)'}")
     resolver = LeagueResolver()
