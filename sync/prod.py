@@ -2,7 +2,8 @@
 
   python prod.py migrate     # apply any new SQL migration (api/migrations) to Neon
   python prod.py results     # fetch final placements into Neon
-  python prod.py migrate results
+  python prod.py logo-tones  # measure team logos (reads them from R2 when you have R2_* in .env)
+  python prod.py migrate results logo-tones
 
 The connection string is read from .env and never printed.
 """
@@ -18,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 STEPS = {
     "migrate": (["npm", "run", "migrate"], ROOT / "api"),
     "results": ([sys.executable, "main.py", "results"], ROOT / "sync"),
+    "logo-tones": ([sys.executable, "main.py", "logo-tones"], ROOT / "sync"),
 }
 
 

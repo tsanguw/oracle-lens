@@ -15,10 +15,11 @@ interface Manifest {
   ddragonVersion: string | null
   champions: Record<string, string>
   teams: Record<string, string>
+  teamTones: Record<string, 'dark' | 'light'>
   players: Record<string, string>
 }
 
-const EMPTY: Manifest = { ddragonVersion: null, champions: {}, teams: {}, players: {} }
+const EMPTY: Manifest = { ddragonVersion: null, champions: {}, teams: {}, teamTones: {}, players: {} }
 
 let loaded: Manifest | null = null
 let pending: Promise<Manifest> | null = null
@@ -93,9 +94,11 @@ export function ChampionIcon({ name, size = 32, className = '', eager = false }:
 }
 
 export function TeamLogo({ name, size = 28, className = '', eager = false }: BaseProps & { name: string }) {
-  const { teams } = useImages()
+  const { teams, teamTones } = useImages()
   const [failed, setFailed] = useState(false)
   const file = teams[name]
+  // Mostly-dark artwork would disappear on our dark panels, so it sits on a light plate.
+  const plate = teamTones[name] === 'dark' ? ' img--plate' : ''
   const style = { width: size, height: size }
   if (!file || failed) {
     return (
@@ -106,11 +109,12 @@ export function TeamLogo({ name, size = 28, className = '', eager = false }: Bas
   }
   return (
     <img
-      className={`img img--logo ${className}`}
+      className={`img img--logo${plate} ${className}`}
       src={`${IMAGE_BASE}/teams/${file}`}
       alt=""
       width={size}
       height={size}
+      style={plate ? { padding: Math.max(1, Math.round(size * 0.14)) } : undefined}
       loading={eager || size >= 96 ? 'eager' : 'lazy'}
       fetchPriority={eager || size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}

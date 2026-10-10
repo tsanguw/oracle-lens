@@ -33,6 +33,7 @@ from lolsync.images import sync_champion_icons, sync_player_photos, sync_team_lo
 from lolsync.nightly import nightly
 from lolsync.normalize import LeagueResolver
 from lolsync.results import refresh_results
+from lolsync.tones import classify_logos
 from lolsync.resolve import ResolveCache
 
 ROOT = Path(__file__).resolve().parent
@@ -88,6 +89,9 @@ def main() -> int:
     im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
     up = sub.add_parser("upload-images", help="upload cached logos and photos to Cloudflare R2 (needs the R2_* settings)")
     up.add_argument("--from", dest="src", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"))
+    lt = sub.add_parser("logo-tones", help="measure which team logos are too dark for the dark panels (needs the cached images or the R2 settings)")
+    lt.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder with the cached images")
+    lt.add_argument("--redo", action="store_true", help="measure every logo again, not only the ones with no tone yet")
     sub.add_parser("results", help="fetch final placements for every event we hold (fast)")
     sub.add_parser("schedule", help="refresh match dates for series already loaded (fast, no games reloaded)")
     sub.add_parser("nightly", help="load only new games and refresh match dates and champion icons (for a scheduled run)")
@@ -122,6 +126,15 @@ def main() -> int:
         summary = nightly(connect, lp, LeagueResolver(), log)
         log(f"SUMMARY {summary}")
         return 1 if summary.get("failed") else 0
+    if args.mode == "logo-tones":
+        r2 = None
+        if os.environ.get("R2_ACCOUNT_ID") and os.environ.get("R2_BUCKET"):
+            from lolsync.r2 import client_from_env
+
+            r2 = client_from_env()
+        with connect() as conn:
+            classify_logos(conn, Path(args.out), r2, os.environ.get("R2_BUCKET"), log, redo=args.redo)
+        return 0
     if args.mode == "results":
         with connect() as conn:
             refresh_results(conn, lp, log)

@@ -129,7 +129,7 @@ def sync_team_logos(conn: psycopg.Connection, lp: Leaguepedia, out_dir: Path, lo
     wanted = {r["Name"]: r["Image"] for r in lp.cargo("Teams", "Name,Image", where="Image IS NOT NULL AND Image != ''")}
     return _sync_kind(
         conn, lp, out_dir, kind="teams", ours=ours, wanted=wanted, max_px=LOGO_MAX_PX, log=log, limit=limit, remote=remote,
-        update_sql="UPDATE team SET logo_file = %s, logo_sha1 = %s WHERE id = %s",
+        update_sql="UPDATE team SET logo_file = %s, logo_sha1 = %s, logo_tone = NULL WHERE id = %s",
     )
 
 

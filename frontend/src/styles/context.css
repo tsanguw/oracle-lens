@@ -294,3 +294,13 @@
   background: transparent;
   border: 0;
 }
+
+/* A light plate behind dark logos. The padding is set inline from the logo's own size (a percentage here would be
+   measured against the surrounding card, not the logo), so tiny and large logos both keep a proportional margin. */
+.img--plate {
+  background: var(--plate);
+  box-sizing: border-box;
+}
+.hero-img .img--plate {
+  background: var(--plate);
+}

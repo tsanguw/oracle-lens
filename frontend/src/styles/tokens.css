@@ -14,6 +14,8 @@
   --text-dim: #7d8698;
   --gold: #f0b429;
   --on-gold: #1a1300;
+  /* Light backing for logos whose artwork is too dark to see on the dark panels. */
+  --plate: #e4e8ee;
 
   --font-display: 'Barlow Condensed', sans-serif;
   --font-body: 'Barlow', sans-serif;

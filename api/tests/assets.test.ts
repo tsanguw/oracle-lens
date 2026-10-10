@@ -9,7 +9,7 @@ const app = createApp()
 beforeAll(async () => {
   await resetDb()
   await pool.query(`INSERT INTO champion (name, icon_key) VALUES ('Wukong','MonkeyKing'), ('Azir','Azir'), ('Mystery', NULL)`)
-  await pool.query(`INSERT INTO team (name, logo_file) VALUES ('T1','t1-abc123.webp'), ('No Logo', NULL)`)
+  await pool.query(`INSERT INTO team (name, logo_file, logo_tone) VALUES ('T1','t1-abc123.webp','neutral'), ('Dplus Kia','dk-1.webp','dark'), ('Whale','w-1.webp','light'), ('Unmeasured','u-1.webp',NULL), ('No Logo', NULL, NULL)`)
   await pool.query(`INSERT INTO player (name, display_name, photo_file) VALUES ('Faker','Faker','faker-1.webp'), ('Nobody','Nobody',NULL)`)
   await pool.query(`INSERT INTO meta (key, value) VALUES ('ddragon_version','16.20.1')`)
 })
@@ -23,7 +23,9 @@ describe('GET /api/assets/images', () => {
     expect(res.body).toEqual({
       ddragonVersion: '16.20.1',
       champions: { Wukong: 'MonkeyKing', Azir: 'Azir' },
-      teams: { T1: 't1-abc123.webp' },
+      teams: { T1: 't1-abc123.webp', 'Dplus Kia': 'dk-1.webp', Whale: 'w-1.webp', Unmeasured: 'u-1.webp' },
+      // Only dark and light logos are listed; neutral and not-yet-measured ones need no special treatment.
+      teamTones: { 'Dplus Kia': 'dark', Whale: 'light' },
       players: { Faker: 'faker-1.webp' },
     })
   })
@@ -39,6 +41,6 @@ describe('GET /api/assets/images', () => {
     await pool.query(`UPDATE team SET logo_file = NULL`)
     await pool.query(`UPDATE player SET photo_file = NULL`)
     const res = await request(app).get('/api/assets/images')
-    expect(res.body).toEqual({ ddragonVersion: null, champions: {}, teams: {}, players: {} })
+    expect(res.body).toEqual({ ddragonVersion: null, champions: {}, teams: {}, teamTones: {}, players: {} })
   })
 })

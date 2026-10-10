@@ -52,6 +52,7 @@ jobs:
         run: |
           python main.py images --only teams --only players --r2 --out ../img-cache
           python main.py upload-images --from ../img-cache
+          python main.py logo-tones --out ../img-cache
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           LEAGUEPEDIA_BOT_USER: ${{ secrets.LEAGUEPEDIA_BOT_USER }}
