@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type {
   SeriesRow,
@@ -8,69 +9,91 @@ import type {
   TournamentResponse,
 } from '../api/types'
 import { dateRange, decimal, duration, matchTime, NA, percent, whole } from '../lib/format'
+import { ChampionPicker, StageBackdrop, StageMotion, stageClass, usePresenceStage } from './ChampionStage'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
+import { CountUp, Letters } from './StageBits'
 import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
 
 const teamLink = (name: string) => `/teams/${encodeURIComponent(name)}`
 
-export function TournamentHeader({ data }: { data: TournamentResponse }) {
+export function TournamentHeader({ data, champions }: { data: TournamentResponse; champions?: TournamentChampion[] }) {
   const { tournament: t, summary } = data
   const leagueTag = t.league ?? (t.isInternational ? 'INTL' : t.leagues.join(' / ') || null)
+  const stage = usePresenceStage(champions)
+  const run = stage.entered
+  const count = (v: number | null) => (v == null ? NA : String(Math.round(v)))
+  const rise = (n: number) => ({ ['--i' as string]: n }) as CSSProperties
   return (
-    <section className="hero">
-      <div className="container hero__inner">
-        <div className="hero__text">
-          <div className="tags">
-            {leagueTag && <span className="tag tag--gold">{leagueTag}</span>}
-            {t.stage && <span className="tag">{t.stage}</span>}
-            <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>
+    <StageMotion>
+      <section ref={stage.headerRef} className={stageClass(stage)} style={{ '--rc': stage.accent } as CSSProperties}>
+        <StageBackdrop stage={stage} />
+        <div className="container hero__inner">
+          <div className="hero__main">
+            <div className="hero__text">
+              <div className="tags rise" style={rise(1)}>
+                {leagueTag && <span className="tag tag--gold">{leagueTag}</span>}
+                {t.stage && <span className="tag">{t.stage}</span>}
+                <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>
+              </div>
+              <h1 className="hero__name hero__name--team">
+                <Letters text={t.name} />
+              </h1>
+              <span className="hero__team rise" style={rise(3)}>
+                {dateRange(t.startDate, t.endDate)}
+              </span>
+              {summary && (
+                <>
+                  <dl className="form rise" style={rise(4)}>
+                    <div className="form__stat">
+                      <dd className="form__value">
+                        <CountUp value={summary.games} format={count} run={run} />
+                      </dd>
+                      <dt className="form__label">Games</dt>
+                    </div>
+                    <div className="form__stat">
+                      <dd className="form__value">
+                        <CountUp value={summary.series} format={count} run={run} />
+                      </dd>
+                      <dt className="form__label">Series</dt>
+                    </div>
+                    <div className="form__stat">
+                      <dd className="form__value">
+                        <CountUp value={summary.teams} format={count} run={run} />
+                      </dd>
+                      <dt className="form__label">Teams</dt>
+                    </div>
+                    <div className="form__stat">
+                      <dd className="form__value">{duration(summary.avgGameLengthSec)}</dd>
+                      <dt className="form__label">Avg game</dt>
+                    </div>
+                  </dl>
+                  <p className="form__note rise" style={rise(5)}>
+                    Blue side wins {percent(summary.blueWinRate)}, {decimal(summary.killsPerGame)} kills per game
+                    {summary.patches.length > 0 && `, patch ${patchLabel(summary.patches)}`}
+                  </p>
+                </>
+              )}
+            </div>
+            {summary?.standingTeam && (
+              <div className="showing rise" style={rise(7)}>
+                <span className="showing__eyebrow">{summary.standingLabel}</span>
+                <Link to={teamLink(summary.standingTeam)} className="showing__label with-img">
+                  <TeamLogo name={summary.standingTeam} size={32} />
+                  {summary.standingTeam}
+                </Link>
+              </div>
+            )}
           </div>
-          <h1 className="hero__name hero__name--team">{t.name}</h1>
-          <span className="hero__team">{dateRange(t.startDate, t.endDate)}</span>
-          {summary && (
-            <>
-              <dl className="form">
-                <div className="form__stat">
-                  <dd className="form__value">{summary.games}</dd>
-                  <dt className="form__label">Games</dt>
-                </div>
-                <div className="form__stat">
-                  <dd className="form__value">{summary.series}</dd>
-                  <dt className="form__label">Series</dt>
-                </div>
-                <div className="form__stat">
-                  <dd className="form__value">{summary.teams}</dd>
-                  <dt className="form__label">Teams</dt>
-                </div>
-                <div className="form__stat">
-                  <dd className="form__value">{duration(summary.avgGameLengthSec)}</dd>
-                  <dt className="form__label">Avg game</dt>
-                </div>
-              </dl>
-              <p className="form__note">
-                Blue side wins {percent(summary.blueWinRate)}, {decimal(summary.killsPerGame)} kills per game
-                {summary.patches.length > 0 && `, patch ${patchLabel(summary.patches)}`}
-              </p>
-            </>
-          )}
+          <ChampionPicker stage={stage} ariaLabel="Most contested champions" />
         </div>
-        {summary?.standingTeam && (
-          <div className="showing">
-            <span className="showing__eyebrow">{summary.standingLabel}</span>
-            <Link to={teamLink(summary.standingTeam)} className="showing__label with-img">
-              <TeamLogo name={summary.standingTeam} size={32} />
-              {summary.standingTeam}
-            </Link>
-          </div>
-        )}
-      </div>
-    </section>
+      </section>
+    </StageMotion>
   )
 }
 
 export function TournamentHeaderSkeleton() {
   return (
-    <section className="hero" aria-busy="true">
+    <section className="hero hero--skeleton" aria-busy="true">
       <div className="container hero__inner">
         <div className="hero__text">
           <div className="skeleton" style={{ width: 160, height: 22 }} />

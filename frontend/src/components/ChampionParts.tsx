@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type {
   ChampionContextResponse,
@@ -9,52 +10,74 @@ import type {
   ChampionTeam,
 } from '../api/types'
 import { decimal, duration, NA, percent, rate, whole } from '../lib/format'
+import { ArtCredit, StageBackdrop, StageMotion, stageClass, useSingleStage } from './ChampionStage'
+import { CountUp, Letters } from './StageBits'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
 import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
 
 export function ChampionHeader({ data }: { data: ChampionResponse }) {
   const { champion, summary, range } = data
+  const stage = useSingleStage(champion.name)
+  const run = stage.entered
+  const count = (v: number | null) => (v == null ? NA : String(Math.round(v)))
+  const rise = (n: number) => ({ ['--i' as string]: n }) as CSSProperties
   return (
-    <section className="hero">
-      <div className="container hero__inner">
-        <div className="hero__who">
-          <div className="hero-img">
-            <ChampionIcon name={champion.name} size={128} />
+    <StageMotion>
+      <section ref={stage.headerRef} className={stageClass(stage)} style={{ '--rc': stage.accent } as CSSProperties}>
+        <StageBackdrop stage={stage} />
+        <div className="container hero__inner">
+          <div className="hero__main">
+            <div className="hero__who">
+              <div className="hero-img rise" style={rise(0)}>
+                <ChampionIcon name={champion.name} size={128} />
+              </div>
+              <div className="hero__text">
+                <div className="tags rise" style={rise(1)}>
+                  {summary?.role && <span className="tag tag--gold">{summary.role}</span>}
+                </div>
+                <h1 className="hero__name hero__name--team">
+                  <Letters text={champion.name} />
+                </h1>
+                {summary && (
+                  <dl className="form rise" style={rise(4)}>
+                    <div className="form__stat">
+                      <dd className="form__value">
+                        <CountUp value={summary.presence} format={(v) => percent(v)} run={run} />
+                      </dd>
+                      <dt className="form__label">Presence</dt>
+                    </div>
+                    <div className="form__stat">
+                      <dd className="form__value">
+                        <CountUp value={summary.winRate} format={(v) => percent(v)} run={run} />
+                      </dd>
+                      <dt className="form__label">Win rate</dt>
+                    </div>
+                    <div className="form__stat">
+                      <dd className="form__value">
+                        <CountUp value={summary.games} format={count} run={run} />
+                      </dd>
+                      <dt className="form__label">Games</dt>
+                    </div>
+                  </dl>
+                )}
+              </div>
+            </div>
+            <div className="showing rise" style={rise(7)}>
+              <span className="showing__eyebrow">Showing</span>
+              <span className="showing__label">{range.label}</span>
+              <span className="showing__desc">Qualifiers and promotion series are not considered</span>
+            </div>
           </div>
-          <div className="hero__text">
-            <div className="tags">{summary?.role && <span className="tag tag--gold">{summary.role}</span>}</div>
-            <h1 className="hero__name hero__name--team">{champion.name}</h1>
-            {summary && (
-              <dl className="form">
-                <div className="form__stat">
-                  <dd className="form__value">{percent(summary.presence)}</dd>
-                  <dt className="form__label">Presence</dt>
-                </div>
-                <div className="form__stat">
-                  <dd className="form__value">{percent(summary.winRate)}</dd>
-                  <dt className="form__label">Win rate</dt>
-                </div>
-                <div className="form__stat">
-                  <dd className="form__value">{summary.games}</dd>
-                  <dt className="form__label">Games</dt>
-                </div>
-              </dl>
-            )}
-          </div>
+          <ArtCredit stage={stage} />
         </div>
-        <div className="showing">
-          <span className="showing__eyebrow">Showing</span>
-          <span className="showing__label">{range.label}</span>
-          <span className="showing__desc">Qualifiers and promotion series are not considered</span>
-        </div>
-      </div>
-    </section>
+      </section>
+    </StageMotion>
   )
 }
 
 export function ChampionHeaderSkeleton() {
   return (
-    <section className="hero" aria-busy="true">
+    <section className="hero hero--skeleton" aria-busy="true">
       <div className="container hero__inner">
         <div className="hero__who">
           <div className="photo skeleton" />

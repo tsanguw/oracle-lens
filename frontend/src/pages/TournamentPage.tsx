@@ -59,7 +59,7 @@ export default function TournamentPage({ id }: { id: string }) {
 
   return (
     <>
-      {data ? <TournamentHeader data={data} /> : <TournamentHeaderSkeleton />}
+      {data ? <TournamentHeader data={data} champions={champions.data?.champions} /> : <TournamentHeaderSkeleton />}
       <TournamentContext data={context.data} />
       <main className="main container">
         {data?.empty ? (

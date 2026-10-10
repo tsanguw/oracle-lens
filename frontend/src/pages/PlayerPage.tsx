@@ -63,7 +63,7 @@ export default function PlayerPage({ name }: { name: string }) {
 
   return (
     <>
-      {data ? <PlayerHeader data={data} champions={champions.data?.champions} /> : <PlayerHeaderSkeleton />}
+      {data ? <PlayerHeader data={data} champions={champions.data?.champions} results={context.data?.results} /> : <PlayerHeaderSkeleton />}
       <PlayerContext data={context.data} />
       <main className="main container" style={{ opacity: data && stale ? 0.6 : 1 }}>
         {data?.empty ? (

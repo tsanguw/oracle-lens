@@ -15,6 +15,8 @@ export interface Slideshow {
   userPaused: boolean
   /** Changes whenever the timer restarts, so progress bars can restart with it. */
   tick: number
+  /** How many times the slide has changed since the slideshow began (0 until the first swap). */
+  swaps: number
   /** Move to a slide (wraps around). */
   go: (to: number) => void
   /** A deliberate choice: move and restart the timer. */
@@ -41,6 +43,7 @@ export function useSlideshow(urls: string[], interval: number): Slideshow {
   const [held, setHeld] = useState(false)
   const [hidden, setHidden] = useState(document.hidden)
   const [tick, setTick] = useState(0)
+  const [swaps, setSwaps] = useState(0)
 
   // A different set of slides (new data, new filters) starts again from the first.
   const [seenKey, setSeenKey] = useState(key)
@@ -50,6 +53,7 @@ export function useSlideshow(urls: string[], interval: number): Slideshow {
     setPrev(null)
     setSeen(new Set([0]))
     setReady(new Set())
+    setSwaps(0)
   }
 
   const go = (to: number) => {
@@ -58,6 +62,7 @@ export function useSlideshow(urls: string[], interval: number): Slideshow {
     if (next === index) return
     setPrev(index)
     setIndex(next)
+    setSwaps((n) => n + 1)
   }
 
   useEffect(() => {
@@ -93,6 +98,7 @@ export function useSlideshow(urls: string[], interval: number): Slideshow {
     playing,
     userPaused,
     tick,
+    swaps,
     go,
     pick: (to) => {
       go(to)

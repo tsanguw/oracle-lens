@@ -35,6 +35,11 @@ function loadManifest(): Promise<Manifest> {
   return pending
 }
 
+/** Starts fetching the manifest now, so headers that need it (for the art's file names) are not waiting on it later. */
+export function prefetchImages(): void {
+  void loadManifest()
+}
+
 /** The image manifest, fetched once per visit and shared by every component. */
 export function useImages(): Manifest {
   const [manifest, setManifest] = useState<Manifest>(loaded ?? EMPTY)

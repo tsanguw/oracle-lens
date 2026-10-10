@@ -60,7 +60,7 @@ export default function TeamPage({ name }: { name: string }) {
 
   return (
     <>
-      {data ? <TeamHeader data={data} picks={draft.data?.picks} /> : <TeamHeaderSkeleton />}
+      {data ? <TeamHeader data={data} picks={draft.data?.picks} results={context.data?.results} /> : <TeamHeaderSkeleton />}
       <TeamContext data={context.data} />
       <main className="main container" style={{ opacity: data && stale ? 0.6 : 1 }}>
         {data?.empty ? (

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { coverPosition, type Focus } from '../lib/runeterra'
 import type { Slideshow } from '../lib/useSlideshow'
 import { ChampionIcon } from './Images'
@@ -6,38 +7,65 @@ export interface Slide {
   name: string
   url: string
   color: string
+  /** The region's name for display; weather picks the atmosphere. */
   region: string
   note: string
   /** Where the champion sits in the image, and the image's width / height. */
   focus: Focus
   ratio: number
+  /** The region key that picks the weather (Freljord, Ionia, ...). */
+  weather: string
+  /** A soft cut-out of the champion for the depth effect's near layer; null when there isn't one. */
+  mask: string | null
 }
 
 /**
- * The art itself: only slides that have been mounted, the current one fading in. `aspect` is the frame's
- * width / height; each image is positioned so its champion stays in view.
+ * The art itself, as two layers that the depth parallax moves by different amounts: the whole image behind, and the
+ * same image cut out to just the champion in front. Only slides that have been mounted are drawn, and `aspect` (the
+ * frame's width / height) positions each so its champion stays in view.
  */
-export function SlideLayers({ slides, show, aspect, className = 'stage__img' }: { slides: Slide[]; show: Slideshow; aspect: number; className?: string }) {
+export function SlideLayers({ slides, show, aspect }: { slides: Slide[]; show: Slideshow; aspect: number }) {
+  const state = (i: number) => `${i === show.index ? ' is-on' : ''}${i === show.prev ? ' is-prev' : ''}${show.ready.has(i) ? ' is-ready' : ''}`
   return (
     <>
-      {slides.map((s, i) =>
-        show.seen.has(i) ? (
-          <img
-            key={s.name}
-            className={`${className}${i === show.index ? ' is-on' : ''}${i === show.prev ? ' is-prev' : ''}${show.ready.has(i) ? ' is-ready' : ''}`}
-            src={s.url}
-            style={{ objectPosition: coverPosition(s.focus, s.ratio, aspect) }}
-            alt=""
-            decoding="async"
-            onLoad={() => show.markReady(i)}
-          />
-        ) : null,
-      )}
+      <div className="pstage__layer pstage__layer--far">
+        {slides.map((s, i) =>
+          show.seen.has(i) ? (
+            <img
+              key={s.name}
+              className={`pstage__img${state(i)}`}
+              src={s.url}
+              style={{ objectPosition: coverPosition(s.focus, s.ratio, aspect) }}
+              alt=""
+              decoding="async"
+              onLoad={() => show.markReady(i)}
+              onError={() => show.markReady(i)}
+            />
+          ) : null,
+        )}
+      </div>
+      <div className="pstage__layer pstage__layer--near">
+        {slides.map((s, i) => {
+          if (!s.mask || !show.seen.has(i)) return null
+          const pos = coverPosition(s.focus, s.ratio, aspect)
+          const cut = {
+            maskImage: `url(${s.mask})`,
+            WebkitMaskImage: `url(${s.mask})`,
+            maskSize: 'cover',
+            WebkitMaskSize: 'cover',
+            maskPosition: pos,
+            WebkitMaskPosition: pos,
+            maskRepeat: 'no-repeat',
+            WebkitMaskRepeat: 'no-repeat',
+          }
+          return <img key={s.name} className={`pstage__img${state(i)}`} src={s.url} style={{ objectPosition: pos, ...cut } as CSSProperties} alt="" decoding="async" />
+        })}
+      </div>
     </>
   )
 }
 
-/** Champion thumbnails with a progress bar on the current one, and a pause/play button. */
+/** Champion thumbnails with a progress bar on the current one, optional arrows, and a pause/play button. */
 export function SlideControls({
   slides,
   show,

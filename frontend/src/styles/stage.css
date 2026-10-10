@@ -14,53 +14,127 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* Art: oversized so the pointer drift never shows an edge */
-.stage__art {
+/*
+ * The art and everything that drifts over it, shared by every header. From back to front: a glow in the card's region
+ * colour (it is what shows while the art loads), the art as a far layer and a near cut-out layer, a scrim for the text,
+ * mist, weather, and a light sweep when the champion changes. --ox and --oy (the pointer), --sy (scroll) and --depth are
+ * set by script; the layers move from them. The first fade-in is slow (1.8s) and swaps are quicker (0.7s).
+ */
+.pstage__base {
   position: absolute;
-  inset: -34px;
-  z-index: -3;
+  inset: 0;
+  z-index: -4;
+  background: radial-gradient(900px 520px at 70% 45%, color-mix(in srgb, var(--rc) 28%, var(--bg-hero)), var(--bg-hero) 70%);
+  transition: background 0.8s;
 }
-.stage__img {
+.pstage__art {
+  position: absolute;
+  inset: -175px -16px 0; /* taller than the header, so drifting it down on scroll never shows a gap */
+  z-index: -3;
+  will-change: transform;
+  transform: translate3d(0, calc(var(--sy, 0) * 0.28px), 0);
+}
+.pstage__layer {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+.pstage__layer--far {
+  transform: translate3d(calc(var(--ox, 0) * -9px * var(--depth, 0)), calc(var(--oy, 0) * -5px * var(--depth, 0)), 0) scale(1.01);
+}
+.pstage__layer--near {
+  transform: translate3d(calc(var(--ox, 0) * -34px * var(--depth, 0)), calc(var(--oy, 0) * -19px * var(--depth, 0)), 0) scale(1.026);
+}
+.pstage__img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 20%;
   opacity: 0;
   transform: scale(1.02);
-  transition: opacity 1.4s ease;
+  transition: opacity 1.8s ease;
 }
-.stage__img.is-on.is-ready {
+.pstage__art.has-prev .pstage__img {
+  transition-duration: 0.7s;
+}
+.pstage__img.is-prev {
+  z-index: 1;
+  transform: scale(1.11); /* keeps its zoomed pose while it fades, so it doesn't snap back */
+}
+.pstage__img.is-on {
+  z-index: 2;
+}
+.pstage__img.is-on.is-ready {
   opacity: 1;
 }
-/* The slide that just left keeps its zoomed pose while it fades, so it doesn't snap back. */
-.stage__img.is-prev {
-  transform: scale(1.12);
-}
 @media (prefers-reduced-motion: no-preference) {
-  .stage__img.is-on {
-    animation: stage-zoom 16s ease-out forwards;
+  .pstage__img.is-on {
+    animation: stage-zoom 20s ease-out forwards;
   }
-  .stage.is-still .stage__img.is-on {
+  .is-still .pstage__img.is-on {
     animation-play-state: paused;
   }
 }
 @keyframes stage-zoom {
   to {
-    transform: scale(1.12);
+    transform: scale(1.11);
   }
 }
-.stage__scrim {
+.pstage__scrim {
   position: absolute;
   inset: 0;
   z-index: -2;
+  background:
+    linear-gradient(90deg, rgba(11, 14, 20, 0.92) 0%, rgba(11, 14, 20, 0.6) 38%, rgba(11, 14, 20, 0) 68%),
+    linear-gradient(0deg, var(--bg-page) 0%, transparent 30%);
+}
+.pstage__scrim--home {
   background:
     linear-gradient(90deg, rgba(11, 14, 20, 0.95) 0%, rgba(11, 14, 20, 0.72) 38%, rgba(11, 14, 20, 0.1) 72%),
     linear-gradient(0deg, var(--bg-page) 0%, transparent 34%),
     linear-gradient(180deg, rgba(11, 14, 20, 0.55), transparent 20%);
 }
-.stage__embers {
+.pstage__mist {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  overflow: hidden;
+}
+.pstage__mist i {
+  position: absolute;
+  left: 0;
+  width: 2400px;
+  background-repeat: repeat-x;
+  background-size: 1200px 100%;
+}
+.pstage__mist i:nth-child(1) {
+  bottom: -6%;
+  height: 46%;
+  opacity: 0.55;
+  animation: mist-drift 110s linear infinite;
+}
+.pstage__mist i:nth-child(2) {
+  bottom: 8%;
+  height: 40%;
+  opacity: 0.35;
+  animation: mist-drift 70s linear infinite reverse;
+}
+.pstage__mist i:nth-child(3) {
+  bottom: -2%;
+  height: 30%;
+  opacity: 0.5;
+  background-size: 900px 100%;
+  animation: mist-drift 150s linear infinite;
+}
+@keyframes mist-drift {
+  to {
+    transform: translateX(-1200px);
+  }
+}
+.pstage__weather {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -68,6 +142,48 @@
   z-index: -1;
   pointer-events: none;
   mix-blend-mode: screen;
+}
+.pstage__sweep {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.pstage__sweep i {
+  position: absolute;
+  top: -10%;
+  bottom: -10%;
+  left: 0;
+  width: 34%;
+  transform: translateX(-130%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--rc) 60%, #fff 30%) 50%, transparent);
+  mix-blend-mode: screen;
+  filter: blur(6px);
+  opacity: 0;
+  animation: stage-sweep 0.95s cubic-bezier(0.5, 0, 0.2, 1) both;
+}
+@keyframes stage-sweep {
+  0% {
+    transform: translateX(-130%) skewX(-18deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(420%) skewX(-18deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pstage__mist,
+  .pstage__sweep {
+    display: none;
+  }
+  .pstage__img {
+    transition: none;
+  }
 }
 
 /* Layout */
@@ -270,7 +386,7 @@
   .stage__panel {
     justify-self: start;
   }
-  .stage__scrim {
+  .pstage__scrim--home {
     background:
       linear-gradient(90deg, rgba(11, 14, 20, 0.9) 0%, rgba(11, 14, 20, 0.55) 70%, rgba(11, 14, 20, 0.25)),
       linear-gradient(0deg, var(--bg-page) 0%, transparent 30%);
@@ -358,19 +474,6 @@
 .hero--stage .form {
   text-shadow: 0 2px 26px rgba(0, 0, 0, 0.5);
 }
-.pstage__art {
-  position: absolute;
-  inset: 0;
-  z-index: -3;
-}
-.pstage__scrim {
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background:
-    linear-gradient(90deg, rgba(11, 14, 20, 0.92) 0%, rgba(11, 14, 20, 0.6) 38%, rgba(11, 14, 20, 0) 68%),
-    linear-gradient(0deg, var(--bg-page) 0%, transparent 30%);
-}
 .ppick {
   display: flex;
   flex-direction: column;
@@ -416,11 +519,6 @@
   height: 34px;
   margin-left: 4px;
 }
-@media (prefers-reduced-motion: reduce) {
-  .stage__img {
-    transition: none;
-  }
-}
 @media (max-width: 960px) {
   .hero--stage .hero__inner {
     grid-template-columns: minmax(0, 1fr);
@@ -443,4 +541,105 @@
   .ppick .stage__controls {
     flex-wrap: wrap;
   }
+}
+
+/* Entrance: once the art has started to appear, the text and numbers rise into place, one after another. */
+.word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.use-enter .rise {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.use-enter.entered .rise {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.7s ease,
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--i, 0) * 70ms);
+}
+.use-enter .ch {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.45em);
+}
+.use-enter.entered .ch {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.6s ease,
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: calc(var(--i, 0) * 55ms);
+}
+
+/* Recent series: the last few results as small win/loss ticks, most recent on the right */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.strip__label {
+  margin-right: 6px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.strip__tick {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  font-style: normal;
+  color: #06120d;
+}
+.strip__tick.is-win {
+  background: #4fd6a0;
+}
+.strip__tick.is-loss {
+  background: #ef6a6a;
+}
+.use-enter .strip__tick {
+  opacity: 0;
+  transform: scale(0.4);
+}
+.use-enter.entered .strip__tick {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.4s,
+    transform 0.5s cubic-bezier(0.3, 1.6, 0.5, 1);
+  transition-delay: calc(0.5s + var(--i, 0) * 70ms);
+}
+
+/* A header with one piece of art (the champion page) says where it is from instead of offering a picker */
+.ppick--credit {
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: 132px;
+}
+
+/* The loading header is as tall as the finished one, so the page does not jump when it arrives */
+.hero--skeleton {
+  display: flex;
+  align-items: flex-end;
+  min-height: 540px;
+}
+.hero--skeleton .hero__inner {
+  width: 100%;
+  padding-bottom: 44px;
+}
+
+/* On scroll the text drifts up and fades while the art drifts down, so the header seems to recede */
+.hero--stage .hero__inner,
+.stage .stage__inner {
+  transform: translate3d(0, calc(var(--sy, 0) * -0.1px), 0);
+  opacity: calc(1 - var(--sy, 0) / 520);
 }

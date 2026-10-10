@@ -129,9 +129,13 @@ const REGION_NAME: Record<string, string> = { PiltoverZaun: 'Piltover & Zaun', S
 export type Focus = [number, number]
 /** Every Runeterra card image is 2048x1024. */
 export const CARD_RATIO = 2
-/** League loading-screen art is 308x560. */
-export const SPLASH_RATIO = 308 / 560
-export const SPLASH_FOCUS: Focus = [0.5, 0.3]
+/** League splash art (the wide one, not the loading-screen portrait) is 1215x717. */
+export const SPLASH_RATIO = 1215 / 717
+export const SPLASH_FOCUS: Focus = [0.58, 0.4]
+export const splashUrl = (key: string): string => `https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${key}_0.jpg`
+
+/** A soft cut-out of the champion in the card art (see public/masks), used as the near layer of the depth effect. */
+export const maskUrl = (champion: string): string => `${import.meta.env.BASE_URL}masks/${champion.replace(/[ ']/g, '')}.png`
 
 /**
  * The `object-position` that keeps the focus in view when an image of `imageRatio` (width / height) is cropped
@@ -146,7 +150,9 @@ export function coverPosition(focus: Focus, imageRatio: number, frameRatio: numb
 
 export interface RuneterraCard {
   url: string
+  mask: string
   focus: Focus
+  /** The region's key (for example PiltoverZaun); regionName is the one to show. */
   region: string
   regionName: string
   color: string
@@ -159,6 +165,7 @@ export function cardFor(champion: string): RuneterraCard | null {
   const [set, code, region, fx, fy] = c
   return {
     url: `${ART}/set${set}/en_us/img/cards/${code}-full.png`,
+    mask: maskUrl(champion),
     focus: [fx, fy],
     region,
     regionName: REGION_NAME[region] ?? region,
