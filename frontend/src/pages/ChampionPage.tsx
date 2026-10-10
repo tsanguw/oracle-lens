@@ -26,7 +26,8 @@ import FilterBar from '../components/FilterBar'
 import MatchupPanel from '../components/MatchupPanel'
 import { StatTilesSkeleton } from '../components/StatTiles'
 import { ChampionIcon } from '../components/Images'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta } from '../lib/usePageMeta'
+import { championSeo, notFoundSeo } from '../lib/seoText'
 import ErrorState from '../components/ErrorState'
 
 const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
@@ -45,7 +46,8 @@ export default function ChampionPage({ name }: { name: string }) {
   const patches = useApi<{ empty: boolean; patches: ChampionPatchRow[] }>(`${base}/patches${qs}`)
   const context = useApi<ChampionContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle(name)
+  const missing = champion.error?.status === 404
+  usePageMeta({ ...(missing ? notFoundSeo('Champion') : championSeo(name, champion.data)), noindex: missing })
 
   const reset = () => setParams(new URLSearchParams())
 

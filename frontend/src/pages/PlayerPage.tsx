@@ -19,7 +19,8 @@ import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
 import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
 import { opposingLabel } from '../lib/format'
 import { ChampionIcon, PlayerPhoto } from '../components/Images'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta, useJsonLd } from '../lib/usePageMeta'
+import { notFoundSeo, playerLd, playerSeo } from '../lib/seoText'
 import ErrorState from '../components/ErrorState'
 
 export default function PlayerPage({ name }: { name: string }) {
@@ -35,7 +36,9 @@ export default function PlayerPage({ name }: { name: string }) {
   const bans = useApi<TargetBansResponse>(`${base}/target-bans${qs}`)
   const context = useApi<PlayerContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle(player.data?.player.displayName ?? name)
+  const missing = player.error?.status === 404
+  usePageMeta({ ...(missing ? notFoundSeo('Player') : playerSeo(name, player.data)), noindex: missing })
+  useJsonLd(playerLd(player.data))
 
   const reset = () => setParams(new URLSearchParams())
 

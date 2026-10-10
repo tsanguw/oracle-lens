@@ -82,5 +82,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      # the Cloudflare functions (sitemap.xml, robots.txt) have no dependencies; Node's own test runner covers them
+      - run: npm run test:functions
       # `build` runs tsc first, so a type error fails here as well as a bundling error
       - run: npm run build
