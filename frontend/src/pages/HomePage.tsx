@@ -2,10 +2,9 @@ import { Link } from 'react-router-dom'
 import type { RecentTournamentsResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import SearchBox from '../components/SearchBox'
-import { dateRange } from '../lib/format'
-import { TeamLogo } from '../components/Images'
-import { usePageTitle } from '../lib/usePageTitle'
+import { ChampionStrip, TopPlayers, TournamentRows, TournamentRowsSkeleton } from '../components/HomeParts'
 import ErrorState from '../components/ErrorState'
+import { usePageTitle } from '../lib/usePageTitle'
 
 export default function HomePage() {
   const recent = useApi<RecentTournamentsResponse>('/api/tournaments/recent?limit=5')
@@ -14,51 +13,35 @@ export default function HomePage() {
   return (
     <main className="main container home">
       <section className="home__hero">
-        <div className="home__scope">
-          <span className="home__badge">Tier 1 + Internationals</span>
-          <span className="home__leagues">LCK · LPL · LEC · LCS · CBLOL · LCP · Worlds · MSI</span>
+        <div className="home__intro">
+          <h1 className="home__headline">
+            Every pro game,
+            <br />
+            one search.
+          </h1>
+          <p className="home__lede">
+            Stats for LCK, LPL, LEC, LCS, CBLOL and LCP, plus Worlds and MSI, back to 2011.
+          </p>
+          <SearchBox />
         </div>
-        <h1 className="home__headline">
-          Every pro game.
-          <br />
-          Every stat.
-          <br />
-          One search.
-        </h1>
-        <SearchBox />
+        <TopPlayers />
       </section>
 
       <section className="section" aria-labelledby="recent-title">
-        <div className="section__head home__recent-head">
+        <div className="section__head home__head">
           <h2 className="section__title home__section-title" id="recent-title">Recent tournaments</h2>
           <Link to="/tournaments" className="home__all">All tournaments →</Link>
         </div>
         {recent.error ? (
           <ErrorState message={recent.error.message} onRetry={recent.reload} heading="Couldn’t load tournaments" level={3} />
+        ) : recent.data ? (
+          <TournamentRows tournaments={recent.data.tournaments} />
         ) : (
-          <div className="cards" aria-busy={recent.loading}>
-            {recent.data
-              ? recent.data.tournaments.map((t) => (
-                  <Link key={t.id} to={`/tournaments/${t.id}`} className="card">
-                    <div className="card__top">
-                      <span className="tag">{t.league}</span>
-                      <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>
-                    </div>
-                    <h3 className="card__name">{t.name}</h3>
-                    <p className="card__dates">{dateRange(t.startDate, t.endDate)}</p>
-                    <div className="card__foot">
-                      <span className="card__foot-label">{t.standingLabel ?? ' '}</span>
-                      <span className="card__foot-value with-img">
-                        {t.standingTeam && <TeamLogo name={t.standingTeam} size={22} />}
-                        {t.standingTeam ?? ' '}
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              : Array.from({ length: 5 }, (_, i) => <div key={i} className="card skeleton" style={{ height: 262 }} />)}
-          </div>
+          <TournamentRowsSkeleton />
         )}
       </section>
+
+      <ChampionStrip />
     </main>
   )
 }

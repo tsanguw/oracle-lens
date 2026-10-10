@@ -68,9 +68,11 @@ function roleClass(role?: string | null): string {
 interface BaseProps {
   size?: number
   className?: string
+  /** Load immediately instead of lazily, for images at the top of the page. */
+  eager?: boolean
 }
 
-export function ChampionIcon({ name, size = 32, className = '' }: BaseProps & { name: string }) {
+export function ChampionIcon({ name, size = 32, className = '', eager = false }: BaseProps & { name: string }) {
   const { champions, ddragonVersion } = useImages()
   const [failed, setFailed] = useState(false)
   const key = champions[name]
@@ -83,14 +85,14 @@ export function ChampionIcon({ name, size = 32, className = '' }: BaseProps & { 
       alt=""
       width={size}
       height={size}
-      loading={size >= 96 ? 'eager' : 'lazy'}
-      fetchPriority={size >= 96 ? 'high' : undefined}
+      loading={eager || size >= 96 ? 'eager' : 'lazy'}
+      fetchPriority={eager || size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}
     />
   )
 }
 
-export function TeamLogo({ name, size = 28, className = '' }: BaseProps & { name: string }) {
+export function TeamLogo({ name, size = 28, className = '', eager = false }: BaseProps & { name: string }) {
   const { teams } = useImages()
   const [failed, setFailed] = useState(false)
   const file = teams[name]
@@ -109,15 +111,15 @@ export function TeamLogo({ name, size = 28, className = '' }: BaseProps & { name
       alt=""
       width={size}
       height={size}
-      loading={size >= 96 ? 'eager' : 'lazy'}
-      fetchPriority={size >= 96 ? 'high' : undefined}
+      loading={eager || size >= 96 ? 'eager' : 'lazy'}
+      fetchPriority={eager || size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}
     />
   )
 }
 
 /** `page` is the player's unique page name (the key photos are stored under); `name` is what to show initials for. */
-export function PlayerPhoto({ page, name, role, size = 36, className = '' }: BaseProps & { page: string; name: string; role?: string | null }) {
+export function PlayerPhoto({ page, name, role, size = 36, className = '', eager = false }: BaseProps & { page: string; name: string; role?: string | null }) {
   const { players } = useImages()
   const [failed, setFailed] = useState(false)
   const file = players[page]
@@ -137,8 +139,8 @@ export function PlayerPhoto({ page, name, role, size = 36, className = '' }: Bas
       alt=""
       width={size}
       height={size}
-      loading={size >= 96 ? 'eager' : 'lazy'}
-      fetchPriority={size >= 96 ? 'high' : undefined}
+      loading={eager || size >= 96 ? 'eager' : 'lazy'}
+      fetchPriority={eager || size >= 96 ? 'high' : undefined}
       onError={() => setFailed(true)}
     />
   )

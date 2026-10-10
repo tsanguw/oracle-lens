@@ -1,36 +1,37 @@
+/*
+ * Home page. Layout families, one per section: a split hero (search beside a live look at the data),
+ * plain rows for tournaments, and an icon grid for champions. Sharp corners and the gold accent throughout.
+ */
 .home {
   gap: 72px;
 }
+
+/* Hero */
 .home__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 56px;
+  align-items: start;
+  padding-top: 16px;
+}
+.home__intro {
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  padding-top: 24px;
-}
-.home__scope {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.home__badge {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  background: var(--gold);
-  color: var(--on-gold);
-  padding: 5px 10px;
-}
-.home__leagues {
-  font-size: 14px;
-  color: var(--text-muted);
+  gap: 24px;
+  padding-top: 8px;
 }
 .home__headline {
-  font-size: 96px;
+  font-size: 92px;
   line-height: 0.92;
   margin: 0;
+  text-wrap: balance;
+}
+.home__lede {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--text-soft);
 }
 
 /* Search */
@@ -40,6 +41,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: 8px;
 }
 .search__label {
   font-family: var(--font-display);
@@ -89,7 +91,7 @@
 }
 .search__panel {
   position: absolute;
-  top: calc(100% + 0px);
+  top: 100%;
   left: 0;
   right: 0;
   z-index: 10;
@@ -149,13 +151,120 @@
   color: var(--text-muted);
 }
 
-/* Recent tournaments */
-.home__recent-head {
+/* Top players beside the search */
+.spot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 20px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+.spot__head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 10px;
+}
+.spot__title {
+  font-size: 26px;
+}
+.spot__sub {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+  min-height: 1.2em;
+}
+.spot__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.spot__row {
+  display: grid;
+  grid-template-columns: 24px 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  margin: 0 -10px;
+  transition: background-color 0.15s, transform 0.15s;
+}
+.spot__row:hover {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+.spot__row:hover .spot__name {
+  color: var(--gold);
+}
+.spot__row:active {
+  transform: translateY(1px);
+}
+.spot__rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.spot__rank.is-first {
+  color: var(--gold);
+}
+.spot__who {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.spot__name {
+  font-weight: 600;
+  font-size: 17px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spot__team {
+  font-size: 13px;
+  color: var(--text-muted);
+  gap: 6px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.spot__kda {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  letter-spacing: 0.02em;
+}
+.spot__more {
+  align-self: flex-start;
+  margin-top: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.spot__more:hover {
+  text-decoration: underline;
+}
+
+/* Section heads */
+.home__head {
+  align-items: flex-end;
   border-bottom: 1px solid var(--border);
   padding-bottom: 12px;
 }
 .home__section-title {
   font-size: 40px;
+}
+.home__note {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
 }
 .home__all {
   font-family: var(--font-display);
@@ -164,33 +273,89 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gold);
+  white-space: nowrap;
 }
 .home__all:hover {
   text-decoration: underline;
 }
-.cards {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 16px;
+.home__inline-error {
+  margin: 0;
+  color: var(--text-muted);
 }
-.card {
+.home__retry {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--gold);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Recent tournaments: plain rows, the newest event is the lead */
+.trn {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 20px;
+}
+.trn__row {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) 190px 250px;
+  align-items: center;
+  gap: 24px;
+  padding: 18px 12px;
+  transition: background-color 0.15s;
+}
+.trn__row:hover {
   background: var(--bg-panel);
-  border: 1px solid var(--border);
-  min-height: 262px;
+  color: var(--text);
 }
-a.card:hover {
-  border-color: var(--gold);
+.trn__row:hover .trn__name {
+  color: var(--gold);
 }
-.card__top {
+.trn__row--lead {
+  padding: 28px 12px;
+  border-left: 3px solid var(--gold);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.trn__tags {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.trn__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+.trn__row--lead .trn__name {
+  font-size: 44px;
+}
+.trn__dates {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.trn__standing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.trn__label {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  min-height: 1.2em;
+}
+.trn__team {
+  font-weight: 600;
 }
 .badge {
   font-family: var(--font-display);
@@ -208,48 +373,127 @@ a.card:hover {
   border-color: var(--gold);
   color: var(--on-gold);
 }
-.card__name {
-  font-size: 30px;
-  line-height: 1.05;
+
+/* Champions: an icon grid */
+.champs {
+  list-style: none;
   margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
 }
-.card__dates {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-.card__foot {
-  margin-top: auto;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
+.champs__tile {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 12px;
+  transition: background-color 0.15s, transform 0.15s;
 }
-.card__foot-label {
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
+.champs__tile:hover {
+  background: var(--bg-panel);
+  color: var(--text);
 }
-.card__foot-value {
+.champs__tile:hover .champs__name {
+  color: var(--gold);
+}
+.champs__tile:active {
+  transform: translateY(1px);
+}
+.champs__name {
   font-weight: 600;
+  font-size: 17px;
+}
+.champs__stat {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Entrance: the hero and each list fade up in sequence, once. Skipped when motion is reduced. */
+@media (prefers-reduced-motion: no-preference) {
+  .home__intro > *,
+  .spot,
+  .spot__list li,
+  .trn li,
+  .champs li {
+    animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .home__intro > :nth-child(2) {
+    animation-delay: 0.06s;
+  }
+  .home__intro > :nth-child(3) {
+    animation-delay: 0.12s;
+  }
+  .spot {
+    animation-delay: 0.1s;
+  }
+  .spot__list li,
+  .trn li,
+  .champs li {
+    animation-delay: calc(var(--i, 0) * 50ms + 0.2s);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
 }
 
 @media (max-width: 1100px) {
-  .cards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .home__hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
   }
   .home__headline {
     font-size: 72px;
   }
+  .trn__row {
+    grid-template-columns: minmax(0, 1fr) 220px;
+    gap: 8px 24px;
+  }
+  .trn__tags {
+    grid-column: 1;
+  }
+  .trn__name {
+    grid-column: 1;
+  }
+  .trn__dates {
+    grid-column: 1;
+  }
+  .trn__standing {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
+  }
 }
 @media (max-width: 720px) {
+  .home {
+    gap: 56px;
+  }
   .home__headline {
     font-size: 52px;
   }
-  .cards {
+  .home__lede {
+    font-size: 17px;
+  }
+  .home__head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .trn__row,
+  .trn__row--lead {
     grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .trn__standing {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .trn__row--lead .trn__name {
+    font-size: 34px;
   }
   .search__panel {
     grid-template-columns: 1fr;
