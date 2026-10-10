@@ -79,8 +79,14 @@
 .search__input::placeholder {
   color: var(--text-dim);
 }
+/* The whole box shows focus. The input has no ring of its own: the site-wide :focus-visible outline would draw a second,
+   smaller yellow rectangle inside the box. */
+.search__input:focus-visible {
+  outline: none;
+}
 .search__box:focus-within {
   border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold);
 }
 .search__hint {
   font-family: var(--font-body);

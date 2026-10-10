@@ -213,10 +213,11 @@
   border-color: rgba(255, 255, 255, 0.2);
   border-bottom-color: var(--rc);
   backdrop-filter: blur(6px);
-  transition: border-color 0.8s;
+  transition: border-color 0.8s, box-shadow 0.8s;
 }
 .stage .search__box:focus-within {
   border-color: var(--rc);
+  box-shadow: 0 0 0 1px var(--rc); /* the focus ring follows the champion's region colour, all the way round */
 }
 
 /* Caption and controls */
