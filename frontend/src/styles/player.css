@@ -467,3 +467,18 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Matchup rows on phones: the name gets its own line, the three numbers sit below it. */
+@media (max-width: 720px) {
+  .matchup {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 12px;
+    padding: 12px 16px;
+  }
+  .matchup__who {
+    grid-column: 1 / -1;
+  }
+  .matchup__num {
+    text-align: left;
+  }
+}

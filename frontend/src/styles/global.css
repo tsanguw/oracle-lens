@@ -117,3 +117,11 @@ main:focus {
     display: none;
   }
 }
+
+/* 16px gutters on phones (declared here because .container is defined above, after the imports). */
+@media (max-width: 720px) {
+  .container {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}

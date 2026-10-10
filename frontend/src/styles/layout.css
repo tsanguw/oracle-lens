@@ -13,7 +13,7 @@
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 32px;
-  height: 72px;
+  min-height: 72px; /* grows when the tabs wrap, instead of clipping them */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -143,4 +143,37 @@
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-dim);
+}
+
+/* Phones and small tablets: the brand on top, the four tabs on one row below it, 16px gutters. */
+@media (max-width: 860px) {
+  .site-header__inner {
+    padding: 10px 16px 0;
+    gap: 2px 16px;
+  }
+  .tabs {
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .tabs__link {
+    font-size: 16px;
+    letter-spacing: 0.06em;
+    padding: 10px 6px;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 720px) {
+  .site-footer__inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+@media (max-width: 360px) {
+  .tabs__link {
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    padding: 10px 3px;
+  }
 }
