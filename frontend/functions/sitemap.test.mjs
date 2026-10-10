@@ -2,8 +2,8 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
 import { buildRobots, buildSitemap, MAX_URLS, STATIC_PATHS } from './lib/sitemap.js'
-import { onRequestGet as robots } from './robots.txt.js'
-import { onRequestGet as sitemap } from './sitemap.xml.js'
+import { onRequest as robots } from './robots.txt.js'
+import { onRequest as sitemap } from './sitemap.xml.js'
 
 const origin = 'https://example.test'
 const data = {
@@ -67,7 +67,7 @@ describe('the functions', () => {
   afterEach(() => {
     globalThis.fetch = realFetch
   })
-  const ask = (path = '/sitemap.xml') => ({ request: new Request(`${origin}${path}`), env: { VITE_API_BASE: 'https://api.example.test/' }, waitUntil() {} })
+  const ask = (path = '/sitemap.xml', method = 'GET') => ({ request: new Request(`${origin}${path}`, { method }), env: { VITE_API_BASE: 'https://api.example.test/' }, waitUntil() {} })
 
   it('serves robots.txt as plain text with the request origin', async () => {
     const res = robots(ask('/robots.txt'))
@@ -96,6 +96,26 @@ describe('the functions', () => {
     assert.equal(res.status, 503)
     assert.equal(res.headers.get('retry-after'), '3600')
     assert.equal(res.headers.get('cache-control'), 'no-store')
+  })
+
+  it('answers HEAD like GET, without a body, so a crawler never gets the home page instead', async () => {
+    globalThis.fetch = async () => new Response(JSON.stringify(data), { status: 200 })
+    const head = await sitemap(ask('/sitemap.xml', 'HEAD'))
+    assert.equal(head.status, 200)
+    assert.match(head.headers.get('content-type'), /^application\/xml/)
+    assert.equal(await head.text(), '')
+    const robotsHead = robots(ask('/robots.txt', 'HEAD'))
+    assert.equal(robotsHead.status, 200)
+    assert.match(robotsHead.headers.get('content-type'), /^text\/plain/)
+    assert.equal(await robotsHead.text(), '')
+  })
+
+  it('refuses other methods with 405 and an Allow header', async () => {
+    for (const handler of [sitemap, robots]) {
+      const res = await handler(ask('/x', 'POST'))
+      assert.equal(res.status, 405)
+      assert.equal(res.headers.get('allow'), 'GET, HEAD')
+    }
   })
 
   it('answers 503 when the API cannot be reached at all', async () => {
