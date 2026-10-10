@@ -235,7 +235,7 @@ Things to know before making the repository public: the commit author email and 
 - **`dev` is where work is collected.** Small changes can be committed to it directly; larger ones start on a branch (`feature/compare-players`, `fix/search-clip`) and are merged into `dev` with a pull request.
 - **Previews.** Cloudflare Pages builds every non-production branch as a preview, at `https://<branch>.oracle-lens.pages.dev` (`https://dev.oracle-lens.pages.dev` for `dev`). Two settings make a preview work: the same `VITE_API_BASE`, `VITE_IMAGE_BASE` and `NODE_VERSION` variables under the project's Preview environment, and the preview address in Render's `CORS_ORIGIN`. A preview calls the production API, which is read-only, so previewing is safe.
 - **Releasing** is a pull request from `dev` into `main` (merge it with a merge commit, so `dev` and `main` don't drift apart). After it deploys, check the live site.
-- The [secret scan](#security) runs on every push to every branch. Run the tests below before opening a pull request.
+- **Checks.** The [secret scan](#security) runs on every push to every branch. The CI workflow (`.github/workflows/ci.yml`) runs the API tests and type check, the sync tests, and the frontend type check and build on every pull request and on every push to `main` and `dev`. It uses a throwaway Postgres container and no secrets. Wait for green checks before merging; running the commands under [Testing](#testing) first saves a round trip.
 
 ## Testing
 
@@ -267,6 +267,7 @@ sync/
 scripts/
   scan_secrets.py secret scan (tracked files, git history, and with --env your real .env values)
 .github/workflows/
+  ci.yml            tests, type checks and build on pull requests and on main and dev
   nightly-sync.yml  daily sync into production
   secret-scan.yml   secret scan on every push
 render.yaml         Render blueprint for the API
