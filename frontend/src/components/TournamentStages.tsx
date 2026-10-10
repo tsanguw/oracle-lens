@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
 import type { TournamentStage } from '../api/types'
 import { Bracket, RoundColumns } from './Bracket'
+import SwissRecords from './SwissRecords'
 
 const NOTE: Record<TournamentStage['key'], string> = {
   playin: 'Play-in rounds, in the order they were played',
@@ -56,6 +57,7 @@ export default function TournamentStages({ stages }: { stages: TournamentStage[]
         ))}
       </div>
       <div id="stage-panel" role="tabpanel" aria-labelledby={`stage-tab-${stage.key}`}>
+        {stage.standings && <SwissRecords standings={stage.standings} />}
         {stage.key === 'knockout' ? <Bracket rounds={stage.rounds} label={`${stage.label} bracket`} /> : <RoundColumns rounds={stage.rounds} label={`${stage.label} rounds`} />}
       </div>
     </section>

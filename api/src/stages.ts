@@ -53,10 +53,21 @@ export interface StageRound {
   series: StageSeries[]
 }
 
+/** A team's record in a swiss stage: series won and lost, and the result of each round it played, in order. */
+export interface SwissRow {
+  team: string
+  region: string | null
+  wins: number
+  losses: number
+  results: ('W' | 'L')[]
+}
+
 export interface Stage {
   key: StageKind
   label: string
   rounds: StageRound[]
+  /** Swiss stages only: every team with its record, best first. */
+  standings?: SwissRow[]
 }
 
 const KNOCKOUT_WORDS = /quarter|semi|final|bracket|playoff|knockout|elimination|upper|lower/i
@@ -102,7 +113,7 @@ export function buildStages(rows: StageSeriesRow[], tournamentName: string): Sta
     if (!list?.length) continue
     list.sort((a, b) => a.tabOrder - b.tabOrder || (a.n ?? 0) - (b.n ?? 0) || a.seriesId - b.seriesId)
     const rounds = kind === 'knockout' ? bracketRounds(list) : plainRounds(list)
-    stages.push({ key: kind, label: labelFor(kind, playoffs), rounds })
+    stages.push({ key: kind, label: labelFor(kind, playoffs), rounds, ...(kind === 'swiss' ? { standings: swissStandings(rounds) } : {}) })
   }
   return stages
 }
@@ -114,6 +125,25 @@ function slot(r: StageSeriesRow, side: 0 | 1): BracketSlot {
 
 function toSeries(r: StageSeriesRow): StageSeries {
   return { seriesId: r.seriesId, n: r.n, bestOf: r.bestOf, at: r.at, played: r.winner !== null, slots: [slot(r, 0), slot(r, 1)] }
+}
+
+/** Wins and losses per team across the swiss rounds, best record first (then by name). Unplayed series count for nothing. */
+function swissStandings(rounds: StageRound[]): SwissRow[] {
+  const rows = new Map<string, SwissRow>()
+  for (const round of [...rounds].sort((a, b) => a.order - b.order)) {
+    for (const series of round.series) {
+      if (!series.played) continue
+      for (const slot of series.slots) {
+        if (slot.team === null) continue
+        const row = rows.get(slot.team) ?? { team: slot.team, region: slot.region, wins: 0, losses: 0, results: [] }
+        if (slot.won) row.wins++
+        else row.losses++
+        row.results.push(slot.won ? 'W' : 'L')
+        rows.set(slot.team, row)
+      }
+    }
+  }
+  return [...rows.values()].sort((a, b) => b.wins - a.wins || a.losses - b.losses || a.team.localeCompare(b.team))
 }
 
 /** Rounds as Leaguepedia lists them: one per tab, in order. */

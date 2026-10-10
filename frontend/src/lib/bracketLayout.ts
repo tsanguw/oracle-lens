@@ -25,8 +25,8 @@ export interface Link {
   /** Where the line leaves the earlier series and where it enters the later one. */
   from: { x: number; y: number }
   to: { x: number; y: number }
-  /** True when the team won the series it leaves, so the line is drawn bold. */
-  won: boolean
+  /** How the team left the earlier series: won it (a bold line), lost it and dropped down (a dashed one), or it is unplayed. */
+  kind: 'won' | 'drop' | 'open'
 }
 
 export interface BracketLayout {
@@ -89,13 +89,13 @@ export function layoutBracket(rounds: StageRound[]): BracketLayout {
   const links: Link[] = []
   for (const p of placed) {
     p.series.slots.forEach((slot, side) => {
-      const src = slot.from && slot.from.as !== 'lost' ? byId.get(slot.from.seriesId) : undefined
-      if (!src) return
+      const src = slot.from ? byId.get(slot.from.seriesId) : undefined
+      if (!src || !slot.from) return
       const srcSide = src.series.slots.findIndex((x) => x.team === slot.team)
       links.push({
         from: { x: src.x + CARD_W, y: slotY(src.y, Math.max(0, srcSide)) },
         to: { x: p.x, y: slotY(p.y, side) },
-        won: slot.from?.as === 'won',
+        kind: slot.from.as === 'won' ? 'won' : slot.from.as === 'lost' ? 'drop' : 'open',
       })
     })
   }

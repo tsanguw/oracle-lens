@@ -68,7 +68,7 @@ export function Bracket({ rounds, label }: { rounds: StageRound[]; label: string
         <svg className="brk__lines" width={layout.width} height={layout.height} aria-hidden="true">
           {layout.links.map((l, i) => {
             const mid = l.from.x + (l.to.x - l.from.x) / 2
-            return <path key={i} className={l.won ? 'is-won' : undefined} d={`M${l.from.x} ${l.from.y} H${mid} V${l.to.y} H${l.to.x}`} />
+            return <path key={i} className={l.kind === 'won' ? 'is-won' : l.kind === 'drop' ? 'is-drop' : undefined} d={`M${l.from.x} ${l.from.y} H${mid} V${l.to.y} H${l.to.x}`} />
           })}
         </svg>
         {layout.heads.map((h) => (

@@ -578,10 +578,20 @@ export interface StageRound {
   series: StageSeries[]
 }
 
+export interface SwissRow {
+  team: string
+  region: string | null
+  wins: number
+  losses: number
+  results: ('W' | 'L')[]
+}
+
 export interface TournamentStage {
   key: 'playin' | 'groups' | 'swiss' | 'knockout'
   label: string
   rounds: StageRound[]
+  /** Swiss stages only: every team with its record, best first. */
+  standings?: SwissRow[]
 }
 
 export interface StagesResponse {

@@ -200,3 +200,92 @@ a.brk__name:hover {
 .brk__round .brk__head--flow {
   position: static;
 }
+
+/* A team that dropped to the lower bracket: a faint dashed line from the series it lost. */
+.brk__lines path.is-drop {
+  stroke: var(--border);
+  stroke-dasharray: 4 4;
+  stroke-width: 1.25;
+}
+
+/* Swiss records: one column per record, the best on the left. */
+.swiss {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin-bottom: 14px;
+  padding-bottom: 4px;
+}
+.swiss__group {
+  flex: 1 0 168px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px 12px;
+}
+.swiss__group.is-advanced {
+  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
+  background: color-mix(in srgb, var(--gold) 6%, var(--bg-panel));
+}
+.swiss__group.is-out {
+  opacity: 0.72;
+}
+.swiss__record {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font: 700 22px var(--font-display);
+  letter-spacing: 0.04em;
+}
+.swiss__tag {
+  font: 600 11px var(--font-body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.is-advanced .swiss__tag {
+  color: var(--gold);
+}
+.swiss__teams {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.swiss__teams li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.swiss__teams a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  text-decoration: none;
+}
+.swiss__teams a:hover {
+  text-decoration: underline;
+}
+.swiss__path {
+  display: inline-flex;
+  gap: 2px;
+}
+.swiss__path i {
+  width: 6px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--border-strong);
+}
+.swiss__path i.is-win {
+  background: #46b36b;
+}
+.swiss__path i.is-loss {
+  background: #c8505a;
+}

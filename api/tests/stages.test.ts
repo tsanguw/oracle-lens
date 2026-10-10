@@ -106,6 +106,26 @@ describe('buildStages', () => {
     expect(knockout.rounds[1].series[0].slots[0].from).toEqual({ seriesId: rows[0].seriesId, as: null })
   })
 
+  it("adds each swiss team's record, best first, with its result in every round", () => {
+    const rows = [
+      row('Round 1', 1, 1, 'T1', 'G2', 1, '1-0'),
+      row('Round 1', 1, 2, 'BLG', 'HLE', 2, '0-1'),
+      row('Round 2', 2, 1, 'T1', 'HLE', 1, '1-0'),
+      row('Round 2', 2, 2, 'G2', 'BLG', 2, '0-1'),
+      row('Round 3', 3, 1, 'T1', 'BLG', null),
+      row('Quarterfinals', 4, 1, 'T1', 'HLE', 1),
+    ]
+    const stages = buildStages(rows, 'Worlds Main Event')
+    const swiss = stages.find((s) => s.key === 'swiss')!
+    expect(swiss.standings!.map((r) => [r.team, r.wins, r.losses, r.results.join('')])).toEqual([
+      ['T1', 2, 0, 'WW'],
+      ['BLG', 1, 1, 'LW'],
+      ['HLE', 1, 1, 'WL'],
+      ['G2', 0, 2, 'LL'],
+    ])
+    expect(stages.find((s) => s.key === 'knockout')!.standings).toBeUndefined()
+  })
+
   it('returns nothing for an event with no round data', () => {
     expect(buildStages([], 'LCK 2026 Summer')).toEqual([])
   })
