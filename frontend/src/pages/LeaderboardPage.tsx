@@ -7,7 +7,7 @@ import { dropInvalid, splitsFor, yearsFor } from '../lib/filterOptions'
 import { decimal, percent, shortTeam, whole } from '../lib/format'
 import Podium from '../components/Podium'
 import { PlayerPhoto, TeamLogo } from '../components/Images'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta } from '../lib/usePageMeta'
 import { usePatchOptions } from '../lib/usePatchOptions'
 import ErrorState from '../components/ErrorState'
 
@@ -47,7 +47,7 @@ export default function LeaderboardPage() {
   const query = params.toString()
   const board = useApi<LeaderboardResponse>(`/api/leaderboard/players${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle('Player leaderboard')
+  usePageMeta({ title: 'Pro player leaderboard: KDA, win rate and damage', description: 'Leaderboard of pro League of Legends players by KDA, win rate, damage per minute and more, for the LCK, LPL, LEC, LCS, CBLOL, LCP, Worlds and MSI. Filter by league, year, split, patch and role.' })
 
   const data = board.data
   const range = data?.range ?? null

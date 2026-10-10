@@ -6,7 +6,7 @@ import { ListHead, listState, Pager, SearchField } from '../components/ListParts
 import { dateRange, shortTeam } from '../lib/format'
 import { TeamLogo } from '../components/Images'
 import { LiveNow } from '../components/ListPodiums'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta } from '../lib/usePageMeta'
 import ErrorState from '../components/ErrorState'
 
 const STAGES = ['Regular season', 'Playoffs', 'Qualifier']
@@ -17,7 +17,7 @@ export default function TournamentsListPage() {
   const query = params.toString()
   const list = useApi<TournamentListResponse>(`/api/tournaments${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle('Tournaments')
+  usePageMeta({ title: 'Pro League of Legends tournaments and brackets', description: 'Every pro League of Legends tournament since 2011: LCK, LPL, LEC, LCS, CBLOL, LCP, Worlds and MSI, with brackets, standings and results.' })
   const { sort, dir, q, update, setPage, applyFilters } = listState(params, setParams, 'date')
   const data = list.data
 

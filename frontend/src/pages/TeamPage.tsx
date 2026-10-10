@@ -17,7 +17,8 @@ import TeamContext from '../components/TeamContext'
 import TeamHeader, { TeamHeaderSkeleton } from '../components/TeamHeader'
 import { SidePanel, splitLineup, TeamLineup, TeamPicksTable, TeamPlayersTable, TeamTiles } from '../components/TeamTables'
 import { TeamLogo } from '../components/Images'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta, useJsonLd } from '../lib/usePageMeta'
+import { notFoundSeo, teamLd, teamSeo } from '../lib/seoText'
 import ErrorState from '../components/ErrorState'
 
 export default function TeamPage({ name }: { name: string }) {
@@ -32,7 +33,9 @@ export default function TeamPage({ name }: { name: string }) {
   const opponents = useApi<TeamOpponentsResponse>(`${base}/opponents${qs}`)
   const context = useApi<TeamContextResponse>(`${base}/context`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle(name)
+  const missing = team.error?.status === 404
+  usePageMeta({ ...(missing ? notFoundSeo('Team') : teamSeo(name, team.data)), noindex: missing })
+  useJsonLd(teamLd(team.data))
 
   const reset = () => setParams(new URLSearchParams())
 

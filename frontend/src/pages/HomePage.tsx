@@ -5,13 +5,13 @@ import SearchBox from '../components/SearchBox'
 import HeroShow from '../components/HeroShow'
 import { ChampionStrip, TopPlayers, TournamentRows, TournamentRowsSkeleton } from '../components/HomeParts'
 import ErrorState from '../components/ErrorState'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta } from '../lib/usePageMeta'
 
 export default function HomePage() {
   const recent = useApi<RecentTournamentsResponse>('/api/tournaments/recent?limit=5')
   // One request feeds both the hero slideshow and the champion strip.
   const champions = useApi<ListResponse<ChampionListRow>>('/api/champions?pageSize=8&sort=presence')
-  usePageTitle(null)
+  usePageMeta({ title: null })
 
   return (
     <main className="main home home--hero">

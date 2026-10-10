@@ -7,6 +7,7 @@ import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerContext } from './playerContext.js'
 import { loadImageManifest } from './assets.js'
+import { loadSitemap } from './sitemap.js'
 import { championsListSchema, loadChampionsList, loadTeamsList, loadTournamentsList, teamsListSchema, tournamentsListSchema } from './listQueries.js'
 import { loadTeamContext } from './teamContext.js'
 import { loadStages } from './stages.js'
@@ -277,6 +278,12 @@ export function createApp(options: AppOptions = {}) {
   app.get('/api/assets/images', wrap(async (_req, res) => {
     res.set('Cache-Control', 'public, max-age=300')
     res.json(await loadImageManifest(pool))
+  }))
+
+  /** Every page worth indexing, for the front end's sitemap.xml. Changes when the sync runs, so it is cacheable. */
+  app.get('/api/sitemap', wrap(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=3600')
+    res.json(await loadSitemap(pool))
   }))
 
   app.get('/api/teams', wrap(async (req, res) => {

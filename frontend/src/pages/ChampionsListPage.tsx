@@ -6,7 +6,7 @@ import { ListHead, listState, Pager, SearchField, SortHeader } from '../componen
 import { decimal, NA, percent } from '../lib/format'
 import { ChampionIcon } from '../components/Images'
 import { ChampionPodium } from '../components/ListPodiums'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta } from '../lib/usePageMeta'
 import ErrorState from '../components/ErrorState'
 
 type SortKey = 'presence' | 'games' | 'winRate' | 'pickRate' | 'banRate' | 'kda'
@@ -34,7 +34,7 @@ export default function ChampionsListPage() {
   const query = params.toString()
   const board = useApi<ListResponse<ChampionListRow>>(`/api/champions${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle('Champions')
+  usePageMeta({ title: 'Pro champion stats: pick rate, ban rate and win rate', description: 'Which champions pro League of Legends teams pick and ban, with presence, pick rate, ban rate and win rate by league, year, split, patch and role.' })
   const { sort, dir, q, update, onSort, setPage, applyFilters } = listState(params, setParams, 'presence')
   const data = board.data
 
