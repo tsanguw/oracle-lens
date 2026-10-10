@@ -1,0 +1,58 @@
+# Weekly dependency update pull requests, one grouped pull request per area so they stay readable.
+#
+# Version updates are aimed at `dev`, not `main` (see the README's branches section). Dependabot reads this file from the
+# default branch, so it takes effect once a release has merged into `main`. GitHub's security-update pull requests are not
+# affected by `target-branch`: they always target the default branch.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /api
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      api-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "api"
+
+  - package-ecosystem: npm
+    directory: /frontend
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      frontend-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "frontend"
+
+  - package-ecosystem: pip
+    directory: /sync
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      sync-dependencies:
+        patterns: ["*"]
+    commit-message:
+      prefix: "sync"
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 2
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
