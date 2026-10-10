@@ -272,6 +272,7 @@ scripts/
   nightly-sync.yml  daily sync into production
   secret-scan.yml   secret scan on every push
 render.yaml         Render blueprint for the API
+LICENSE             MIT license for the code
 ```
 
 ## Roadmap
@@ -309,3 +310,7 @@ render.yaml         Render blueprint for the API
 ## Data attribution
 
 Data is from [Leaguepedia](https://lol.fandom.com), licensed under CC BY-SA (check Leaguepedia's current terms for the exact version). The site footer carries this attribution on every page.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE). That covers the code only: the data comes from Leaguepedia under its own CC BY-SA terms (see above), and champion art, icons and other League of Legends assets belong to Riot Games. Oracle Lens is not endorsed by or affiliated with Riot Games or Leaguepedia.
