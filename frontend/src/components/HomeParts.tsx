@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ChampionListRow, LeaderboardResponse, ListResponse, RecentTournament } from '../api/types'
-import { useApi } from '../api/useApi'
+import { useApi, type ApiState } from '../api/useApi'
 import { dateRange, decimal, percent } from '../lib/format'
 import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
 
@@ -96,8 +96,7 @@ export function TournamentRowsSkeleton() {
 }
 
 /** The eight champions picked or banned in the most games, linking to their pages. */
-export function ChampionStrip() {
-  const list = useApi<ListResponse<ChampionListRow>>('/api/champions?pageSize=8&sort=presence')
+export function ChampionStrip({ list }: { list: ApiState<ListResponse<ChampionListRow>> }) {
   return (
     <section className="section" aria-labelledby="champs-title">
       <div className="section__head home__head">

@@ -9,7 +9,7 @@ export class ApiError extends Error {
   }
 }
 
-interface State<T> {
+export interface ApiState<T> {
   data: T | null
   error: ApiError | null
   loading: boolean
@@ -18,8 +18,8 @@ interface State<T> {
 }
 
 /** Fetches `path` (relative, e.g. /api/players/x?year=2026); refetches when it changes. */
-export function useApi<T>(path: string): State<T> {
-  const [state, setState] = useState<Omit<State<T>, 'reload'>>({ data: null, error: null, loading: true })
+export function useApi<T>(path: string): ApiState<T> {
+  const [state, setState] = useState<Omit<ApiState<T>, 'reload'>>({ data: null, error: null, loading: true })
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
