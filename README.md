@@ -4,17 +4,74 @@ Browse professional League of Legends esports stats: players, teams, champions, 
 
 > **Status: live at [oracle-lens.pages.dev](https://oracle-lens.pages.dev).** Every page in the plan is built: the home page (search and recent tournaments), the four lists (players, teams, champions, tournaments) and their detail pages, with tournament stages and brackets, on the full backfill (all six leagues, 2011 onward, plus internationals). A nightly sync keeps it current. See the [Roadmap](#roadmap).
 
+<p align="center">
+  <a href="https://oracle-lens.pages.dev"><img src="assets/screenshots/home.webp" alt="The Oracle Lens home page: a search bar over Legends of Runeterra card art, with the most contested champions underneath" width="100%"></a>
+</p>
+
+<table>
+  <tr>
+    <td width="33%"><a href="https://oracle-lens.pages.dev/players/Faker"><img src="assets/screenshots/player.webp" alt="A player page for Faker: win rate, KDA, recent series, related team, events and schedule"></a><br><sub><b>Player pages</b>: stats, champion pool, matchups and linked context</sub></td>
+    <td width="33%"><a href="https://oracle-lens.pages.dev/champions/Ahri"><img src="assets/screenshots/champion.webp" alt="A champion page for Ahri: presence, win rate and games, with top players and teams"></a><br><sub><b>Champion pages</b>: presence, win rate, top players and teams</sub></td>
+    <td width="33%"><a href="https://oracle-lens.pages.dev/tournaments/587"><img src="assets/screenshots/bracket.webp" alt="The Worlds 2025 knockout bracket, from quarterfinals to the final, above the standings and results"></a><br><sub><b>Tournaments</b>: Swiss, group and knockout stages drawn as brackets</sub></td>
+  </tr>
+</table>
+
+## Built with
+
+| | |
+|---|---|
+| **Frontend** | [React](https://react.dev), [Vite](https://vite.dev), [TypeScript](https://www.typescriptlang.org), [React Router](https://reactrouter.com), [Motion](https://motion.dev) |
+| **API** | [Node.js](https://nodejs.org), [Express](https://expressjs.com), [node-postgres](https://node-postgres.com), [Zod](https://zod.dev), [express-rate-limit](https://github.com/express-rate-limit/express-rate-limit), [Vitest](https://vitest.dev) and [Supertest](https://github.com/forwardemail/supertest) |
+| **Sync** | [Python](https://www.python.org), [mwrogue](https://github.com/RheingoldRiver/mwrogue) and [mwclient](https://github.com/mwclient/mwclient), [Psycopg](https://www.psycopg.org), [Pillow](https://python-pillow.org), [boto3](https://github.com/boto/boto3), [pytest](https://pytest.org) |
+| **Database** | [PostgreSQL](https://www.postgresql.org), hosted on [Neon](https://neon.com); [Docker](https://www.docker.com) for the local copy |
+| **Hosting** | [Cloudflare Pages](https://pages.cloudflare.com) (frontend), [Render](https://render.com) (API), [Cloudflare R2](https://www.cloudflare.com/developer-platform/products/r2/) (images and card art) |
+| **Automation** | [GitHub](https://github.com) and [GitHub Actions](https://github.com/features/actions) for CI, the nightly sync and the secret scan; [UptimeRobot](https://uptimerobot.com) to keep the API awake |
+| **Analytics** | [Cloudflare Web Analytics](https://www.cloudflare.com/web-analytics/): no cookies, no consent banner |
+| **Data and assets** | [Leaguepedia](https://lol.fandom.com) (Cargo API), Riot's [Data Dragon](https://developer.riotgames.com/docs/lol#data-dragon) and [Legends of Runeterra](https://developer.riotgames.com/docs/lor) card art, [Google Fonts](https://fonts.google.com/specimen/Barlow) (Barlow) |
+
 ## Architecture
 
+```mermaid
+flowchart LR
+    subgraph sources["Data sources"]
+        LP["<b>Leaguepedia</b><br/>Cargo API"]
+        RIOT["<b>Riot</b><br/>Data Dragon and<br/>card art"]
+    end
+
+    subgraph nightly["Nightly pipeline"]
+        GHA["<b>GitHub Actions</b><br/>daily, 12:00 UTC"]
+        SYNC["<b>sync/</b> (Python)<br/>throttled, resumable"]
+        GHA --> SYNC
+    end
+
+    subgraph storage["Storage"]
+        PG[("<b>Neon</b><br/>PostgreSQL")]
+        R2[("<b>Cloudflare R2</b><br/>logos, photos, art")]
+    end
+
+    subgraph serving["Serving"]
+        API["<b>api/</b> (Node, Express)<br/>on Render"]
+        FE["<b>frontend/</b> (React, Vite)<br/>on Cloudflare Pages"]
+    end
+
+    LP -- "bot login" --> SYNC
+    RIOT --> SYNC
+    SYNC -- "upserts" --> PG
+    SYNC -- "WebP images" --> R2
+    PG -- "SQL" --> API
+    API -- "JSON /api/*" --> FE
+    R2 -- "images" --> FE
+    FE --> USER(("Visitors"))
+
+    classDef store fill:#1b212c,stroke:#e7300e,stroke-width:2px,color:#ffffff
+    classDef app fill:#141922,stroke:#6b7a90,color:#ffffff
+    classDef edge fill:#e7300e,stroke:#e7300e,color:#ffffff
+    class PG,R2 store
+    class SYNC,API,FE,GHA,LP,RIOT app
+    class USER edge
 ```
-Leaguepedia Cargo API
-        │  (bot login, throttled, backoff)
-        ▼
-  sync/  (Python)  ──►  PostgreSQL  ◄──  api/  (Node + Express + TypeScript)
-                                              ▲
-                                              │  /api/*
-                                        frontend/  (React + Vite + TypeScript)
-```
+
+A visitor's browser only ever talks to the frontend, the API and the image bucket. Leaguepedia and Riot are called by the nightly sync, never when a page loads.
 
 | Folder | What it is |
 |---|---|

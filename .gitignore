@@ -22,8 +22,5 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local Claude tooling
-.claude/
-
 # Sync run logs
 sync/logs/
