@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 Log = Callable[[str], None]
-KINDS = ("teams", "players")
+KINDS = ("teams", "players", "art")
 CACHE = "public, max-age=31536000, immutable"
 
 

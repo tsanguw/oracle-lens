@@ -88,6 +88,10 @@ def main() -> int:
     im.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder for the cached images")
     im.add_argument("--r2", action="store_true", help="treat images already in the R2 bucket as present (for a runner with no local image folder)")
     im.add_argument("--limit", type=int, help="download at most this many new files per kind (for a quick trial)")
+    ar = sub.add_parser("art", help="cache Legends of Runeterra card art as small WebP files (about 100 files; run once, then upload-images)")
+    ar.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder to save under (art/ is created inside it)")
+    ar.add_argument("--limit", type=int, help="save at most this many new files (for a quick trial)")
+    ar.add_argument("--redo", action="store_true", help="convert cards that are already saved again")
     up = sub.add_parser("upload-images", help="upload cached logos and photos to Cloudflare R2 (needs the R2_* settings)")
     up.add_argument("--from", dest="src", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"))
     lt = sub.add_parser("logo-tones", help="measure which team logos are too dark for the dark panels (needs the cached images or the R2 settings)")
@@ -119,6 +123,12 @@ def main() -> int:
             if "players" in kinds:
                 sync_player_photos(conn, lp, out_dir, log, args.limit, remote)
         return 0
+    if args.mode == "art":
+        from lolsync.art import cache_art, card_list
+
+        ts = Path(__file__).resolve().parent.parent / "frontend" / "src" / "lib" / "runeterra.ts"
+        counts = cache_art(card_list(ts.read_text(encoding="utf-8")), Path(args.out), log, limit=args.limit, redo=args.redo)
+        return 1 if counts["failed"] else 0
     if args.mode == "upload-images":
         from lolsync.r2 import client_from_env, upload_images
 

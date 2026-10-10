@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiUrl } from '../api/base'
+import { IMAGE_BASE } from '../lib/imageBase'
 
 /*
  * Champion icons come from Riot's Data Dragon CDN; team logos and player photos are files cached by the sync
@@ -8,7 +9,6 @@ import { apiUrl } from '../api/base'
  * Leaguepedia has no picture for.
  */
 
-const IMAGE_BASE: string = (import.meta.env.VITE_IMAGE_BASE as string | undefined) ?? '/img'
 const DDRAGON = 'https://ddragon.leagueoflegends.com'
 
 interface Manifest {

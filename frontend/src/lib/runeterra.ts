@@ -107,6 +107,8 @@ const CARDS: Record<string, [number, string, string, number, number]> = {
   "Zoe": [3, "03MT009", "Targon", 0.47, 0.40],
 }
 
+import { IMAGE_BASE } from './imageBase'
+
 const ART = 'https://dd.b.pvp.net/latest'
 
 /** Region colours: the slideshow tints its accent, the embers and the progress bar with the card's region. */
@@ -152,7 +154,9 @@ export function coverPosition(focus: Focus, imageRatio: number, frameRatio: numb
 }
 
 export interface RuneterraCard {
+  /** Our own small WebP copy (R2 in production); `fallback` is Riot's original, used when ours is missing. */
   url: string
+  fallback: string
   mask: string
   focus: Focus
   /** The region's key (for example PiltoverZaun); regionName is the one to show. */
@@ -167,7 +171,8 @@ export function cardFor(champion: string): RuneterraCard | null {
   if (!c) return null
   const [set, code, region, fx, fy] = c
   return {
-    url: `${ART}/set${set}/en_us/img/cards/${code}-full.png`,
+    url: `${IMAGE_BASE}/art/${code}.webp`,
+    fallback: `${ART}/set${set}/en_us/img/cards/${code}-full.png`,
     mask: maskUrl(champion),
     focus: [fx, fy],
     region,

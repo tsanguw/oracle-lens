@@ -49,6 +49,7 @@ export function resolveSlides(sources: SlideSource[], keys: Record<string, strin
     slides.push({
       name: s.champion,
       url: card.url,
+      fallback: card.fallback,
       color: card.color,
       region: card.regionName,
       note: s.note,

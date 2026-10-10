@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { coverPosition, type Focus } from '../lib/runeterra'
 import type { Slideshow } from '../lib/useSlideshow'
 import { ChampionIcon } from './Images'
@@ -6,6 +6,8 @@ import { ChampionIcon } from './Images'
 export interface Slide {
   name: string
   url: string
+  /** Used instead of `url` if that one fails to load (our copy of the art is missing); none for art with no second source. */
+  fallback?: string
   color: string
   /** The region's name for display; weather picks the atmosphere. */
   region: string
@@ -25,6 +27,13 @@ export interface Slide {
  * frame's width / height) positions each so its champion stays in view.
  */
 export function SlideLayers({ slides, show, aspect }: { slides: Slide[]; show: Slideshow; aspect: number }) {
+  const [useFallback, setUseFallback] = useState<ReadonlySet<number>>(new Set())
+  const srcOf = (i: number) => (useFallback.has(i) && slides[i].fallback ? slides[i].fallback : slides[i].url)
+  const failed = (i: number) => {
+    // our copy did not load: try the original once; if that fails too, stop waiting for it
+    if (!useFallback.has(i) && slides[i].fallback) setUseFallback(new Set(useFallback).add(i))
+    else show.markReady(i)
+  }
   const state = (i: number) => `${i === show.index ? ' is-on' : ''}${i === show.prev ? ' is-prev' : ''}${show.ready.has(i) ? ' is-ready' : ''}`
   return (
     <>
@@ -34,12 +43,12 @@ export function SlideLayers({ slides, show, aspect }: { slides: Slide[]; show: S
             <img
               key={s.name}
               className={`pstage__img${state(i)}`}
-              src={s.url}
+              src={srcOf(i)}
               style={{ objectPosition: coverPosition(s.focus, s.ratio, aspect) }}
               alt=""
               decoding="async"
               onLoad={() => show.markReady(i)}
-              onError={() => show.markReady(i)}
+              onError={() => failed(i)}
             />
           ) : null,
         )}
@@ -58,7 +67,7 @@ export function SlideLayers({ slides, show, aspect }: { slides: Slide[]; show: S
             maskRepeat: 'no-repeat',
             WebkitMaskRepeat: 'no-repeat',
           }
-          return <img key={s.name} className={`pstage__img${state(i)}`} src={s.url} style={{ objectPosition: pos, ...cut } as CSSProperties} alt="" decoding="async" />
+          return <img key={s.name} className={`pstage__img${state(i)}`} src={srcOf(i)} style={{ objectPosition: pos, ...cut } as CSSProperties} alt="" decoding="async" />
         })}
       </div>
     </>
