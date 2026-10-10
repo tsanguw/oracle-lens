@@ -20,7 +20,8 @@ import {
   TournamentPlayerCards,
   TournamentPlayersTable,
 } from '../components/TournamentParts'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta, useJsonLd } from '../lib/usePageMeta'
+import { notFoundSeo, tournamentLd, tournamentSeo } from '../lib/seoText'
 import ErrorState from '../components/ErrorState'
 import TournamentStages from '../components/TournamentStages'
 
@@ -37,7 +38,9 @@ export default function TournamentPage({ id }: { id: string }) {
   const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
   const context = useApi<TournamentContextResponse>(`${base}/context`)
   const stages = useApi<StagesResponse>(`${base}/stages`)
-  usePageTitle(tournament.data?.tournament.name ?? 'Tournament')
+  const missing = tournament.error?.status === 404
+  usePageMeta({ ...(missing ? notFoundSeo('Tournament') : tournamentSeo(tournament.data)), noindex: missing })
+  useJsonLd(tournamentLd(tournament.data))
 
   if (tournament.error?.status === 404) {
     return (

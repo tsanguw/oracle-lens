@@ -6,7 +6,7 @@ import { ListHead, listState, Pager, SearchField, SortHeader } from '../componen
 import { decimal, duration, goldDiff, percent, shortTeam } from '../lib/format'
 import { TeamPodium } from '../components/ListPodiums'
 import { TeamLogo } from '../components/Images'
-import { usePageTitle } from '../lib/usePageTitle'
+import { usePageMeta } from '../lib/usePageMeta'
 import ErrorState from '../components/ErrorState'
 
 type SortKey = 'winRate' | 'games' | 'goldDiff' | 'killsPerGame' | 'towersPerGame' | 'avgGameLengthSec'
@@ -25,7 +25,7 @@ export default function TeamsListPage() {
   const query = params.toString()
   const board = useApi<ListResponse<TeamListRow>>(`/api/teams${query ? `?${query}` : ''}`)
   const filters = useApi<FiltersResponse>('/api/filters')
-  usePageTitle('Team leaderboard')
+  usePageMeta({ title: 'Pro team leaderboard: win rate and objectives', description: 'Leaderboard of pro League of Legends teams by win rate, gold difference, towers and dragons, for every major league plus Worlds and MSI. Filter by league, year and split.' })
   const { sort, dir, q, update, onSort, setPage, applyFilters } = listState(params, setParams, 'winRate')
   const data = board.data
 

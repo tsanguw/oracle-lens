@@ -268,6 +268,13 @@ Order matters a little: the data first, then the services that read it. The comm
 
 Good to know: Render's free tier puts the API to sleep after about 15 minutes without traffic, so the first visit afterwards waits 30 to 60 seconds. A free UptimeRobot monitor checks `/healthz` every 5 minutes, which keeps it awake without using GitHub Actions minutes (and emails if the API goes down). A failed nightly run emails you; running it again from the Actions tab is safe, because reloading a tournament is idempotent.
 
+### Search engines
+
+- **Each page describes itself.** `usePageMeta` (`frontend/src/lib/usePageMeta.ts`) sets the title, description, canonical address and share tags per page, using the data on screen (for a player: win rate, KDA and games in the range shown). The canonical address is the path without the query string, so filtered views count as one page. Missing players, teams, champions, tournaments and unknown addresses are marked `noindex`. Player, team and tournament pages also carry schema.org JSON-LD. The wording lives in `frontend/src/lib/seoText.ts`.
+- **`/sitemap.xml` and `/robots.txt`** are Cloudflare Pages Functions in `frontend/functions/`. The sitemap lists the fixed pages, every champion and tournament with games, and every player and team with at least 10 games (about 3,500 addresses), with the date of the latest game. It reads `/api/sitemap` from the API, caches the result for an hour, and answers 503 with `Retry-After` if the API is down. Both build their addresses from the request, so a custom domain needs no edit. The function reads `VITE_API_BASE` at run time and falls back to the Render address.
+- **Tests:** `npm run test:functions` (in `frontend/`) covers both functions with Node's own test runner; the API test is `api/tests/sitemap.test.ts`.
+- **Getting listed:** add the site to [Google Search Console](https://search.google.com/search-console) as a URL-prefix property, verify it (for a `pages.dev` address, with the HTML tag method), submit `https://oracle-lens.pages.dev/sitemap.xml`, and request indexing for the home page and a few key pages. [Bing Webmaster Tools](https://www.bing.com/webmasters) can import the property. Previews (`*.pages.dev` branch builds) are sent with `noindex` by Cloudflare.
+
 ## Security
 
 This is a read-only public site over public data. The API has `GET` routes only, no accounts and no user input stored. What is worth protecting is the credentials (the Neon string, the Leaguepedia bot login, the R2 keys), and they live only in the git-ignored `.env`, in GitHub Actions secrets and in the Render and Cloudflare dashboards. They were checked and are not in the code, the git history or the built site. To report a vulnerability, see [SECURITY.md](SECURITY.md).
@@ -318,6 +325,7 @@ frontend/
   src/components/ header/footer, filter bar, stat tiles, champion table
   src/pages/      player page and placeholder routes
   src/styles/     design tokens, layout, player page styles
+  functions/      Cloudflare Pages Functions: /sitemap.xml and /robots.txt (with Node tests)
 sync/
   lolsync/        client, normalizers, backfill
   league_aliases.yaml
