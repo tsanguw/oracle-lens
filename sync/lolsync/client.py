@@ -11,7 +11,7 @@ from mwclient.errors import APIError
 
 from .normalize import clean_row
 
-USER_AGENT = "lol-stats-portfolio/0.1 (+https://github.com/tsanguw)"
+USER_AGENT = "oracle-lens/0.1 (+https://github.com/tsanguw)"
 PAGE_SIZE = 500
 THROTTLE_SEC = 1.0
 MAX_ATTEMPTS = 6

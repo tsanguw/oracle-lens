@@ -18,7 +18,7 @@ from PIL import Image
 
 Log = Callable[[str], None]
 CARD_URL = "https://dd.b.pvp.net/latest/set{set}/en_us/img/cards/{code}-full.png"
-USER_AGENT = "lol-stats-portfolio/0.1 (+https://github.com/tsanguw)"
+USER_AGENT = "oracle-lens/0.1 (+https://github.com/tsanguw)"
 QUALITY = 80
 ROW = re.compile(r'^\s+"[^"]+": \[(\d+), "(\w+)",', re.MULTILINE)
 

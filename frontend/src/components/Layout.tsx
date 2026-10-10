@@ -57,7 +57,7 @@ function Header() {
       <div className="site-header__inner">
         <Link to="/" className="brand">
           <span className="brand__mark" aria-hidden="true" />
-          <span className="brand__name">[Site name]</span>
+          <span className="brand__name">Oracle Lens</span>
         </Link>
         <nav aria-label="Primary" className="tabs">
           {TABS.map((tab) => (
@@ -87,7 +87,7 @@ function Footer() {
       <div className="site-footer__inner site-footer__legal">
         <span>
           Champion icons and Legends of Runeterra card art are from Riot Games’ Data Dragon. Team logos and player photos belong to their owners, and come from
-          Leaguepedia. This is a non-commercial, educational project. [Site name] isn’t endorsed by Riot Games and doesn’t
+          Leaguepedia. This is a non-commercial, educational project. Oracle Lens isn’t endorsed by Riot Games and doesn’t
           reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games
           properties. Riot Games and all associated properties are trademarks or registered trademarks of Riot Games, Inc.
         </span>
