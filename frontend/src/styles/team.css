@@ -1,0 +1,213 @@
+/* Team page: the form line in the header, grouped tiles, the lineup, the draft split and the side panel. */
+.form {
+  display: flex;
+  gap: 36px;
+  margin: 10px 0 0;
+}
+.form__stat {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+}
+.form__value {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+}
+.form__label {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.tile-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.tile-groups__title {
+  margin: 0 0 10px;
+}
+.tiles--five {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+/* Lineup: the five starters with real photos */
+.lineup {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.lineup__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  height: 100%;
+  padding: 18px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.lineup__card:hover {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.lineup__card:active {
+  transform: translateY(1px);
+}
+.lineup__card.is-dim {
+  opacity: 0.55;
+}
+.lineup__role {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lineup__card .img--photo,
+.lineup__card .avatar {
+  margin: 6px 0 4px;
+}
+.lineup__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.lineup__card:hover .lineup__name {
+  color: var(--gold);
+}
+.lineup__record {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.lineup__stats {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 16px;
+  margin: 10px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  width: 100%;
+}
+.lineup__stats dt {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.lineup__stats dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+/* Draft: picks beside bans */
+.draft {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 32px;
+  align-items: start;
+}
+.draft > * {
+  min-width: 0;
+}
+.draft .pool {
+  min-width: 460px;
+}
+.draft .bans {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+}
+
+/* Blue and red side records */
+.sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.sides__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px 20px;
+}
+.sides__item + .sides__item {
+  border-left: 1px solid var(--border);
+}
+.sides__name {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.sides__value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1;
+}
+.sides__record {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lineup li {
+    animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i, 0) * 60ms);
+  }
+}
+
+@media (max-width: 1100px) {
+  /* A lone last tile fills the row instead of leaving a hole. */
+  .tiles--five .tile:last-child {
+    grid-column: span 2;
+  }
+  .lineup {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .tiles--five {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .draft {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .tiles--five .tile:last-child {
+    grid-column: span 2;
+  }
+  .lineup__card {
+    padding: 14px;
+  }
+  .lineup__name {
+    font-size: 24px;
+  }
+  .sides__value {
+    font-size: 44px;
+  }
+  .lineup {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tiles--five {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* The header stacks on phones so the name and the form line get the full width. */
+  .hero__who:has(.form) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .form {
+    gap: 24px;
+  }
+  .form__value {
+    font-size: 32px;
+  }
+}

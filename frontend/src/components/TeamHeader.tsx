@@ -1,4 +1,5 @@
 import type { TeamResponse } from '../api/types'
+import { percent } from '../lib/format'
 import { TeamLogo } from './Images'
 
 export default function TeamHeader({ data }: { data: TeamResponse }) {
@@ -16,6 +17,18 @@ export default function TeamHeader({ data }: { data: TeamResponse }) {
               {team.region && <span className="tag">{team.region}</span>}
             </div>
             <h1 className="hero__name hero__name--team">{team.name}</h1>
+            {data.summary && (
+              <dl className="form">
+                <div className="form__stat">
+                  <dd className="form__value">{`${data.summary.wins}-${data.summary.losses}`}</dd>
+                  <dt className="form__label">Game record</dt>
+                </div>
+                <div className="form__stat">
+                  <dd className="form__value">{percent(data.summary.winRate)}</dd>
+                  <dt className="form__label">Win rate</dt>
+                </div>
+              </dl>
+            )}
           </div>
         </div>
         <div className="showing">

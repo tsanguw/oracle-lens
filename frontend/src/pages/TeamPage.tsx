@@ -15,7 +15,7 @@ import { StatTilesSkeleton } from '../components/StatTiles'
 import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
 import TeamContext from '../components/TeamContext'
 import TeamHeader, { TeamHeaderSkeleton } from '../components/TeamHeader'
-import { TeamPicksTable, TeamPlayersTable, TeamTiles } from '../components/TeamTables'
+import { SidePanel, splitLineup, TeamLineup, TeamPicksTable, TeamPlayersTable, TeamTiles } from '../components/TeamTables'
 import { TeamLogo } from '../components/Images'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
@@ -55,6 +55,7 @@ export default function TeamPage({ name }: { name: string }) {
   }
 
   const data = team.data
+  const lineup = splitLineup(players.data?.players ?? [])
   const stale = team.loading || players.loading || draft.loading || opponents.loading
 
   return (
@@ -76,40 +77,46 @@ export default function TeamPage({ name }: { name: string }) {
             <section aria-labelledby="players" className="section">
               <div className="section__head">
                 <h2 id="players" className="section__title">
-                  Players
+                  Lineup
                 </h2>
                 <span className="section__note">Stats are for games with this team only</span>
               </div>
               {players.data ? (
-                players.data.empty ? <EmptyState onReset={reset} /> : <TeamPlayersTable players={players.data.players} />
-              ) : (
-                <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
-              )}
-            </section>
-
-            <section aria-labelledby="picks" className="section">
-              <div className="section__head">
-                <h2 id="picks" className="section__title">
-                  Most picked champions
-                </h2>
-                <span className="section__note">Grayed rows have fewer than 5 games</span>
-              </div>
-              {draft.data ? (
-                draft.data.picks.length === 0 ? (
-                  <p className="section__note">No draft data in this range.</p>
+                players.data.empty ? (
+                  <EmptyState onReset={reset} />
                 ) : (
-                  <TeamPicksTable picks={draft.data.picks} />
+                  <>
+                    <TeamLineup players={lineup.starters} />
+                    {lineup.others.length > 0 && (
+                      <>
+                        <h3 className="ctx__sub">Substitutes and fill-ins</h3>
+                        <TeamPlayersTable players={lineup.others} />
+                      </>
+                    )}
+                  </>
                 )
               ) : (
-                <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
+                <div className="skeleton" style={{ height: 280 }} aria-busy="true" />
               )}
             </section>
 
-            <section aria-labelledby="bans" className="section">
-              <h2 id="bans" className="section__title">
-                Bans
+            <section aria-labelledby="draft" className="section">
+              <h2 id="draft" className="section__title">
+                Draft
               </h2>
-              <div className="panels">
+              <div className="draft">
+                <div className="section">
+                  <h3 className="ctx__sub">Most picked champions</h3>
+                  {draft.data ? (
+                    draft.data.picks.length === 0 ? (
+                      <p className="section__note">No draft data in this range.</p>
+                    ) : (
+                      <TeamPicksTable picks={draft.data.picks} />
+                    )
+                  ) : (
+                    <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
+                  )}
+                </div>
                 <div className="section">
                   <h3 className="ctx__sub">Banned by this team</h3>
                   {draft.data ? (
@@ -117,8 +124,6 @@ export default function TeamPage({ name }: { name: string }) {
                   ) : (
                     <TargetBansSkeleton />
                   )}
-                </div>
-                <div className="section">
                   <h3 className="ctx__sub">Banned against this team</h3>
                   {draft.data ? (
                     draft.data.bansAgainst.length === 0 ? (
@@ -152,6 +157,7 @@ export default function TeamPage({ name }: { name: string }) {
                     })) ?? null
                   }
                 />
+                {data?.summary && <SidePanel summary={data.summary} />}
               </div>
             </section>
           </>

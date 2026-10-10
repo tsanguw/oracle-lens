@@ -9,37 +9,117 @@ interface Tile {
   sub: string
 }
 
-function tiles(s: TeamSummary): Tile[] {
+/** Two rows of five: how the team plays, then what it takes. Record and win rate live in the page header. */
+function groups(s: TeamSummary): { title: string; tiles: Tile[] }[] {
   return [
-    { label: 'Games', value: String(s.games), sub: `${s.wins} W · ${s.losses} L` },
     {
-      label: 'Win rate',
-      value: percent(s.winRate),
-      sub: `Blue ${percent(rate(s.blueWins, s.blueGames))} · Red ${percent(rate(s.redWins, s.redGames))}`,
+      title: 'Pace and combat',
+      tiles: [
+        { label: 'Avg game', value: duration(s.avgGameLengthSec), sub: 'Game length' },
+        { label: 'Kills / game', value: decimal(s.killsPerGame), sub: 'Team kills' },
+        { label: 'Deaths / game', value: decimal(s.deathsPerGame), sub: 'Opponent kills' },
+        { label: 'Gold / min', value: whole(s.goldPerMin), sub: 'Per game minute' },
+        { label: 'Gold diff', value: goldDiff(s.goldDiff).replace(' gold', ''), sub: 'Avg final, vs opponents' },
+      ],
     },
-    { label: 'Avg game', value: duration(s.avgGameLengthSec), sub: 'Game length' },
-    { label: 'Kills / game', value: decimal(s.killsPerGame), sub: 'Team kills' },
-    { label: 'Deaths / game', value: decimal(s.deathsPerGame), sub: 'Opponent kills' },
-    { label: 'Gold / min', value: whole(s.goldPerMin), sub: `Avg diff ${goldDiff(s.goldDiff)}` },
-    { label: 'Towers / game', value: decimal(s.towersPerGame), sub: 'Towers destroyed' },
-    { label: 'Dragons / game', value: decimal(s.dragonsPerGame), sub: 'Dragons taken' },
-    { label: 'Barons / game', value: decimal(s.baronsPerGame, 2), sub: 'Barons taken' },
-    { label: 'Heralds / game', value: decimal(s.heraldsPerGame, 2), sub: 'Heralds taken' },
-    { label: 'Void grubs / game', value: decimal(s.voidGrubsPerGame), sub: 'Grubs taken' },
-    { label: 'Gold diff', value: goldDiff(s.goldDiff).replace(' gold', ''), sub: 'Avg final, vs opponents' },
+    {
+      title: 'Objectives',
+      tiles: [
+        { label: 'Towers / game', value: decimal(s.towersPerGame), sub: 'Towers destroyed' },
+        { label: 'Dragons / game', value: decimal(s.dragonsPerGame), sub: 'Dragons taken' },
+        { label: 'Barons / game', value: decimal(s.baronsPerGame, 2), sub: 'Barons taken' },
+        { label: 'Heralds / game', value: decimal(s.heraldsPerGame, 2), sub: 'Heralds taken' },
+        { label: 'Void grubs / game', value: decimal(s.voidGrubsPerGame), sub: 'Grubs taken' },
+      ],
+    },
   ]
 }
 
 export function TeamTiles({ summary }: { summary: TeamSummary }) {
   return (
-    <div className="tiles">
-      {tiles(summary).map((t) => (
-        <div key={t.label} className="tile">
-          <span className="tile__label">{t.label}</span>
-          <span className="tile__value">{t.value}</span>
-          <span className="tile__sub">{t.sub}</span>
+    <div className="tile-groups">
+      {groups(summary).map((g) => (
+        <div key={g.title}>
+          <h3 className="ctx__sub tile-groups__title">{g.title}</h3>
+          <div className="tiles tiles--five">
+            {g.tiles.map((t) => (
+              <div key={t.label} className="tile">
+                <span className="tile__label">{t.label}</span>
+                <span className="tile__value">{t.value}</span>
+                <span className="tile__sub">{t.sub}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+const ROLE_ORDER = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
+
+/** The starting five: for each role, the player with the most games. Everyone else is a fill-in. */
+export function splitLineup(players: TeamPlayer[]): { starters: TeamPlayer[]; others: TeamPlayer[] } {
+  const starters: TeamPlayer[] = []
+  for (const role of ROLE_ORDER) {
+    const best = players.filter((p) => p.role === role).sort((a, b) => b.games - a.games)[0]
+    if (best) starters.push(best)
+  }
+  return { starters, others: players.filter((p) => !starters.includes(p)) }
+}
+
+export function TeamLineup({ players }: { players: TeamPlayer[] }) {
+  return (
+    <ol className="lineup">
+      {players.map((p, i) => (
+        <li key={p.page} style={{ ['--i' as string]: i }}>
+          <Link to={`/players/${encodeURIComponent(p.page)}`} className={`lineup__card${p.underMinSample ? ' is-dim' : ''}`}>
+            <span className="lineup__role">{p.role}</span>
+            <PlayerPhoto page={p.page} name={p.name} role={p.role} size={96} />
+            <span className="lineup__name">{p.name}</span>
+            <span className="lineup__record">{`${p.wins}-${p.games - p.wins}`} in {p.games} games</span>
+            <dl className="lineup__stats">
+              <div>
+                <dt>KDA</dt>
+                <dd>{decimal(p.kda)}</dd>
+              </div>
+              <div>
+                <dt>KP</dt>
+                <dd>{percent(p.killParticipation)}</dd>
+              </div>
+              <div>
+                <dt>DPM</dt>
+                <dd>{whole(p.damagePerMin)}</dd>
+              </div>
+            </dl>
+          </Link>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+/** Blue and red side records, which the header's single win rate hides. */
+export function SidePanel({ summary }: { summary: TeamSummary }) {
+  const sides = [
+    { name: 'Blue side', wins: summary.blueWins, games: summary.blueGames },
+    { name: 'Red side', wins: summary.redWins, games: summary.redGames },
+  ]
+  return (
+    <div className="panel">
+      <div className="panel__head">
+        <h3 className="panel__title">By side</h3>
+        <span className="panel__note">Game record on each side</span>
+      </div>
+      <div className="sides">
+        {sides.map((s) => (
+          <div key={s.name} className="sides__item">
+            <span className="sides__name">{s.name}</span>
+            <span className="sides__value">{percent(rate(s.wins, s.games))}</span>
+            <span className="sides__record">{s.games > 0 ? `${s.wins}-${s.games - s.wins}` : 'No games'}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
