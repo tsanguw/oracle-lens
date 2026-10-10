@@ -10,3 +10,10 @@
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  # Nothing here is meant to be shown inside another site's page, and nothing uses the camera, microphone or location.
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  # Report-only: the browser logs anything this policy would block (DevTools console, "[Report Only]") but blocks nothing.
+  # Once the live site shows no violations, rename it to Content-Security-Policy to enforce it. If images or the API sit
+  # on a custom domain instead of *.r2.dev / *.onrender.com, add that domain to img-src / connect-src first.
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://ddragon.leagueoflegends.com https://dd.b.pvp.net https://*.r2.dev; connect-src 'self' https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

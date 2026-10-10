@@ -1,4 +1,5 @@
 import cors from 'cors'
+import { rateLimit } from 'express-rate-limit'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { z, ZodError } from 'zod'
 import { pool } from './db.js'
@@ -71,11 +72,38 @@ type Handler = (req: Request, res: Response) => Promise<void>
 const wrap = (fn: Handler) => (req: Request, res: Response, next: NextFunction) =>
   fn(req, res).catch(next)
 
-export function createApp() {
+export interface AppOptions {
+  /** Requests allowed per IP address per minute on /api; 0 turns the limit off. Default: RATE_LIMIT_PER_MINUTE, else 300. */
+  rateLimitPerMinute?: number
+  /** Websites allowed to call the API from a browser, comma-separated. Default: CORS_ORIGIN, else every origin. */
+  corsOrigin?: string
+}
+
+export function createApp(options: AppOptions = {}) {
   const app = express()
-  app.use(cors())
+  app.disable('x-powered-by')
+  // Render and Cloudflare sit in front of the API; trust the first proxy so each visitor gets their own rate-limit count.
+  app.set('trust proxy', 1)
+  const origins = (options.corsOrigin ?? process.env.CORS_ORIGIN ?? '').split(',').map((o) => o.trim()).filter(Boolean)
+  app.use(cors(origins.length ? { origin: origins } : undefined))
   // Cheap liveness check for the host and the keep-awake ping; does not touch the database.
   app.get('/healthz', (_req, res) => void res.json({ ok: true }))
+
+  // A page load makes about ten calls, so 300 a minute is generous for people and a wall for scrapers hammering the
+  // aggregate queries on a small free database.
+  const perMinute = options.rateLimitPerMinute ?? Number(process.env.RATE_LIMIT_PER_MINUTE ?? 300)
+  if (perMinute > 0) {
+    app.use(
+      '/api',
+      rateLimit({
+        windowMs: 60_000,
+        limit: perMinute,
+        standardHeaders: 'draft-7',
+        legacyHeaders: false,
+        message: { error: 'Too many requests, slow down and try again in a minute' },
+      }),
+    )
+  }
 
   app.get('/api/meta/last-updated', wrap(async (_req, res) => {
     const { rows } = await pool.query(`SELECT value FROM meta WHERE key = 'last_synced_at'`)
