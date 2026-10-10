@@ -3,7 +3,9 @@ import type { FiltersResponse, TournamentListResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { ListHead, listState, Pager, SearchField } from '../components/ListParts'
-import { dateRange } from '../lib/format'
+import { dateRange, shortTeam } from '../lib/format'
+import { TeamLogo } from '../components/Images'
+import { LiveNow } from '../components/ListPodiums'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
 
@@ -42,6 +44,9 @@ export default function TournamentsListPage() {
           showing={showing}
           note="Qualifiers and promotion series are hidden unless you choose the Qualifier stage."
         />
+        {data && !data.empty && data.page === 1 && !q && !query && data.rows.some((r) => r.status === 'In progress') && (
+          <LiveNow events={data.rows.filter((r) => r.status === 'In progress').slice(0, 3)} />
+        )}
         <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search tournaments" placeholder="Search tournaments" status={list.loading ? 'Loading results' : list.data ? `${list.data.total.toLocaleString('en-US')} tournaments` : undefined} />
 
         {list.error ? (
@@ -56,7 +61,7 @@ export default function TournamentsListPage() {
           </div>
         ) : (
           <div className="table-wrap" aria-busy={list.loading}>
-            <table className="lb" style={{ opacity: list.loading && data ? 0.6 : 1, minWidth: 860 }}>
+            <table className="lb lb--named" style={{ opacity: list.loading && data ? 0.6 : 1, minWidth: 760 }}>
               <thead>
                 <tr>
                   <th scope="col" className={`lb__left${sort === 'name' ? ' is-sorted' : ''}`} aria-sort={sort === 'name' ? (dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
@@ -71,7 +76,6 @@ export default function TournamentsListPage() {
                       Dates{arrow('date')}
                     </button>
                   </th>
-                  <th scope="col" className="lb__left">Status</th>
                   <th scope="col" className="lb__left">Champion / leader</th>
                 </tr>
               </thead>
@@ -80,23 +84,24 @@ export default function TournamentsListPage() {
                   <tr key={t.id}>
                     <td className="lb__left lb__player">
                       <Link to={`/tournaments/${t.id}`}>{t.name}</Link>
+                      {t.status === 'In progress' && <span className="badge badge--live lb__live">In progress</span>}
                     </td>
                     <td className="lb__left">
                       <span className="tag tag--small">{t.league}</span>
                     </td>
                     <td className="lb__left lb__team">{t.stage ?? '—'}</td>
                     <td className="lb__left lb__team">{dateRange(t.startDate, t.endDate)}</td>
-                    <td className="lb__left">
-                      <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>
-                    </td>
                     <td className="lb__left lb__team">
                       {t.standingTeam ? (
-                        <>
-                          <span className="lb__sub">{t.standingLabel}</span>{' '}
-                          <Link to={`/teams/${encodeURIComponent(t.standingTeam)}`} className="pool__link">
-                            {t.standingTeam}
-                          </Link>
-                        </>
+                        <span className="with-img">
+                          <TeamLogo name={t.standingTeam} size={22} />
+                          <span>
+                            <span className="lb__sub">{t.standingLabel}</span>{' '}
+                            <Link to={`/teams/${encodeURIComponent(t.standingTeam)}`} className="pool__link">
+                              {shortTeam(t.standingTeam)}
+                            </Link>
+                          </span>
+                        </span>
                       ) : (
                         '—'
                       )}
@@ -106,7 +111,7 @@ export default function TournamentsListPage() {
                 {!data &&
                   Array.from({ length: 10 }, (_, i) => (
                     <tr key={i}>
-                      <td colSpan={6}>
+                      <td colSpan={5}>
                         <div className="skeleton" style={{ height: 22 }} />
                       </td>
                     </tr>

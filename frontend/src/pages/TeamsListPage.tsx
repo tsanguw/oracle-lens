@@ -3,7 +3,8 @@ import type { FiltersResponse, ListResponse, TeamListRow } from '../api/types'
 import { useApi } from '../api/useApi'
 import FilterBar from '../components/FilterBar'
 import { ListHead, listState, Pager, SearchField, SortHeader } from '../components/ListParts'
-import { decimal, duration, goldDiff, percent } from '../lib/format'
+import { decimal, duration, goldDiff, percent, shortTeam } from '../lib/format'
+import { TeamPodium } from '../components/ListPodiums'
 import { TeamLogo } from '../components/Images'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
@@ -37,6 +38,7 @@ export default function TeamsListPage() {
           showing={data?.range.label ?? null}
           note={`Minimum ${data?.minGames ?? 5} games to be ranked. Qualifiers and promotion series are not considered.`}
         />
+        {data && !data.empty && data.page === 1 && !q && data.rows.length >= 3 && <TeamPodium rows={data.rows.slice(0, 3)} sort={sort} />}
         <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search teams" placeholder="Search teams" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} teams` : undefined} />
 
         {board.error ? (
@@ -53,7 +55,7 @@ export default function TeamsListPage() {
           </div>
         ) : (
           <div className="table-wrap" aria-busy={board.loading}>
-            <table className="lb" style={{ opacity: board.loading && data ? 0.6 : 1, minWidth: 940 }}>
+            <table className="lb lb--ranked" style={{ opacity: board.loading && data ? 0.6 : 1, minWidth: 940 }}>
               <thead>
                 <tr>
                   <th scope="col" className="lb__rank">#</th>
@@ -71,7 +73,7 @@ export default function TeamsListPage() {
                     <td className="lb__left lb__player">
                       <span className="with-img">
                         <TeamLogo name={r.name} size={30} />
-                        <Link to={`/teams/${encodeURIComponent(r.name)}`}>{r.name}</Link>
+                        <Link to={`/teams/${encodeURIComponent(r.name)}`}>{shortTeam(r.name)}</Link>
                       </span>
                     </td>
                     <td className="lb__left">

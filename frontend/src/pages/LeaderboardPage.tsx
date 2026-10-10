@@ -136,7 +136,7 @@ export default function LeaderboardPage() {
         </div>
       ) : (
         <div className="table-wrap" aria-busy={board.loading}>
-          <table className="lb" style={{ opacity: board.loading && data ? 0.6 : 1 }}>
+          <table className="lb lb--ranked" style={{ opacity: board.loading && data ? 0.6 : 1 }}>
             <thead>
               <tr>
                 <th scope="col" className="lb__rank">#</th>

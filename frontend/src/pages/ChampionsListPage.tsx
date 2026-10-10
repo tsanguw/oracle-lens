@@ -5,6 +5,7 @@ import FilterBar from '../components/FilterBar'
 import { ListHead, listState, Pager, SearchField, SortHeader } from '../components/ListParts'
 import { decimal, NA, percent } from '../lib/format'
 import { ChampionIcon } from '../components/Images'
+import { ChampionPodium } from '../components/ListPodiums'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
 
@@ -46,6 +47,7 @@ export default function ChampionsListPage() {
           showing={data?.range.label ?? null}
           note="Presence is the share of games where a champion was picked or banned. Grayed rows have fewer than 5 games. Qualifiers and promotion series are not considered."
         />
+        {data && !data.empty && data.page === 1 && !q && data.rows.length >= 3 && <ChampionPodium rows={data.rows.slice(0, 3)} sort={sort} />}
         <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search champions" placeholder="Search champions" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} champions` : undefined} />
 
         {board.error ? (
@@ -60,7 +62,7 @@ export default function ChampionsListPage() {
           </div>
         ) : (
           <div className="table-wrap" aria-busy={board.loading}>
-            <table className="lb" style={{ opacity: board.loading && data ? 0.6 : 1, minWidth: 900 }}>
+            <table className="lb lb--ranked" style={{ opacity: board.loading && data ? 0.6 : 1, minWidth: 900 }}>
               <thead>
                 <tr>
                   <th scope="col" className="lb__rank">#</th>

@@ -74,8 +74,9 @@
   text-transform: uppercase;
   color: var(--text-dim);
 }
-.lineup__card .img--photo,
-.lineup__card .avatar {
+.lineup__card > .img,
+.lineup__card > .avatar,
+.lineup__card > .icon-box {
   margin: 6px 0 4px;
 }
 .lineup__name {
@@ -356,8 +357,9 @@
   .lineup--podium .lineup__role {
     grid-area: role;
   }
-  .lineup--podium .img--photo,
-  .lineup--podium .avatar {
+  .lineup--podium .lineup__card > .img,
+  .lineup--podium .lineup__card > .avatar,
+  .lineup--podium .lineup__card > .icon-box {
     grid-area: photo;
     margin: 0;
   }
@@ -378,33 +380,82 @@
   }
 
   /* The leaderboard table keeps rank and player in view while the stats scroll sideways. */
-  .lb th:nth-child(1),
-  .lb td:nth-child(1),
-  .lb th:nth-child(2),
-  .lb td:nth-child(2) {
+  .lb--ranked th:nth-child(1),
+  .lb--ranked td:nth-child(1),
+  .lb--ranked th:nth-child(2),
+  .lb--ranked td:nth-child(2) {
     position: sticky;
     z-index: 1;
   }
-  .lb th:nth-child(1),
-  .lb td:nth-child(1) {
+  .lb--ranked th:nth-child(1),
+  .lb--ranked td:nth-child(1) {
     left: 0;
     width: 44px;
     min-width: 44px;
     padding-left: 12px;
     padding-right: 4px;
   }
-  .lb th:nth-child(2),
-  .lb td:nth-child(2) {
+  .lb--ranked th:nth-child(2),
+  .lb--ranked td:nth-child(2) {
     left: 44px;
     padding-left: 8px;
     box-shadow: 8px 0 8px -8px rgba(0, 0, 0, 0.6);
   }
-  .lb thead th:nth-child(1),
-  .lb thead th:nth-child(2) {
+  .lb--ranked thead th:nth-child(1),
+  .lb--ranked thead th:nth-child(2),
+  .lb--named thead th:nth-child(1) {
     background: var(--bg-raised);
   }
-  .lb tbody td:nth-child(1),
-  .lb tbody td:nth-child(2) {
+  .lb--ranked tbody td:nth-child(1),
+  .lb--ranked tbody td:nth-child(2),
+  .lb--named tbody td:nth-child(1) {
     background: var(--bg-panel);
+  }
+}
+
+/* Tournaments list: live events up top, a live badge beside running events in the table. */
+.live {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.live__card .lineup__role {
+  gap: 10px;
+}
+.live__name {
+  font-size: 30px;
+  line-height: 1.02;
+  margin: 4px 0 2px;
+}
+.live__lead {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  width: 100%;
+  gap: 12px;
+}
+.live__label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.live__team {
+  font-weight: 600;
+  font-size: 18px;
+}
+.lb__live {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+@media (max-width: 720px) {
+  .lb--named th:nth-child(1),
+  .lb--named td:nth-child(1) {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    max-width: 200px;
+    box-shadow: 8px 0 8px -8px rgba(0, 0, 0, 0.6);
   }
 }
