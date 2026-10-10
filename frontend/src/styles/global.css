@@ -21,9 +21,23 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-html {
-  /* The docked filter bar is sticky at the bottom; keep keyboard focus from landing behind it. */
-  scroll-padding-bottom: 14rem;
+/*
+ * The docked filter bar is sticky at the bottom. Keyboard focus on page content should not end up behind it,
+ * so content controls keep clear space below them when scrolled into view. The bar's own controls get none,
+ * otherwise clicking a filter would scroll the page.
+ */
+a,
+button,
+input,
+select,
+summary {
+  scroll-margin-bottom: 14rem;
+}
+.filters a,
+.filters button,
+.filters input,
+.filters select {
+  scroll-margin-bottom: 0;
 }
 
 h1,
