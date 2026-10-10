@@ -270,7 +270,7 @@ Good to know: Render's free tier puts the API to sleep after about 15 minutes wi
 
 ## Security
 
-This is a read-only public site over public data. The API has `GET` routes only, no accounts and no user input stored. What is worth protecting is the credentials (the Neon string, the Leaguepedia bot login, the R2 keys), and they live only in the git-ignored `.env`, in GitHub Actions secrets and in the Render and Cloudflare dashboards. They were checked and are not in the code, the git history or the built site.
+This is a read-only public site over public data. The API has `GET` routes only, no accounts and no user input stored. What is worth protecting is the credentials (the Neon string, the Leaguepedia bot login, the R2 keys), and they live only in the git-ignored `.env`, in GitHub Actions secrets and in the Render and Cloudflare dashboards. They were checked and are not in the code, the git history or the built site. To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 What is in place:
 
@@ -280,7 +280,7 @@ What is in place:
 - **The API is hardened:** per-IP rate limiting (429 with a JSON message), no `X-Powered-By`, errors that never include internals, and `CORS_ORIGIN` to restrict browser callers.
 - **The site sends security headers** (`frontend/public/_headers`): no framing, no sniffing, a strict referrer policy and and an enforced content security policy that lists exactly where scripts, styles, fonts, images and API calls may come from. If images or the API ever move to a custom domain, add it to `img-src` / `connect-src` there first. The frontend uses no `innerHTML` or `eval`. The one third-party script allowed is Cloudflare Web Analytics (see below).
 - **Analytics** are Cloudflare Web Analytics only: it sets no cookies and keeps no personal profile, so there is no consent banner. Cloudflare Pages injects its beacon (`static.cloudflareinsights.com`), which reports to `cloudflareinsights.com`; both are the only analytics hosts in the content security policy. No Google Analytics or session-recording tools.
-- **Dependencies:** `npm audit` (api and frontend) and `pip-audit` (sync) report no known vulnerabilities as of the last review. Re-run them now and then.
+- **Dependencies:** `npm audit` (api and frontend) and `pip-audit` (sync) report no known vulnerabilities as of the last review. Re-run them now and then. GitHub's Dependabot alerts watch the manifests, and `.github/dependabot.yml` opens a weekly, grouped update pull request per area against `dev`. To keep the commit history to the author alone, bump versions in your own commit rather than merging a bot's pull request.
 - **CI permissions** are read-only for both workflows, and the nightly workflow stops with a clear message if a secret is missing.
 
 If a secret ever leaks (shows up in a commit, a log or a screenshot), treat it as burned: rotate it at the source (reset the Neon password, create a new R2 token, change the bot password), update `.env`, run `python sync/set_github_secrets.py` and update Render, and only then clean the history. Rewriting history does not un-leak a secret that was ever pushed.
