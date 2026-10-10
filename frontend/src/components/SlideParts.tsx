@@ -38,9 +38,26 @@ export function SlideLayers({ slides, show, aspect, className = 'stage__img' }: 
 }
 
 /** Champion thumbnails with a progress bar on the current one, and a pause/play button. */
-export function SlideControls({ slides, show, interval, iconSize = 44 }: { slides: Slide[]; show: Slideshow; interval: number; iconSize?: number }) {
+export function SlideControls({
+  slides,
+  show,
+  interval,
+  iconSize = 44,
+  arrows = false,
+}: {
+  slides: Slide[]
+  show: Slideshow
+  interval: number
+  iconSize?: number
+  arrows?: boolean
+}) {
   return (
     <div className="stage__controls">
+      {arrows && (
+        <button type="button" className="stage__arrow" aria-label="Previous champion" onClick={() => show.pick(show.index - 1)}>
+          ‹
+        </button>
+      )}
       <ul className="stage__thumbs">
         {slides.map((s, i) => (
           <li key={s.name}>
@@ -59,6 +76,11 @@ export function SlideControls({ slides, show, interval, iconSize = 44 }: { slide
           </li>
         ))}
       </ul>
+      {arrows && (
+        <button type="button" className="stage__arrow" aria-label="Next champion" onClick={() => show.pick(show.index + 1)}>
+          ›
+        </button>
+      )}
       <button
         type="button"
         className="stage__pause"

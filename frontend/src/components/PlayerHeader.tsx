@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type { ChampionRow, PlayerResponse } from '../api/types'
 import { decimal, percent, rate } from '../lib/format'
-import { ChampionCard, StageBackdrop, StageMotion, stageClass, useChampionStage } from './ChampionStage'
+import { ChampionPicker, StageBackdrop, StageMotion, stageClass, useChampionStage } from './ChampionStage'
 import { PlayerPhoto, TeamLogo } from './Images'
 
 export default function PlayerHeader({ data, champions }: { data: PlayerResponse; champions?: ChampionRow[] }) {
@@ -60,7 +60,7 @@ export default function PlayerHeader({ data, champions }: { data: PlayerResponse
               <span className="showing__desc">{range.description}</span>
             </div>
           </div>
-          <ChampionCard stage={stage} label="Champion pool" ariaLabel="Most-played champions" />
+          <ChampionPicker stage={stage} ariaLabel="Most-played champions" />
         </div>
       </section>
     </StageMotion>

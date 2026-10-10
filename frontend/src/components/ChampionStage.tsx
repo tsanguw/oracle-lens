@@ -10,13 +10,13 @@ import { useImages } from './Images'
 import { SlideControls, SlideLayers, type Slide } from './SlideParts'
 
 /*
- * The art behind a player or team header: their most-played champions as a card-shaped slideshow, with a blurred
- * copy of the same art and a few embers behind the whole header. Used by PlayerHeader and TeamHeader.
+ * The art behind a player or team header: their most-played champions as full-bleed Legends of Runeterra art that you
+ * can swap with a row of champion icons, with a few embers drifting over it. Used by PlayerHeader and TeamHeader.
  */
 
 const GOLD = '#f0b429'
 const INTERVAL = 7000
-const MAX_SLIDES = 6
+const MAX_SLIDES = 8
 const MIN_SLIDES = 3
 const SPLASH = 'https://ddragon.leagueoflegends.com/cdn/img/champion/loading'
 
@@ -60,8 +60,7 @@ export function useChampionStage(rows: PickRow[] | undefined) {
     slides.map((s) => s.url),
     INTERVAL,
   )
-  const [bgRef, bgAspect] = useAspect(2)
-  const [frameRef, frameAspect] = useAspect(2 / 3)
+  const [artRef, artAspect] = useAspect(2)
   const current = slides[show.index]
   return {
     slides,
@@ -69,10 +68,8 @@ export function useChampionStage(rows: PickRow[] | undefined) {
     current,
     staged: slides.length > 0,
     accent: current?.color ?? GOLD,
-    bgRef,
-    bgAspect,
-    frameRef,
-    frameAspect,
+    artRef,
+    artAspect,
   }
 }
 export type ChampionStage = ReturnType<typeof useChampionStage>
@@ -89,13 +86,13 @@ export function StageMotion({ children }: { children: ReactNode }) {
 /** Class names for the header section. */
 export const stageClass = (stage: ChampionStage) => `hero${stage.staged ? ' hero--stage' : ''}${stage.show.playing ? '' : ' is-still'}`
 
-/** Blurred art, a scrim and embers, filling the header behind its content. */
+/** The art, a scrim for the text over it, and embers, filling the header behind its content. */
 export function StageBackdrop({ stage }: { stage: ChampionStage }) {
   if (!stage.staged) return null
   return (
     <>
-      <div ref={stage.bgRef} className="pstage__bg" aria-hidden="true">
-        <SlideLayers slides={stage.slides} show={stage.show} aspect={stage.bgAspect} className="pstage__img" />
+      <div ref={stage.artRef} className="pstage__art" aria-hidden="true">
+        <SlideLayers slides={stage.slides} show={stage.show} aspect={stage.artAspect} />
       </div>
       <div className="pstage__scrim" aria-hidden="true" />
       <Embers color={stage.accent} />
@@ -103,13 +100,13 @@ export function StageBackdrop({ stage }: { stage: ChampionStage }) {
   )
 }
 
-/** The card-shaped slideshow with its caption and controls. */
-export function ChampionCard({ stage, label, ariaLabel }: { stage: ChampionStage; label: string; ariaLabel: string }) {
+/** Which champion's art is showing, with arrows and icons to swap it. */
+export function ChampionPicker({ stage, ariaLabel }: { stage: ChampionStage; ariaLabel: string }) {
   const { slides, show, current } = stage
   if (!current) return null
   return (
-    <aside
-      className="pcard"
+    <div
+      className="ppick"
       role="group"
       aria-roledescription="carousel"
       aria-label={ariaLabel}
@@ -118,34 +115,30 @@ export function ChampionCard({ stage, label, ariaLabel }: { stage: ChampionStage
       onFocus={() => show.hold(true)}
       onBlur={() => show.hold(false)}
     >
-      <span className="pcard__label">{label}</span>
-      <div ref={stage.frameRef} className="pcard__frame">
-        <SlideLayers slides={slides} show={show} aspect={stage.frameAspect} className="pcard__img" />
-        <div
-          className="pcard__caption"
-          role="group"
-          aria-roledescription="slide"
-          aria-label={`${show.index + 1} of ${show.count}`}
-          aria-live={show.playing ? 'off' : 'polite'}
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <m.div
-              key={current.name}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <span className="stage__chip">{current.region}</span>
-              <Link to={`/champions/${encodeURIComponent(current.name)}`} className="stage__champ">
-                {current.name}
-              </Link>
-              <span className="stage__note">{current.note}</span>
-            </m.div>
-          </AnimatePresence>
-        </div>
+      <div
+        className="ppick__caption"
+        role="group"
+        aria-roledescription="slide"
+        aria-label={`${show.index + 1} of ${show.count}`}
+        aria-live={show.playing ? 'off' : 'polite'}
+      >
+        <AnimatePresence mode="wait" initial={false}>
+          <m.div
+            key={current.name}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <span className="stage__chip">{current.region}</span>
+            <Link to={`/champions/${encodeURIComponent(current.name)}`} className="stage__champ">
+              {current.name}
+            </Link>
+            <span className="stage__note">{current.note}</span>
+          </m.div>
+        </AnimatePresence>
       </div>
-      <SlideControls slides={slides} show={show} interval={INTERVAL} iconSize={26} />
-    </aside>
+      <SlideControls slides={slides} show={show} interval={INTERVAL} iconSize={34} arrows />
+    </div>
   )
 }

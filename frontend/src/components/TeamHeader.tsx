@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { TeamPick, TeamResponse } from '../api/types'
 import { percent } from '../lib/format'
-import { ChampionCard, StageBackdrop, StageMotion, stageClass, useChampionStage } from './ChampionStage'
+import { ChampionPicker, StageBackdrop, StageMotion, stageClass, useChampionStage } from './ChampionStage'
 import { TeamLogo } from './Images'
 
 export default function TeamHeader({ data, picks }: { data: TeamResponse; picks?: TeamPick[] }) {
@@ -44,7 +44,7 @@ export default function TeamHeader({ data, picks }: { data: TeamResponse; picks?
               <span className="showing__desc">{range.description}</span>
             </div>
           </div>
-          <ChampionCard stage={stage} label="Signature picks" ariaLabel="Most-picked champions" />
+          <ChampionPicker stage={stage} ariaLabel="Most-picked champions" />
         </div>
       </section>
     </StageMotion>
