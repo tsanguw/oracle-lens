@@ -6,12 +6,19 @@
   --rc: var(--accent);
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  z-index: 2; /* above the sections below, so the search results can hang over them */
   display: flex;
   align-items: flex-end;
   min-height: clamp(620px, 82vh, 780px);
   background: var(--bg-hero);
   border-bottom: 1px solid var(--border);
+}
+/* The art is cropped to the hero here, not on the hero itself, which would cut off the search results */
+.stage__clip {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
 }
 
 /*
@@ -200,6 +207,8 @@
   align-items: end;
 }
 .stage .home__intro {
+  position: relative;
+  z-index: 3; /* above the caption and thumbnails, which sit below it on a phone, so the search results cover them */
   padding-top: 0;
 }
 .stage .home__headline {
@@ -641,8 +650,32 @@
 }
 
 /* On scroll the text drifts up and fades while the art drifts down, so the header seems to recede */
-.hero--stage .hero__inner,
-.stage .stage__inner {
+.hero--stage .hero__inner {
   transform: translate3d(0, calc(var(--sy, 0) * -0.1px), 0);
   opacity: calc(1 - var(--sy, 0) / 520);
+}
+/*
+ * The home header does the same, scaled by --recede. While search results are open --recede is 0, so the text stays put and
+ * scrolling down to read them doesn't fade them away. It is a registered number, so closing the results eases it back to 1
+ * and the header fades out over about half a second, where it would otherwise snap to its scrolled state.
+ */
+@property --recede {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+.stage {
+  transition: --recede 0.5s ease;
+}
+.stage:has(.search__panel) {
+  --recede: 0;
+}
+.stage .stage__inner {
+  transform: translate3d(0, calc(var(--sy, 0) * -0.1px * var(--recede)), 0);
+  opacity: calc(1 - var(--sy, 0) / 520 * var(--recede));
+}
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    transition: none;
+  }
 }

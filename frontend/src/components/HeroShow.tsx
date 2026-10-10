@@ -61,7 +61,9 @@ export default function HeroShow({ champions, settled, children }: Props) {
         aria-roledescription="carousel"
         aria-label="Most contested champions"
       >
-        <StageBackdrop stage={stage} variant="home" />
+        <div className="stage__clip">
+          <StageBackdrop stage={stage} variant="home" />
+        </div>
         <div className="stage__inner">
           {children}
 
