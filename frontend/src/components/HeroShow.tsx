@@ -139,19 +139,19 @@ export default function HeroShow({ champions, settled, children }: Props) {
       <MotionConfig reducedMotion="user">
         <section
           ref={heroRef}
-          className={`hero${playing ? '' : ' is-still'}`}
+          className={`stage${playing ? '' : ' is-still'}`}
           style={{ '--rc': accent } as CSSProperties}
           aria-roledescription="carousel"
           aria-label="Most contested champions"
           onPointerMove={onPointerMove}
           onPointerLeave={onPointerLeave}
         >
-          <m.div className="hero__art" style={{ x: artX, y: artY }} aria-hidden="true">
+          <m.div className="stage__art" style={{ x: artX, y: artY }} aria-hidden="true">
             {slides.map((s, i) =>
               seen.has(i) ? (
                 <img
                   key={s.name}
-                  className={`hero__img${i === index ? ' is-on' : ''}${i === prev ? ' is-prev' : ''}${ready.has(i) ? ' is-ready' : ''}`}
+                  className={`stage__img${i === index ? ' is-on' : ''}${i === prev ? ' is-prev' : ''}${ready.has(i) ? ' is-ready' : ''}`}
                   src={s.url}
                   alt=""
                   decoding="async"
@@ -160,16 +160,16 @@ export default function HeroShow({ champions, settled, children }: Props) {
               ) : null,
             )}
           </m.div>
-          <div className="hero__scrim" aria-hidden="true" />
+          <div className="stage__scrim" aria-hidden="true" />
           {count > 0 && <Embers color={accent} />}
 
-          <div className="hero__inner">
+          <div className="stage__inner">
             {children}
 
             {current && (
-              <div className="hero__panel" onPointerEnter={() => hold(true)} onPointerLeave={() => hold(false)} onFocus={() => hold(true)} onBlur={() => hold(false)}>
+              <div className="stage__panel" onPointerEnter={() => hold(true)} onPointerLeave={() => hold(false)} onFocus={() => hold(true)} onBlur={() => hold(false)}>
                 <div
-                  className="hero__caption"
+                  className="stage__caption"
                   role="group"
                   aria-roledescription="slide"
                   aria-label={`${index + 1} of ${count}`}
@@ -183,22 +183,22 @@ export default function HeroShow({ champions, settled, children }: Props) {
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.38, ease: [0.16, 1, 0.3, 1] }}
                     >
-                      <span className="hero__chip">{current.region}</span>
-                      <Link to={`/champions/${encodeURIComponent(current.name)}`} className="hero__champ">
+                      <span className="stage__chip">{current.region}</span>
+                      <Link to={`/champions/${encodeURIComponent(current.name)}`} className="stage__champ">
                         {current.name}
                       </Link>
-                      <span className="hero__note">{current.note}</span>
+                      <span className="stage__note">{current.note}</span>
                     </m.div>
                   </AnimatePresence>
                 </div>
 
-                <div className="hero__controls">
-                  <ul className="hero__thumbs">
+                <div className="stage__controls">
+                  <ul className="stage__thumbs">
                     {slides.map((s, i) => (
                       <li key={s.name}>
                         <button
                           type="button"
-                          className={`hero__thumb${i === index ? ' is-on' : ''}`}
+                          className={`stage__thumb${i === index ? ' is-on' : ''}`}
                           aria-label={`Show ${s.name}`}
                           aria-current={i === index}
                           onClick={() => {
@@ -207,7 +207,7 @@ export default function HeroShow({ champions, settled, children }: Props) {
                           }}
                         >
                           <ChampionIcon name={s.name} size={44} />
-                          <span className="hero__bar" aria-hidden="true">
+                          <span className="stage__bar" aria-hidden="true">
                             <i key={`${index}-${tick}`} style={{ animationDuration: `${INTERVAL}ms` }} />
                           </span>
                         </button>
@@ -216,7 +216,7 @@ export default function HeroShow({ champions, settled, children }: Props) {
                   </ul>
                   <button
                     type="button"
-                    className="hero__pause"
+                    className="stage__pause"
                     aria-pressed={userPaused}
                     aria-label={userPaused ? 'Play slideshow' : 'Pause slideshow'}
                     onClick={() => {

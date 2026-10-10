@@ -123,5 +123,5 @@ export default function Embers({ color }: { color: string }) {
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="hero__embers" aria-hidden="true" />
+  return <canvas ref={canvasRef} className="stage__embers" aria-hidden="true" />
 }
