@@ -34,6 +34,9 @@
 .tiles--five {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
+.tiles--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
 /* Lineup: the five starters with real photos */
 .lineup {
@@ -109,18 +112,24 @@
   font-weight: 600;
 }
 
-/* Draft: picks beside bans */
-.draft {
+/* Two columns that stack on narrower screens: team draft, champion teams and roles, matchups and patches. */
+.draft,
+.duo {
   display: grid;
   grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   gap: 32px;
   align-items: start;
 }
-.draft > * {
+.draft > *,
+.duo > * {
   min-width: 0;
 }
-.draft .pool {
+.draft .pool,
+.duo .pool {
   min-width: 460px;
+}
+.duo--even {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .draft .bans {
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -175,8 +184,13 @@
   .tiles--five {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .draft {
+  .draft,
+  .duo,
+  .duo--even {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .tiles--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 720px) {

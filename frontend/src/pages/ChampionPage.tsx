@@ -14,6 +14,7 @@ import {
   ChampionContext,
   ChampionHeader,
   ChampionHeaderSkeleton,
+  ChampionPlayerCards,
   ChampionPatchesTable,
   ChampionPlayersTable,
   ChampionRolesTable,
@@ -90,53 +91,60 @@ export default function ChampionPage({ name }: { name: string }) {
                 <h2 id="players" className="section__title">
                   Top players
                 </h2>
-                <span className="section__note">Most games on this champion. Grayed rows have fewer than 5 games</span>
+                <span className="section__note">Most games on this champion. Grayed cards have fewer than 5 games</span>
               </div>
-              {players.data ? <ChampionPlayersTable players={players.data.players} /> : <Skeleton />}
+              {players.data ? (
+                <>
+                  <ChampionPlayerCards players={players.data.players.slice(0, 5)} />
+                  {players.data.players.length > 5 && (
+                    <>
+                      <h3 className="ctx__sub">More players</h3>
+                      <ChampionPlayersTable players={players.data.players.slice(5)} />
+                    </>
+                  )}
+                </>
+              ) : (
+                <Skeleton />
+              )}
             </section>
 
             <section aria-labelledby="teams" className="section">
               <h2 id="teams" className="section__title">
-                Top teams
+                Teams and roles
               </h2>
-              {teams.data ? <ChampionTeamsTable teams={teams.data.teams} /> : <Skeleton />}
+              <div className="duo">
+                <div className="section">
+                  <h3 className="ctx__sub">Top teams</h3>
+                  {teams.data ? <ChampionTeamsTable teams={teams.data.teams} /> : <Skeleton />}
+                </div>
+                <div className="section">
+                  <h3 className="ctx__sub">By role (ignores the role filter)</h3>
+                  {roles.data ? <ChampionRolesTable roles={roles.data.roles} /> : <Skeleton />}
+                </div>
+              </div>
             </section>
 
             <section aria-labelledby="counters" className="section">
               <h2 id="counters" className="section__title">
-                Lane matchups
+                Matchups and patches
               </h2>
-              <div className="panels">
-                <MatchupPanel
-                  title="Vs. champions faced"
-                  subtitle="Lane opponent’s champion"
-                  loading={counters.loading}
-                  items={
-                    counters.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion, icon: <ChampionIcon name={m.champion} size={26} />, to: `/champions/${encodeURIComponent(m.champion)}` })) ??
-                    null
-                  }
-                />
+              <div className="duo duo--even">
+                <div className="section">
+                  <MatchupPanel
+                    title="Vs. champions faced"
+                    subtitle="Lane opponent’s champion"
+                    loading={counters.loading}
+                    items={
+                      counters.data?.matchups.map((m) => ({ ...m, key: m.champion, name: m.champion, icon: <ChampionIcon name={m.champion} size={26} />, to: `/champions/${encodeURIComponent(m.champion)}` })) ??
+                      null
+                    }
+                  />
+                </div>
+                <div className="section">
+                  <h3 className="ctx__sub">By patch (newest first, pick rate is the share of games on that patch)</h3>
+                  {patches.data ? <ChampionPatchesTable patches={patches.data.patches} /> : <Skeleton />}
+                </div>
               </div>
-            </section>
-
-            <section aria-labelledby="roles" className="section">
-              <div className="section__head">
-                <h2 id="roles" className="section__title">
-                  By role
-                </h2>
-                <span className="section__note">Ignores the role filter</span>
-              </div>
-              {roles.data ? <ChampionRolesTable roles={roles.data.roles} /> : <Skeleton />}
-            </section>
-
-            <section aria-labelledby="patches" className="section">
-              <div className="section__head">
-                <h2 id="patches" className="section__title">
-                  By patch
-                </h2>
-                <span className="section__note">Newest first. Pick rate is the share of games on that patch</span>
-              </div>
-              {patches.data ? <ChampionPatchesTable patches={patches.data.patches} /> : <Skeleton />}
             </section>
           </>
         )}

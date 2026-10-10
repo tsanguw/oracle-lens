@@ -24,6 +24,22 @@ export function ChampionHeader({ data }: { data: ChampionResponse }) {
           <div className="hero__text">
             <div className="tags">{summary?.role && <span className="tag tag--gold">{summary.role}</span>}</div>
             <h1 className="hero__name hero__name--team">{champion.name}</h1>
+            {summary && (
+              <dl className="form">
+                <div className="form__stat">
+                  <dd className="form__value">{percent(summary.presence)}</dd>
+                  <dt className="form__label">Presence</dt>
+                </div>
+                <div className="form__stat">
+                  <dd className="form__value">{percent(summary.winRate)}</dd>
+                  <dt className="form__label">Win rate</dt>
+                </div>
+                <div className="form__stat">
+                  <dd className="form__value">{summary.games}</dd>
+                  <dt className="form__label">Games</dt>
+                </div>
+              </dl>
+            )}
           </div>
         </div>
         <div className="showing">
@@ -104,38 +120,83 @@ interface Tile {
   sub: string
 }
 
-function tiles(s: ChampionSummary): Tile[] {
+/** Presence, win rate and games are in the page header; these are the rest, in two groups. */
+function groups(s: ChampionSummary): { title: string; className: string; tiles: Tile[] }[] {
   return [
-    { label: 'Games', value: String(s.games), sub: `${s.wins} W · ${s.losses} L` },
     {
-      label: 'Win rate',
-      value: percent(s.winRate),
-      sub: `Blue ${percent(rate(s.blueWins, s.blueGames))} · Red ${percent(rate(s.redWins, s.redGames))}`,
+      title: 'In the draft',
+      className: 'tiles tiles--four',
+      tiles: [
+        { label: 'Pick rate', value: percent(s.pickRate), sub: `Of ${s.totalGames.toLocaleString('en-US')} games` },
+        { label: 'Ban rate', value: percent(s.banRate), sub: 'Banned by either team' },
+        { label: 'Blue side', value: percent(rate(s.blueWins, s.blueGames)), sub: `${s.blueWins}-${s.blueGames - s.blueWins} win rate` },
+        { label: 'Red side', value: percent(rate(s.redWins, s.redGames)), sub: `${s.redWins}-${s.redGames - s.redWins} win rate` },
+      ],
     },
-    { label: 'Pick rate', value: percent(s.pickRate), sub: `Of ${s.totalGames.toLocaleString('en-US')} games` },
-    { label: 'Ban rate', value: percent(s.banRate), sub: 'Banned by either team' },
-    { label: 'Presence', value: percent(s.presence), sub: 'Picked or banned' },
-    { label: 'KDA', value: decimal(s.kda), sub: 'Kills + assists per death' },
-    { label: 'Kill participation', value: percent(s.killParticipation), sub: 'Team kills involved' },
-    { label: 'Damage / min', value: whole(s.damagePerMin), sub: 'To champions' },
-    { label: 'Gold / min', value: whole(s.goldPerMin), sub: 'Per game minute' },
-    { label: 'CS / min', value: decimal(s.csPerMin), sub: 'Per game minute' },
-    { label: 'Avg game', value: duration(s.avgGameLengthSec), sub: 'Game length' },
-    { label: 'Main role', value: s.role ?? NA, sub: 'Most played' },
+    {
+      title: 'In the game',
+      className: 'tiles',
+      tiles: [
+        { label: 'KDA', value: decimal(s.kda), sub: 'Kills + assists per death' },
+        { label: 'Kill participation', value: percent(s.killParticipation), sub: 'Team kills involved' },
+        { label: 'Damage / min', value: whole(s.damagePerMin), sub: 'To champions' },
+        { label: 'Gold / min', value: whole(s.goldPerMin), sub: 'Per game minute' },
+        { label: 'CS / min', value: decimal(s.csPerMin), sub: 'Per game minute' },
+        { label: 'Avg game', value: duration(s.avgGameLengthSec), sub: 'Game length' },
+      ],
+    },
   ]
 }
 
 export function ChampionTiles({ summary }: { summary: ChampionSummary }) {
   return (
-    <div className="tiles">
-      {tiles(summary).map((t) => (
-        <div key={t.label} className="tile">
-          <span className="tile__label">{t.label}</span>
-          <span className="tile__value">{t.value}</span>
-          <span className="tile__sub">{t.sub}</span>
+    <div className="tile-groups">
+      {groups(summary).map((g) => (
+        <div key={g.title}>
+          <h3 className="ctx__sub tile-groups__title">{g.title}</h3>
+          <div className={g.className}>
+            {g.tiles.map((t) => (
+              <div key={t.label} className="tile">
+                <span className="tile__label">{t.label}</span>
+                <span className="tile__value">{t.value}</span>
+                <span className="tile__sub">{t.sub}</span>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
     </div>
+  )
+}
+
+/** The five players with the most games on the champion, as photo cards. */
+export function ChampionPlayerCards({ players }: { players: ChampionPlayer[] }) {
+  return (
+    <ol className="lineup">
+      {players.map((p, i) => (
+        <li key={p.page} style={{ ['--i' as string]: i }}>
+          <Link to={`/players/${encodeURIComponent(p.page)}`} className={`lineup__card${p.underMinSample ? ' is-dim' : ''}`}>
+            <span className="lineup__role with-img">
+              {p.team && <TeamLogo name={p.team} size={16} />}
+              {p.team ?? NA}
+            </span>
+            <PlayerPhoto page={p.page} name={p.name} size={96} />
+            <span className="lineup__name">{p.name}</span>
+            <span className="lineup__record">{`${p.wins}-${p.games - p.wins}`} in {p.games} games</span>
+            <dl className="lineup__stats">
+              <div>
+                <dt>Win rate</dt>
+                <dd>{percent(p.winRate)}</dd>
+              </div>
+              <div>
+                <dt>KDA</dt>
+                <dd>{decimal(p.kda)}</dd>
+              </div>
+            </dl>
+          </Link>
+        </li>
+      ))}
+    </ol>
   )
 }
 
