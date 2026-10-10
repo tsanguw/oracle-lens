@@ -27,7 +27,7 @@ let pending: Promise<Manifest> | null = null
 function loadManifest(): Promise<Manifest> {
   pending ??= fetch(apiUrl('/api/assets/images'))
     .then((res) => (res.ok ? (res.json() as Promise<Manifest>) : Promise.reject(new Error('manifest'))))
-    .then((m) => (loaded = m))
+    .then((m) => (loaded = { ...EMPTY, ...m })) // an older API may not send every field yet
     .catch(() => {
       pending = null // try again on the next page; meanwhile every image shows its fallback
       return EMPTY
