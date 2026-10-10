@@ -176,12 +176,66 @@ The three list endpoints also accept `limit` (1-20, default 5). Lane matchups pa
 
 When no games match, the API returns a normal response with `empty: true` (not an error) and the UI suggests widening the filters.
 
+## Deployment
+
+Everything runs on free tiers:
+
+| Part | Where | What it does |
+|---|---|---|
+| Database | Neon (Postgres) | The data. Written by the nightly sync, read by the API. |
+| API | Render (free web service, from `render.yaml`) | `api/`. On every start it applies any new migration, then serves `/api/*`. |
+| Frontend | Cloudflare Pages | `frontend/`, built from this repo. `_redirects` makes deep links reload, `_headers` sets caching and security headers. |
+| Images | Cloudflare R2 (public bucket) | Team logos, player photos and the Runeterra card art, as small WebP files. |
+| Nightly sync | GitHub Actions (`nightly-sync.yml`) | Daily at 12:00 UTC: new games, dates, rounds, new logos and photos. |
+
+### First-time setup
+
+Order matters a little: the data first, then the services that read it. The commands that touch production read `PROD_DATABASE_URL` and the `R2_*` values from the repo-root `.env` and never print them.
+
+1. **Production database.** Create a Neon database, put its connection string in `.env` as `PROD_DATABASE_URL`, then from the repo root run `python sync/prod.py migrate` and copy the data over (`python sync/copy_to_neon.py`). Fill the derived data with `python sync/prod.py results logo-tones schedule` (`schedule` fetches every series' round and takes about ten minutes; `schedule-recent` covers 2023 onward).
+2. **Images.** Create the R2 bucket and make it public. With the images cached locally (`python main.py images`, and `python main.py art` for the card art), upload them: `python main.py upload-images --from ../frontend/public/img` (from `sync/`; it skips what the bucket already has).
+3. **Nightly sync.** `python sync/set_github_secrets.py` copies the seven secrets from `.env` into the repository's Actions secrets. Run the workflow once by hand (Actions, Nightly sync, Run workflow); the schedule is already on.
+4. **API on Render.** New, Blueprint, pick this repo; Render reads `render.yaml`. Paste the Neon string as `DATABASE_URL` when asked. Check `/healthz` and `/api/meta/last-updated` on the service address.
+5. **Frontend on Cloudflare Pages.** Connect the repo; root directory `frontend`, build command `npm run build`, output `dist`. Environment variables: `VITE_API_BASE` (the Render address, no trailing slash), `VITE_IMAGE_BASE` (the R2 public address) and `NODE_VERSION=22`. They are baked in at build time, so changing one needs a redeploy.
+6. **Check the live site:** a player page (then reload it), a champion page (the art should come from R2 as `.webp`), a Worlds or MSI tournament page (stage tabs and bracket), and phone width.
+
+### Settings
+
+| Setting | Where | Meaning |
+|---|---|---|
+| `DATABASE_URL` | Render, GitHub secret | The Neon connection string. |
+| `VITE_API_BASE` | Pages | The API's address. Empty in development, where Vite proxies `/api`. |
+| `VITE_IMAGE_BASE` | Pages | Where cached images are served from (default `/img`). |
+| `CORS_ORIGIN` | Render, optional | Websites allowed to call the API from a browser, comma-separated. Default: any. Set it to the Pages address once that exists. |
+| `RATE_LIMIT_PER_MINUTE` | Render, optional | Requests per IP address per minute on `/api` (default 300; `0` turns it off). |
+
+Good to know: Render's free tier puts the API to sleep after about 15 minutes without traffic, so the first visit afterwards waits 30 to 60 seconds. A free uptime monitor (for example UptimeRobot, checking `/healthz` every 5 minutes) keeps it awake without using GitHub Actions minutes. A failed nightly run emails you; running it again from the Actions tab is safe, because reloading a tournament is idempotent.
+
+## Security
+
+This is a read-only public site over public data. The API has `GET` routes only, no accounts and no user input stored. What is worth protecting is the credentials (the Neon string, the Leaguepedia bot login, the R2 keys), and they live only in the git-ignored `.env`, in GitHub Actions secrets and in the Render and Cloudflare dashboards. They were checked and are not in the code, the git history or the built site.
+
+What is in place:
+
+- **Secrets stay out of git.** `.env` is ignored (only `.env.example`, with empty values, is tracked), and the helper scripts (`prod.py`, `set_github_secrets.py`) pass values straight to the tools without printing them. The R2 public address and bucket name are public by design.
+- **A secret scan runs on every push** (`.github/workflows/secret-scan.yml`, `scripts/scan_secrets.py`). It looks for private keys, cloud and GitHub tokens, database URLs with a password for a non-local host, and literal secret assignments, in every tracked file and in every line ever added to any commit. It reports file and line, never the text. On your machine, `python scripts/scan_secrets.py --env --history` also searches for the real values in your `.env`.
+- **Queries are parameterised.** Every filter value is a bound parameter. The only text that reaches SQL is a fixed fragment or a sort column and direction chosen from a closed list, and list sizes are capped.
+- **The API is hardened:** per-IP rate limiting (429 with a JSON message), no `X-Powered-By`, errors that never include internals, and `CORS_ORIGIN` to restrict browser callers.
+- **The site sends security headers** (`frontend/public/_headers`): no framing, no sniffing, a strict referrer policy and a content security policy in report-only mode. Once the live site's console shows no `[Report Only]` violations, rename it to `Content-Security-Policy` to enforce it. The frontend uses no `innerHTML` or `eval`.
+- **Dependencies:** `npm audit` (api and frontend) and `pip-audit` (sync) report no known vulnerabilities as of the last review. Re-run them now and then.
+- **CI permissions** are read-only for both workflows, and the nightly workflow stops with a clear message if a secret is missing.
+
+If a secret ever leaks (shows up in a commit, a log or a screenshot), treat it as burned: rotate it at the source (reset the Neon password, create a new R2 token, change the bot password), update `.env`, run `python sync/set_github_secrets.py` and update Render, and only then clean the history. Rewriting history does not un-leak a secret that was ever pushed.
+
+Things to know before making the repository public: the commit author email and the contact address in the sync's `User-Agent` (`sync/lolsync/client.py`, `art.py`) would become visible. Leaguepedia asks for a contact in the `User-Agent`, so use an address you don't mind sharing.
+
 ## Testing
 
 ```bash
 cd api && npm test              # vitest + supertest
 cd api && npm run typecheck
 cd sync && python -m pytest
+python scripts/scan_secrets.py --history   # no secrets in any tracked file or commit
 ```
 
 API tests run against a separate `lolstats_test` database on the same Postgres server. It is dropped, recreated, and migrated on every run, and never touches your dev data.
@@ -202,6 +256,12 @@ sync/
   lolsync/        client, normalizers, backfill
   league_aliases.yaml
   FIELDS.md
+scripts/
+  scan_secrets.py secret scan (tracked files, git history, and with --env your real .env values)
+.github/workflows/
+  nightly-sync.yml  daily sync into production
+  secret-scan.yml   secret scan on every push
+render.yaml         Render blueprint for the API
 ```
 
 ## Roadmap
@@ -214,8 +274,8 @@ sync/
 6. ✅ Champion page
 7. ✅ Tournament page
 8. ✅ List pages for teams, champions and tournaments (and name search on the player leaderboard), so every nav tab leads somewhere
-9. 🟡 Nightly sync: `nightly` command and workflow done; waiting on the production database to switch on the schedule. Still to do: keep-awake ping (depends on the API host)
-10. Deployment (static host for the frontend, free tier for the API, Neon for Postgres)
+9. ✅ Nightly sync: `nightly` command and workflow, scheduled daily. Still to do: keep-awake ping (depends on the API host; see Deployment)
+10. 🟡 Deployment: nightly sync, R2 images and the Render and Pages configuration are ready; the live services are set up by hand (see Deployment)
 
 ## Scope decisions
 
