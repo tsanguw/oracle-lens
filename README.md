@@ -228,7 +228,7 @@ What is in place:
 
 If a secret ever leaks (shows up in a commit, a log or a screenshot), treat it as burned: rotate it at the source (reset the Neon password, create a new R2 token, change the bot password), update `.env`, run `python sync/set_github_secrets.py` and update Render, and only then clean the history. Rewriting history does not un-leak a secret that was ever pushed.
 
-Things to know before making the repository public: the commit author email and the contact address in the sync's `User-Agent` (`sync/lolsync/client.py`, `art.py`) would become visible. Leaguepedia asks for a contact in the `User-Agent`, so use an address you don't mind sharing.
+No personal email address is in the code or in new commits: the sync's `User-Agent` (`sync/lolsync/client.py`, `art.py`) points at the author's GitHub profile, which is how Leaguepedia asks to be able to reach whoever runs a tool, and commits use the GitHub no-reply address.
 
 ## Branches and releases
 
