@@ -314,3 +314,97 @@
     gap: 14px 24px;
   }
 }
+
+/* Player leaderboard: the top three above the table */
+.lineup--podium {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.lineup__card.is-first {
+  border-color: var(--gold);
+}
+.podium__rank {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--gold);
+  margin-right: 4px;
+}
+.lineup__stats .is-sorted dd {
+  color: var(--gold);
+}
+
+@media (max-width: 720px) {
+  /* Each leader becomes a compact row: photo on the left, details beside it, stats underneath. */
+  .lineup--podium {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lineup--podium .lineup__card {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    grid-template-areas:
+      'photo role'
+      'photo name'
+      'photo record'
+      'photo stats';
+    column-gap: 16px;
+    row-gap: 4px;
+    align-items: center;
+    padding: 14px;
+  }
+  .lineup--podium .lineup__role {
+    grid-area: role;
+  }
+  .lineup--podium .img--photo,
+  .lineup--podium .avatar {
+    grid-area: photo;
+    margin: 0;
+  }
+  .lineup--podium .lineup__name {
+    grid-area: name;
+  }
+  .lineup--podium .lineup__record {
+    grid-area: record;
+  }
+  .lineup--podium .lineup__stats {
+    grid-area: stats;
+    gap: 10px;
+    margin-top: 4px;
+    padding-top: 8px;
+  }
+  .lineup--podium .lineup__name {
+    font-size: 26px;
+  }
+
+  /* The leaderboard table keeps rank and player in view while the stats scroll sideways. */
+  .lb th:nth-child(1),
+  .lb td:nth-child(1),
+  .lb th:nth-child(2),
+  .lb td:nth-child(2) {
+    position: sticky;
+    z-index: 1;
+  }
+  .lb th:nth-child(1),
+  .lb td:nth-child(1) {
+    left: 0;
+    width: 44px;
+    min-width: 44px;
+    padding-left: 12px;
+    padding-right: 4px;
+  }
+  .lb th:nth-child(2),
+  .lb td:nth-child(2) {
+    left: 44px;
+    padding-left: 8px;
+    box-shadow: 8px 0 8px -8px rgba(0, 0, 0, 0.6);
+  }
+  .lb thead th:nth-child(1),
+  .lb thead th:nth-child(2) {
+    background: var(--bg-raised);
+  }
+  .lb tbody td:nth-child(1),
+  .lb tbody td:nth-child(2) {
+    background: var(--bg-panel);
+  }
+}

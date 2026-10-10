@@ -4,7 +4,8 @@ import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { SearchField } from '../components/ListParts'
 import { dropInvalid, splitsFor, yearsFor } from '../lib/filterOptions'
-import { decimal, percent, whole } from '../lib/format'
+import { decimal, percent, shortTeam, whole } from '../lib/format'
+import Podium from '../components/Podium'
 import { PlayerPhoto, TeamLogo } from '../components/Images'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
@@ -116,6 +117,9 @@ export default function LeaderboardPage() {
           <span className="showing__label">{range?.label ?? ' '}</span>
         </div>
       </section>
+      {data && !data.empty && data.page === 1 && !params.get('q') && data.players.length >= 3 && (
+        <Podium rows={data.players.slice(0, 3)} sort={sort} />
+      )}
       <SearchField value={params.get('q') ?? ''} onSearch={(v) => update({ q: v })} label="Search players" placeholder="Search players" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} players` : undefined} />
 
       {board.error ? (
@@ -169,7 +173,7 @@ export default function LeaderboardPage() {
                     {r.team ? (
                       <span className="with-img">
                         <TeamLogo name={r.team} size={22} />
-                        {r.team}
+                        {shortTeam(r.team)}
                       </span>
                     ) : (
                       'N/A'

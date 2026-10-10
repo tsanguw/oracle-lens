@@ -64,3 +64,6 @@ export const dateRange = (start: string | null, end: string | null): string => {
   const sameYear = start.slice(0, 4) === end.slice(0, 4)
   return `${fmt(start, !sameYear)} – ${fmt(end, true)}`
 }
+
+/** "LYON (2024 American Team)" -> "LYON": Leaguepedia adds the bracket to tell same-named teams apart; it is noise on screen. */
+export const shortTeam = (name: string): string => name.replace(/\s*\([^)]*\)\s*$/, '') || name
