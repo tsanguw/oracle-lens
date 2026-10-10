@@ -2,7 +2,7 @@
 
 Browse professional League of Legends esports stats: players, teams, champions, and tournaments, with sortable leaderboards, matchup breakdowns, and shareable filters. All data comes from [Leaguepedia](https://lol.fandom.com)'s Cargo API, synced into our own Postgres database. The site never calls Leaguepedia when a visitor loads a page.
 
-> **Status: every page in the plan is built: the home page (search and recent tournaments), the four lists (players, teams, champions, tournaments) and their detail pages**, on the full backfill (all six leagues, 2011 onward, plus internationals). Teams, champions, tournaments, search, and the home page are not built yet (see [Roadmap](#roadmap)).
+> **Status: live at [oracle-lens.pages.dev](https://oracle-lens.pages.dev).** Every page in the plan is built: the home page (search and recent tournaments), the four lists (players, teams, champions, tournaments) and their detail pages, with tournament stages and brackets, on the full backfill (all six leagues, 2011 onward, plus internationals). A nightly sync keeps it current. See the [Roadmap](#roadmap).
 
 ## Architecture
 
@@ -206,10 +206,10 @@ Order matters a little: the data first, then the services that read it. The comm
 | `DATABASE_URL` | Render, GitHub secret | The Neon connection string. |
 | `VITE_API_BASE` | Pages | The API's address. Empty in development, where Vite proxies `/api`. |
 | `VITE_IMAGE_BASE` | Pages | Where cached images are served from (default `/img`). |
-| `CORS_ORIGIN` | Render, optional | Websites allowed to call the API from a browser, comma-separated. Default: any. Set it to the Pages address once that exists. |
+| `CORS_ORIGIN` | Render, optional | Websites allowed to call the API from a browser, comma-separated, no trailing slashes. Default: any. In production it is the Pages address, `https://oracle-lens.pages.dev`; add a custom domain or a preview address here to let it call the API. |
 | `RATE_LIMIT_PER_MINUTE` | Render, optional | Requests per IP address per minute on `/api` (default 300; `0` turns it off). |
 
-Good to know: Render's free tier puts the API to sleep after about 15 minutes without traffic, so the first visit afterwards waits 30 to 60 seconds. A free uptime monitor (for example UptimeRobot, checking `/healthz` every 5 minutes) keeps it awake without using GitHub Actions minutes. A failed nightly run emails you; running it again from the Actions tab is safe, because reloading a tournament is idempotent.
+Good to know: Render's free tier puts the API to sleep after about 15 minutes without traffic, so the first visit afterwards waits 30 to 60 seconds. A free UptimeRobot monitor checks `/healthz` every 5 minutes, which keeps it awake without using GitHub Actions minutes (and emails if the API goes down). A failed nightly run emails you; running it again from the Actions tab is safe, because reloading a tournament is idempotent.
 
 ## Security
 
@@ -221,13 +221,22 @@ What is in place:
 - **A secret scan runs on every push** (`.github/workflows/secret-scan.yml`, `scripts/scan_secrets.py`). It looks for private keys, cloud and GitHub tokens, database URLs with a password for a non-local host, and literal secret assignments, in every tracked file and in every line ever added to any commit. It reports file and line, never the text. On your machine, `python scripts/scan_secrets.py --env --history` also searches for the real values in your `.env`.
 - **Queries are parameterised.** Every filter value is a bound parameter. The only text that reaches SQL is a fixed fragment or a sort column and direction chosen from a closed list, and list sizes are capped.
 - **The API is hardened:** per-IP rate limiting (429 with a JSON message), no `X-Powered-By`, errors that never include internals, and `CORS_ORIGIN` to restrict browser callers.
-- **The site sends security headers** (`frontend/public/_headers`): no framing, no sniffing, a strict referrer policy and and an enforced content security policy that lists exactly where scripts, styles, fonts, images and API calls may come from. If images or the API ever move to a custom domain, add it to `img-src` / `connect-src` there first. The frontend uses no `innerHTML` or `eval`.
+- **The site sends security headers** (`frontend/public/_headers`): no framing, no sniffing, a strict referrer policy and and an enforced content security policy that lists exactly where scripts, styles, fonts, images and API calls may come from. If images or the API ever move to a custom domain, add it to `img-src` / `connect-src` there first. The frontend uses no `innerHTML` or `eval`. The one third-party script allowed is Cloudflare Web Analytics (see below).
+- **Analytics** are Cloudflare Web Analytics only: it sets no cookies and keeps no personal profile, so there is no consent banner. Cloudflare Pages injects its beacon (`static.cloudflareinsights.com`), which reports to `cloudflareinsights.com`; both are the only analytics hosts in the content security policy. No Google Analytics or session-recording tools.
 - **Dependencies:** `npm audit` (api and frontend) and `pip-audit` (sync) report no known vulnerabilities as of the last review. Re-run them now and then.
 - **CI permissions** are read-only for both workflows, and the nightly workflow stops with a clear message if a secret is missing.
 
 If a secret ever leaks (shows up in a commit, a log or a screenshot), treat it as burned: rotate it at the source (reset the Neon password, create a new R2 token, change the bot password), update `.env`, run `python sync/set_github_secrets.py` and update Render, and only then clean the history. Rewriting history does not un-leak a secret that was ever pushed.
 
 Things to know before making the repository public: the commit author email and the contact address in the sync's `User-Agent` (`sync/lolsync/client.py`, `art.py`) would become visible. Leaguepedia asks for a contact in the `User-Agent`, so use an address you don't mind sharing.
+
+## Branches and releases
+
+- **`main` is production.** Cloudflare Pages deploys the site from it, Render deploys the API from it, and the nightly sync runs from it. Only merge to `main` what has been checked on `dev`.
+- **`dev` is where work is collected.** Small changes can be committed to it directly; larger ones start on a branch (`feature/compare-players`, `fix/search-clip`) and are merged into `dev` with a pull request.
+- **Previews.** Cloudflare Pages builds every non-production branch as a preview, at `https://<branch>.oracle-lens.pages.dev` (`https://dev.oracle-lens.pages.dev` for `dev`). Two settings make a preview work: the same `VITE_API_BASE`, `VITE_IMAGE_BASE` and `NODE_VERSION` variables under the project's Preview environment, and the preview address in Render's `CORS_ORIGIN`. A preview calls the production API, which is read-only, so previewing is safe.
+- **Releasing** is a pull request from `dev` into `main` (merge it with a merge commit, so `dev` and `main` don't drift apart). After it deploys, check the live site.
+- **Checks.** The [secret scan](#security) runs on every push to every branch. The CI workflow (`.github/workflows/ci.yml`) runs the API tests and type check, the sync tests, and the frontend type check and build on every pull request and on every push to `main` and `dev`. It uses a throwaway Postgres container and no secrets. Wait for green checks before merging; running the commands under [Testing](#testing) first saves a round trip.
 
 ## Testing
 
@@ -259,23 +268,27 @@ sync/
 scripts/
   scan_secrets.py secret scan (tracked files, git history, and with --env your real .env values)
 .github/workflows/
+  ci.yml            tests, type checks and build on pull requests and on main and dev
   nightly-sync.yml  daily sync into production
   secret-scan.yml   secret scan on every push
 render.yaml         Render blueprint for the API
+LICENSE             MIT license for the code
 ```
 
 ## Roadmap
 
 1. ✅ **Milestone 1:** monorepo, schema, one-tournament backfill, two player endpoints, player page (overview + champion pool)
 2. ✅ **Player page complete:** lane matchups (vs. opponents and vs. champions faced) and target bans
-3. Full backfill across all leagues and years
+3. ✅ Full backfill across all leagues and years
 4. ✅ Player leaderboard and home page (search, recent tournaments)
 5. ✅ Team page
 6. ✅ Champion page
 7. ✅ Tournament page
 8. ✅ List pages for teams, champions and tournaments (and name search on the player leaderboard), so every nav tab leads somewhere
-9. ✅ Nightly sync: `nightly` command and workflow, scheduled daily. Still to do: keep-awake ping (depends on the API host; see Deployment)
-10. 🟡 Deployment: nightly sync, R2 images and the Render and Pages configuration are ready; the live services are set up by hand (see Deployment)
+9. ✅ Nightly sync: `nightly` command and workflow, scheduled daily, with an uptime monitor keeping the API awake
+10. ✅ Deployment: Neon, Render, Cloudflare Pages and R2 are live (see Deployment)
+11. ✅ Tournament stages and brackets (play-ins, groups, Swiss, single and double elimination)
+12. Ideas, roughly in order: compare two players or teams, head-to-head history, a patch and meta view, live and upcoming matches, a custom domain
 
 ## Scope decisions
 
@@ -297,3 +310,7 @@ render.yaml         Render blueprint for the API
 ## Data attribution
 
 Data is from [Leaguepedia](https://lol.fandom.com), licensed under CC BY-SA (check Leaguepedia's current terms for the exact version). The site footer carries this attribution on every page.
+
+## License
+
+The code in this repository is released under the [MIT License](LICENSE). That covers the code only: the data comes from Leaguepedia under its own CC BY-SA terms (see above), and champion art, icons and other League of Legends assets belong to Riot Games. Oracle Lens is not endorsed by or affiliated with Riot Games or Leaguepedia.
