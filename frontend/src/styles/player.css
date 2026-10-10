@@ -50,9 +50,9 @@
   background: var(--bg-chip);
   padding: 3px 10px;
 }
-.tag--gold {
-  color: var(--on-gold);
-  background: var(--gold);
+.tag--accent {
+  color: var(--on-accent);
+  background: var(--accent);
   letter-spacing: 0.16em;
 }
 .hero__name {
@@ -71,7 +71,7 @@
   letter-spacing: 0.1em;
 }
 .pool__link:hover {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .hero__team {
   font-size: 18px;
@@ -154,7 +154,7 @@
 }
 .filters__toggle:hover {
   color: var(--text);
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .filters__inner {
   padding-top: 4px;
@@ -204,7 +204,7 @@
 .check input {
   width: 18px;
   height: 18px;
-  accent-color: var(--gold);
+  accent-color: var(--accent);
 }
 .btn-reset {
   margin-left: auto;
@@ -222,7 +222,7 @@
 }
 .btn-reset:hover {
   color: var(--text);
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .empty .btn-reset {
   margin-left: 0;
@@ -327,7 +327,7 @@
 .wr__fill {
   display: block;
   height: 6px;
-  background: var(--gold);
+  background: var(--accent);
 }
 .pool td.pool__flag {
   color: var(--text-muted);

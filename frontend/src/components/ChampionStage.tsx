@@ -4,6 +4,7 @@ import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m } from 'moti
 import type { TournamentChampion } from '../api/types'
 import { percent } from '../lib/format'
 import { CARD_RATIO, SPLASH_FOCUS, SPLASH_RATIO, cardFor, splashUrl } from '../lib/runeterra'
+import { ACCENT_TEXT } from '../lib/theme'
 import { useAspect } from '../lib/useAspect'
 import { prefersReducedMotion, useSlideshow } from '../lib/useSlideshow'
 import { DEPTH, useDepthPointer, useEntrance, useScrollVar } from '../lib/useStageEffects'
@@ -20,7 +21,6 @@ import Weather from './Weather'
  * text and numbers rise. All of it stops for visitors who ask for reduced motion.
  */
 
-const GOLD = '#f0b429'
 export const STAGE_INTERVAL = 7000
 
 /** A champion to feature, and what to say about it. */
@@ -64,7 +64,7 @@ export function resolveSlides(sources: SlideSource[], keys: Record<string, strin
     if (slides.length >= min) break
     const key = keys[s.champion]
     if (key && !slides.some((x) => x.name === s.champion)) {
-      slides.push({ name: s.champion, url: splashUrl(key), color: GOLD, region: 'League art', note: s.note, focus: SPLASH_FOCUS, ratio: SPLASH_RATIO, weather: 'Runeterra', mask: null })
+      slides.push({ name: s.champion, url: splashUrl(key), color: ACCENT_TEXT, region: 'League art', note: s.note, focus: SPLASH_FOCUS, ratio: SPLASH_RATIO, weather: 'Runeterra', mask: null })
     }
   }
   return slides
@@ -89,7 +89,7 @@ export function useStage(slides: Slide[]) {
     show,
     current,
     staged,
-    accent: current?.color ?? GOLD,
+    accent: current?.color ?? ACCENT_TEXT,
     artRef,
     artAspect,
     headerRef,

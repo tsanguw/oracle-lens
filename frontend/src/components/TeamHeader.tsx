@@ -25,7 +25,7 @@ export default function TeamHeader({ data, picks, results }: { data: TeamRespons
               </div>
               <div className="hero__text">
                 <div className="tags rise" style={rise(1)}>
-                  {team.league && <span className="tag tag--gold">{team.league}</span>}
+                  {team.league && <span className="tag tag--accent">{team.league}</span>}
                   {team.region && <span className="tag">{team.region}</span>}
                 </div>
                 <h1 className="hero__name hero__name--team">

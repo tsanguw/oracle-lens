@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, m } from 'motion/react'
 import type { ChampionListRow } from '../api/types'
 import { percent } from '../lib/format'
+import { ACCENT_TEXT } from '../lib/theme'
 import { CARD_RATIO, cardFor } from '../lib/runeterra'
 import { StageBackdrop, StageMotion, STAGE_INTERVAL, useStage } from './ChampionStage'
 import { SlideControls, type Slide } from './SlideParts'
@@ -14,7 +15,6 @@ import { SlideControls, type Slide } from './SlideParts'
  * motion, and the slideshow can always be paused.
  */
 
-const GOLD = '#f0b429'
 const MAX_SLIDES = 6
 // Shown when the champion data is unavailable, so the hero never sits empty.
 const FALLBACK = ['Ahri', 'Jinx', 'Lee Sin', 'Yasuo', 'Vi', 'Lux']
@@ -57,7 +57,7 @@ export default function HeroShow({ champions, settled, children }: Props) {
       <section
         ref={stage.headerRef}
         className={`stage${show.playing ? '' : ' is-still'}`}
-        style={{ '--rc': stage.accent ?? GOLD } as CSSProperties}
+        style={{ '--rc': stage.accent ?? ACCENT_TEXT } as CSSProperties}
         aria-roledescription="carousel"
         aria-label="Most contested champions"
       >

@@ -28,7 +28,7 @@
 .brand__mark {
   width: 14px;
   height: 28px;
-  background: var(--gold);
+  background: var(--accent);
   transform: skewX(-14deg);
   display: inline-block;
 }
@@ -54,8 +54,8 @@
   border-bottom: 3px solid transparent;
 }
 .tabs__link.active {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--accent-text);
+  border-bottom-color: var(--accent);
 }
 
 /* Footer */

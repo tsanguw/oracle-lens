@@ -12,8 +12,14 @@
   --text-soft: #c9cfda;
   --text-muted: #9aa3b2;
   --text-dim: #7d8698;
-  --gold: #f0b429;
-  --on-gold: #1a1300;
+  /* The accent: fills, lines, underlines, tags and the focus ring use it as is. It is a little too dark to read as small text
+     on the dark panels (about 4:1), so accent-coloured text uses the brighter --accent-text (5:1 or more), and text on an
+     accent fill is near-black (4.6:1). */
+  --accent: #e7300e;
+  --accent-text: #ff5a36;
+  --on-accent: #140400;
+  /* Red means "the brand" here, so a win or an advance is shown in green instead. */
+  --win: #46b36b;
   /* Light backing for logos whose artwork is too dark to see on the dark panels. */
   --plate: #e4e8ee;
 

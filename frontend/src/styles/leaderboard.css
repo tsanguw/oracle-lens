@@ -50,8 +50,8 @@
   padding: 16px;
 }
 .lb th.is-sorted {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--accent-text);
+  border-bottom-color: var(--accent);
 }
 .lb__sort {
   all: unset;
@@ -83,7 +83,7 @@
   text-align: left;
 }
 .lb td.is-sorted {
-  color: var(--gold);
+  color: var(--accent-text);
   font-weight: 600;
 }
 .lb__rank {
@@ -95,13 +95,13 @@
   color: var(--text-dim);
 }
 .lb__rank--top {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .lb__player a {
   font-weight: 700;
 }
 .lb__player a:hover {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .lb__team {
   color: var(--text-soft);
@@ -140,11 +140,11 @@
   cursor: pointer;
 }
 .lb-pager__btn:hover {
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .lb-pager__btn.is-current {
-  color: var(--gold);
-  border-color: var(--gold);
+  color: var(--accent-text);
+  border-color: var(--accent);
 }
 .lb-pager__gap {
   color: var(--text-dim);
@@ -192,7 +192,7 @@
   border: 1px solid var(--border-strong);
 }
 .list-search:focus-within {
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .list-search__icon {
   color: var(--text-muted);

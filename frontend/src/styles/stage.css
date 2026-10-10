@@ -3,7 +3,7 @@
  * The accent (--rc) follows the current card's region; everything that uses it eases to the new colour.
  */
 .stage {
-  --rc: var(--gold);
+  --rc: var(--accent);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -442,7 +442,7 @@
  * failed request) the header keeps its original layout.
  */
 .hero--stage {
-  --rc: var(--gold);
+  --rc: var(--accent);
   position: relative;
   isolation: isolate;
   overflow: hidden;

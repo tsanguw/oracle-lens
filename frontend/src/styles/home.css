@@ -1,6 +1,6 @@
 /*
  * Home page. Layout families, one per section: a split hero (search beside a live look at the data),
- * plain rows for tournaments, and an icon grid for champions. Sharp corners and the gold accent throughout.
+ * plain rows for tournaments, and an icon grid for champions. Sharp corners and the accent colour throughout.
  */
 .home {
   gap: 72px;
@@ -59,7 +59,7 @@
   padding: 0 20px;
   background: var(--bg-panel);
   border: 1px solid var(--border-strong);
-  border-bottom: 3px solid var(--gold);
+  border-bottom: 3px solid var(--accent);
 }
 .search__icon {
   color: var(--text-muted);
@@ -85,8 +85,8 @@
   outline: none;
 }
 .search__box:focus-within {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 1px var(--gold);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 .search__hint {
   font-family: var(--font-body);
@@ -125,7 +125,7 @@
   font-size: 13px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .search__row {
   display: flex;
@@ -203,7 +203,7 @@
   color: var(--text);
 }
 .spot__row:hover .spot__name {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .spot__row:active {
   transform: translateY(1px);
@@ -216,7 +216,7 @@
   text-align: center;
 }
 .spot__rank.is-first {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .spot__who {
   display: flex;
@@ -252,7 +252,7 @@
   font-size: 15px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .spot__more:hover {
   text-decoration: underline;
@@ -278,7 +278,7 @@
   font-size: 15px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent-text);
   white-space: nowrap;
 }
 .home__all:hover {
@@ -293,7 +293,7 @@
   border: 0;
   padding: 0;
   font: inherit;
-  color: var(--gold);
+  color: var(--accent-text);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -319,11 +319,11 @@
   color: var(--text);
 }
 .trn__row:hover .trn__name {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .trn__row--lead {
   padding: 28px 12px;
-  border-left: 3px solid var(--gold);
+  border-left: 3px solid var(--accent);
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
 }
@@ -375,17 +375,17 @@
   white-space: nowrap;
 }
 .badge--live {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--on-gold);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
-/* A final placement replaces "Completed"; first place is outlined in gold. */
+/* A final placement replaces "Completed"; first place is outlined in the accent colour. */
 .badge--place {
   color: var(--text);
 }
 .badge--first {
-  color: var(--gold);
-  border-color: var(--gold);
+  color: var(--accent-text);
+  border-color: var(--accent);
 }
 
 /* Champions: an icon grid */
@@ -410,7 +410,7 @@
   color: var(--text);
 }
 .champs__tile:hover .champs__name {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .champs__tile:active {
   transform: translateY(1px);

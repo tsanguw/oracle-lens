@@ -59,7 +59,7 @@
   transition: border-color 0.15s, transform 0.15s;
 }
 .lineup__card:hover {
-  border-color: var(--gold);
+  border-color: var(--accent);
   color: var(--text);
 }
 .lineup__card:active {
@@ -87,7 +87,7 @@
   text-transform: uppercase;
 }
 .lineup__card:hover .lineup__name {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .lineup__record {
   font-size: 13px;
@@ -236,7 +236,7 @@
   gap: 8px;
 }
 .hero__team.with-img:hover {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 
 /* Featured champions reuse the lineup cards at a smaller size. */
@@ -277,7 +277,7 @@
 }
 .more > summary:hover {
   color: var(--text);
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .more[open] > summary {
   margin-bottom: 16px;
@@ -321,7 +321,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .lineup__card.is-first {
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .podium__rank {
   font-family: var(--font-display);
@@ -329,11 +329,11 @@
   font-size: 22px;
   line-height: 1;
   letter-spacing: 0;
-  color: var(--gold);
+  color: var(--accent-text);
   margin-right: 4px;
 }
 .lineup__stats .is-sorted dd {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 
 @media (max-width: 720px) {

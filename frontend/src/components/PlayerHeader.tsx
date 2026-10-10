@@ -26,7 +26,7 @@ export default function PlayerHeader({ data, champions, results }: { data: Playe
               </div>
               <div className="hero__text">
                 <div className="tags rise" style={rise(1)}>
-                  {player.role && <span className="tag tag--gold">{player.role}</span>}
+                  {player.role && <span className="tag tag--accent">{player.role}</span>}
                   {player.league && <span className="tag">{player.league}</span>}
                 </div>
                 <h1 className="hero__name">

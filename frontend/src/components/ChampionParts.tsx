@@ -33,7 +33,7 @@ export function ChampionHeader({ data }: { data: ChampionResponse }) {
               </div>
               <div className="hero__text">
                 <div className="tags rise" style={rise(1)}>
-                  {summary?.role && <span className="tag tag--gold">{summary.role}</span>}
+                  {summary?.role && <span className="tag tag--accent">{summary.role}</span>}
                 </div>
                 <h1 className="hero__name hero__name--team">
                   <Letters text={champion.name} />

@@ -31,7 +31,7 @@
 }
 .ctx-bar__toggle:hover {
   color: var(--text);
-  border-color: var(--gold);
+  border-color: var(--accent);
 }
 .ctx {
   display: grid;
@@ -55,7 +55,7 @@
   font-size: 13px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .ctx__sub {
   margin: 8px 0 0;
@@ -89,7 +89,7 @@
 .ctx__row:hover .ctx__name,
 .ctx__event:hover .ctx__name,
 .ctx__match:hover .ctx__name {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .ctx__row {
   display: grid;
@@ -103,7 +103,7 @@
   gap: 12px;
 }
 .ctx__row.is-viewed .ctx__name {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .ctx__role {
   font-size: 13px;
@@ -188,7 +188,7 @@
 }
 .series__team:hover,
 .pool__link:hover {
-  color: var(--gold);
+  color: var(--accent-text);
 }
 .series__score {
   font-family: var(--font-display);

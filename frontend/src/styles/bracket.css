@@ -1,6 +1,6 @@
 /*
  * The stages section of a tournament page: tabs for the event's stages, and the series as a bracket (knockout) or as
- * columns of rounds. A series card is two team rows; the winner is picked out in gold. The bracket scrolls sideways
+ * columns of rounds. A series card is two team rows; the winner's row is lifted with a lighter background and bold text. The bracket scrolls sideways
  * when it is wider than the page.
  */
 .stagetabs {
@@ -29,8 +29,8 @@
   color: var(--text);
 }
 .stagetabs__tab.is-on {
-  color: var(--gold);
-  border-bottom-color: var(--gold);
+  color: var(--accent-text);
+  border-bottom-color: var(--accent);
 }
 .stagetabs__count {
   font: 500 13px var(--font-body);
@@ -48,7 +48,7 @@
   border-radius: 6px;
 }
 .brk:focus-visible {
-  outline: 2px solid var(--gold);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .brk__canvas {
@@ -66,7 +66,7 @@
   stroke-width: 1.5;
 }
 .brk__lines path.is-won {
-  stroke: color-mix(in srgb, var(--gold) 55%, var(--border-strong));
+  stroke: var(--text-dim); /* the path a winner took: a lighter grey, so red never reads as a verdict */
 }
 .brk__head {
   position: absolute;
@@ -117,7 +117,7 @@
 .brk__team.is-win {
   color: var(--text);
   font-weight: 700;
-  background: color-mix(in srgb, var(--gold) 9%, transparent);
+  background: rgba(255, 255, 255, 0.07); /* the winner's row is lifted, not coloured */
 }
 .brk__tag {
   align-self: stretch;
@@ -224,8 +224,8 @@ a.brk__name:hover {
   padding: 10px 12px 12px;
 }
 .swiss__group.is-advanced {
-  border-color: color-mix(in srgb, var(--gold) 55%, var(--border));
-  background: color-mix(in srgb, var(--gold) 6%, var(--bg-panel));
+  border-color: color-mix(in srgb, var(--win) 60%, var(--border));
+  background: color-mix(in srgb, var(--win) 7%, var(--bg-panel));
 }
 .swiss__group.is-out {
   opacity: 0.72;
@@ -246,7 +246,7 @@ a.brk__name:hover {
   color: var(--text-muted);
 }
 .is-advanced .swiss__tag {
-  color: var(--gold);
+  color: var(--win);
 }
 .swiss__teams {
   list-style: none;
@@ -284,7 +284,7 @@ a.brk__name:hover {
   background: var(--border-strong);
 }
 .swiss__path i.is-win {
-  background: #46b36b;
+  background: var(--win);
 }
 .swiss__path i.is-loss {
   background: #c8505a;

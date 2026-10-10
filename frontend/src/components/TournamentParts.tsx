@@ -31,7 +31,7 @@ export function TournamentHeader({ data, champions }: { data: TournamentResponse
           <div className="hero__main">
             <div className="hero__text">
               <div className="tags rise" style={rise(1)}>
-                {leagueTag && <span className="tag tag--gold">{leagueTag}</span>}
+                {leagueTag && <span className="tag tag--accent">{leagueTag}</span>}
                 {t.stage && <span className="tag">{t.stage}</span>}
                 <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>
               </div>
