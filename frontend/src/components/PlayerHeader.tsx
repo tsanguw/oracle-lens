@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m } from 'motion/react'
 import type { ChampionRow, PlayerResponse } from '../api/types'
 import { decimal, percent, rate } from '../lib/format'
-import { cardFor } from '../lib/runeterra'
+import { CARD_RATIO, SPLASH_FOCUS, SPLASH_RATIO, cardFor } from '../lib/runeterra'
+import { useAspect } from '../lib/useAspect'
 import { useSlideshow } from '../lib/useSlideshow'
 import Embers from './Embers'
 import { PlayerPhoto, TeamLogo, useImages } from './Images'
@@ -27,14 +28,14 @@ function buildSlides(champions: ChampionRow[] | undefined, keys: Record<string, 
   for (const r of rows) {
     const card = cardFor(r.champion)
     if (!card) continue
-    slides.push({ name: r.champion, url: card.url, color: card.color, region: card.regionName, note: note(r) })
+    slides.push({ name: r.champion, url: card.url, color: card.color, region: card.regionName, focus: card.focus, ratio: CARD_RATIO, note: note(r) })
     if (slides.length === MAX_SLIDES) break
   }
   for (const r of rows) {
     if (slides.length >= MIN_SLIDES) break
     const key = keys[r.champion]
     if (key && !slides.some((s) => s.name === r.champion)) {
-      slides.push({ name: r.champion, url: `${SPLASH}/${key}_0.jpg`, color: GOLD, region: 'Champion pool', note: note(r) })
+      slides.push({ name: r.champion, url: `${SPLASH}/${key}_0.jpg`, color: GOLD, region: 'Champion pool', focus: SPLASH_FOCUS, ratio: SPLASH_RATIO, note: note(r) })
     }
   }
   return slides
@@ -48,6 +49,8 @@ export default function PlayerHeader({ data, champions }: { data: PlayerResponse
     slides.map((s) => s.url),
     INTERVAL,
   )
+  const [bgRef, bgAspect] = useAspect(2)
+  const [frameRef, frameAspect] = useAspect(2 / 3)
   const current = slides[show.index]
   const staged = slides.length > 0
   const accent = current?.color ?? GOLD
@@ -58,8 +61,8 @@ export default function PlayerHeader({ data, champions }: { data: PlayerResponse
         <section className={`hero${staged ? ' hero--stage' : ''}${show.playing ? '' : ' is-still'}`} style={{ '--rc': accent } as CSSProperties}>
           {staged && (
             <>
-              <div className="pstage__bg" aria-hidden="true">
-                <SlideLayers slides={slides} show={show} className="pstage__img" />
+              <div ref={bgRef} className="pstage__bg" aria-hidden="true">
+                <SlideLayers slides={slides} show={show} aspect={bgAspect} className="pstage__img" />
               </div>
               <div className="pstage__scrim" aria-hidden="true" />
               <Embers color={accent} />
@@ -125,8 +128,8 @@ export default function PlayerHeader({ data, champions }: { data: PlayerResponse
                 onBlur={() => show.hold(false)}
               >
                 <span className="pcard__label">Champion pool</span>
-                <div className="pcard__frame">
-                  <SlideLayers slides={slides} show={show} className="pcard__img" />
+                <div ref={frameRef} className="pcard__frame">
+                  <SlideLayers slides={slides} show={show} aspect={frameAspect} className="pcard__img" />
                   <div
                     className="pcard__caption"
                     role="group"

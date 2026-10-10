@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom'
 import { AnimatePresence, LazyMotion, MotionConfig, domAnimation, m, useMotionValue, useSpring, useTransform } from 'motion/react'
 import type { ChampionListRow } from '../api/types'
 import { percent } from '../lib/format'
-import { cardFor } from '../lib/runeterra'
+import { CARD_RATIO, cardFor } from '../lib/runeterra'
+import { useAspect } from '../lib/useAspect'
 import { prefersReducedMotion, useSlideshow } from '../lib/useSlideshow'
 import Embers from './Embers'
 import { SlideControls, SlideLayers, type Slide } from './SlideParts'
@@ -31,6 +32,8 @@ function buildSlides(rows: ChampionListRow[] | undefined): Slide[] {
       url: card.url,
       color: card.color,
       region: card.regionName,
+      focus: card.focus,
+      ratio: CARD_RATIO,
       note: row.presence != null ? `Picked or banned in ${percent(row.presence)} of games` : 'Featured champion',
     })
     if (slides.length === MAX_SLIDES) break
@@ -39,7 +42,7 @@ function buildSlides(rows: ChampionListRow[] | undefined): Slide[] {
     if (slides.length >= 5) break
     const card = cardFor(name)
     if (card && !slides.some((s) => s.name === name)) {
-      slides.push({ name, url: card.url, color: card.color, region: card.regionName, note: 'Featured champion' })
+      slides.push({ name, url: card.url, color: card.color, region: card.regionName, focus: card.focus, ratio: CARD_RATIO, note: 'Featured champion' })
     }
   }
   return slides
@@ -67,6 +70,7 @@ export default function HeroShow({ champions, settled, children }: Props) {
   const sy = useSpring(my, { stiffness: 45, damping: 18 })
   const artX = useTransform(sx, (v) => v * -26)
   const artY = useTransform(sy, (v) => v * -14)
+  const [artRef, artAspect] = useAspect(1.9)
   const heroRef = useRef<HTMLElement>(null)
   const onPointerMove = (e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse' || prefersReducedMotion() || !heroRef.current) return
@@ -94,8 +98,8 @@ export default function HeroShow({ champions, settled, children }: Props) {
           onPointerMove={onPointerMove}
           onPointerLeave={onPointerLeave}
         >
-          <m.div className="stage__art" style={{ x: artX, y: artY }} aria-hidden="true">
-            <SlideLayers slides={slides} show={show} />
+          <m.div ref={artRef} className="stage__art" style={{ x: artX, y: artY }} aria-hidden="true">
+            <SlideLayers slides={slides} show={show} aspect={artAspect} />
           </m.div>
           <div className="stage__scrim" aria-hidden="true" />
           {show.count > 0 && <Embers color={accent} />}

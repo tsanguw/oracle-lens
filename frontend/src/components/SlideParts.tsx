@@ -1,3 +1,4 @@
+import { coverPosition, type Focus } from '../lib/runeterra'
 import type { Slideshow } from '../lib/useSlideshow'
 import { ChampionIcon } from './Images'
 
@@ -7,10 +8,16 @@ export interface Slide {
   color: string
   region: string
   note: string
+  /** Where the champion sits in the image, and the image's width / height. */
+  focus: Focus
+  ratio: number
 }
 
-/** The art itself: only slides that have been mounted, the current one fading in. */
-export function SlideLayers({ slides, show, className = 'stage__img' }: { slides: Slide[]; show: Slideshow; className?: string }) {
+/**
+ * The art itself: only slides that have been mounted, the current one fading in. `aspect` is the frame's
+ * width / height; each image is positioned so its champion stays in view.
+ */
+export function SlideLayers({ slides, show, aspect, className = 'stage__img' }: { slides: Slide[]; show: Slideshow; aspect: number; className?: string }) {
   return (
     <>
       {slides.map((s, i) =>
@@ -19,6 +26,7 @@ export function SlideLayers({ slides, show, className = 'stage__img' }: { slides
             key={s.name}
             className={`${className}${i === show.index ? ' is-on' : ''}${i === show.prev ? ' is-prev' : ''}${show.ready.has(i) ? ' is-ready' : ''}`}
             src={s.url}
+            style={{ objectPosition: coverPosition(s.focus, s.ratio, aspect) }}
             alt=""
             decoding="async"
             onLoad={() => show.markReady(i)}
