@@ -16,4 +16,5 @@
   # Enforced: the browser blocks anything outside this list (it was report-only first, and the live site showed no
   # violations on 18 routes, desktop and phone). If images or the API move to a custom domain instead of *.r2.dev /
   # *.onrender.com, add that domain to img-src / connect-src BEFORE switching, or those requests will be blocked.
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://ddragon.leagueoflegends.com https://dd.b.pvp.net https://*.r2.dev; connect-src 'self' https://*.onrender.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  # Cloudflare Web Analytics: Pages injects its beacon from static.cloudflareinsights.com, which reports to cloudflareinsights.com.
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://ddragon.leagueoflegends.com https://dd.b.pvp.net https://*.r2.dev; connect-src 'self' https://*.onrender.com https://cloudflareinsights.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
