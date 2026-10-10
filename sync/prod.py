@@ -17,11 +17,14 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 ROOT = Path(__file__).resolve().parent.parent
+# The sync steps need the packages in sync/.venv, whichever Python started this script.
+_VENV = ROOT / "sync" / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+PYTHON = str(_VENV) if _VENV.exists() else sys.executable
 STEPS = {
     "migrate": (["npm", "run", "migrate"], ROOT / "api"),
-    "results": ([sys.executable, "main.py", "results"], ROOT / "sync"),
-    "logo-tones": ([sys.executable, "main.py", "logo-tones"], ROOT / "sync"),
-    "schedule": ([sys.executable, "main.py", "schedule"], ROOT / "sync"),
+    "results": ([PYTHON, "main.py", "results"], ROOT / "sync"),
+    "logo-tones": ([PYTHON, "main.py", "logo-tones"], ROOT / "sync"),
+    "schedule": ([PYTHON, "main.py", "schedule"], ROOT / "sync"),
 }
 
 
