@@ -91,6 +91,7 @@ python main.py backfill --latest                                   # most recent
 python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"  # a specific Leaguepedia page
 python main.py backfill --all --force                              # re-sync even if already done
 python main.py logo-tones                                          # measure which team logos are too dark for the dark panels (they are then shown on a light plate)
+python main.py schedule                                           # refresh every series' date and round (the bracket and stage tabs are built from these); --tournament PAGE limits it to one event
 python main.py results                                             # fetch final placements (1st, 3rd-4th, ...) for every event
 python main.py schedule                                            # refresh match dates (series.scheduled_at) without reloading games
 python main.py nightly                                             # only what is new: unfinished tournaments, match dates, champion icons (about 30 seconds)

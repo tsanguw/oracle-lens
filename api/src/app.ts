@@ -8,6 +8,7 @@ import { loadPlayerContext } from './playerContext.js'
 import { loadImageManifest } from './assets.js'
 import { championsListSchema, loadChampionsList, loadTeamsList, loadTournamentsList, teamsListSchema, tournamentsListSchema } from './listQueries.js'
 import { loadTeamContext } from './teamContext.js'
+import { loadStages } from './stages.js'
 import {
   findTournament,
   loadRelatedEvents,
@@ -290,6 +291,11 @@ export function createApp() {
   tournamentRoute('/champions', async ({ tournament, limit }) => {
     const champions = await loadTournamentChampions(pool, tournament.id, limit)
     return { empty: champions.length === 0, champions }
+  })
+  /** The event's series grouped into stages (play-in, swiss, groups, knockout), with the links a bracket is drawn from. */
+  tournamentRoute('/stages', async ({ tournament }) => {
+    const stages = await loadStages(pool, tournament.id, tournament.name)
+    return { empty: stages.length === 0, stages }
   })
   /** Leading teams, schedule and results, and related events for the related-info strip. */
   tournamentRoute('/context', async ({ tournament }) => {

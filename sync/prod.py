@@ -3,6 +3,7 @@
   python prod.py migrate     # apply any new SQL migration (api/migrations) to Neon
   python prod.py results     # fetch final placements into Neon
   python prod.py logo-tones  # measure team logos (reads them from R2 when you have R2_* in .env)
+  python prod.py schedule    # fetch every series' round and date from Leaguepedia (the full table takes about ten minutes)
   python prod.py migrate results logo-tones
 
 The connection string is read from .env and never printed.
@@ -20,6 +21,7 @@ STEPS = {
     "migrate": (["npm", "run", "migrate"], ROOT / "api"),
     "results": ([sys.executable, "main.py", "results"], ROOT / "sync"),
     "logo-tones": ([sys.executable, "main.py", "logo-tones"], ROOT / "sync"),
+    "schedule": ([sys.executable, "main.py", "schedule"], ROOT / "sync"),
 }
 
 

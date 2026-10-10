@@ -551,3 +551,40 @@ export interface TournamentListResponse {
   empty: boolean
   rows: TournamentListRow[]
 }
+
+export interface BracketSlot {
+  team: string | null
+  region: string | null
+  score: number | null
+  won: boolean
+  /** The earlier series this team came from, and whether it won or lost there (null while that one is unplayed). */
+  from: { seriesId: number; as: 'won' | 'lost' | null } | null
+}
+
+export interface StageSeries {
+  seriesId: number
+  n: number | null
+  bestOf: number | null
+  at: string | null
+  played: boolean
+  slots: [BracketSlot, BracketSlot]
+  /** Knockout only: upper (nobody has lost), lower (someone has), final (the last series). */
+  lane?: 'upper' | 'lower' | 'final'
+}
+
+export interface StageRound {
+  name: string
+  order: number
+  series: StageSeries[]
+}
+
+export interface TournamentStage {
+  key: 'playin' | 'groups' | 'swiss' | 'knockout'
+  label: string
+  rounds: StageRound[]
+}
+
+export interface StagesResponse {
+  empty: boolean
+  stages: TournamentStage[]
+}

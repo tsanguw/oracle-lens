@@ -39,10 +39,16 @@ PICKBAN_FIELDS = (
     + ","
     + ",".join(f"Team{t}Pick{n}" for t in (1, 2) for n in range(1, 6))
 )
-MATCH_FIELDS = "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,BestOf,IsNullified,DateTime_UTC"
+MATCH_FIELDS = "MatchId,Team1,Team2,Winner,Team1Score,Team2Score,BestOf,IsNullified,DateTime_UTC,Tab,N_TabInPage,N_MatchInTab"
 TOURNAMENT_FIELDS = "Name,OverviewPage,DateStart,Date,League,Region,Split,Year,IsPlayoffs,IsQualifier"
 
 Log = Callable[[str], None]
+
+
+def stage_of(row: dict[str, Any]) -> tuple[str | None, int | None, int | None]:
+    """(round name, that round's order in the event, the series' order in the round) from a MatchSchedule row."""
+    tab = (row.get("Tab") or "").strip()
+    return (tab or None, to_int(row.get("N_TabInPage")), to_int(row.get("N_MatchInTab"))) if tab else (None, None, None)
 
 
 class OutOfScope(Exception):
@@ -346,22 +352,26 @@ def _load(
 
         series_ids: dict[str, int] = {}
 
-        def upsert_series(match_id: str, t1: str, t2: str, winner: str, s1, s2, best_of, scheduled_at=None) -> int:
+        def upsert_series(match_id: str, t1: str, t2: str, winner: str, s1, s2, best_of, scheduled_at=None, stage=(None, None, None)) -> int:
             if match_id in series_ids:
                 return series_ids[match_id]
             t1_id, t2_id = team_id(t1), team_id(t2)
             win_id = {"1": t1_id, "2": t2_id}.get(str(winner))
             score = f"{s1}-{s2}" if s1 not in (None, "") and s2 not in (None, "") else None
             cur.execute(
-                """INSERT INTO series (leaguepedia_id, tournament_id, team1_id, team2_id, winner_id, score, best_of, scheduled_at)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                """INSERT INTO series (leaguepedia_id, tournament_id, team1_id, team2_id, winner_id, score, best_of, scheduled_at,
+                                       stage_tab, stage_order, stage_match)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (leaguepedia_id) DO UPDATE SET
                      tournament_id = EXCLUDED.tournament_id,
                      team1_id = EXCLUDED.team1_id, team2_id = EXCLUDED.team2_id,
                      winner_id = EXCLUDED.winner_id, score = EXCLUDED.score, best_of = EXCLUDED.best_of,
-                     scheduled_at = COALESCE(EXCLUDED.scheduled_at, series.scheduled_at)
+                     scheduled_at = COALESCE(EXCLUDED.scheduled_at, series.scheduled_at),
+                     stage_tab = COALESCE(EXCLUDED.stage_tab, series.stage_tab),
+                     stage_order = COALESCE(EXCLUDED.stage_order, series.stage_order),
+                     stage_match = COALESCE(EXCLUDED.stage_match, series.stage_match)
                    RETURNING id""",
-                (match_id, tournament_id, t1_id, t2_id, win_id, score, to_int(best_of), scheduled_at),
+                (match_id, tournament_id, t1_id, t2_id, win_id, score, to_int(best_of), scheduled_at, *stage),
             )
             series_ids[match_id] = cur.fetchone()[0]
             counts["series"] += 1
@@ -371,7 +381,7 @@ def _load(
             # A bracket slot whose teams are not decided yet ("TBD") is not a series.
             if m["MatchId"] and not is_placeholder(m["Team1"]) and not is_placeholder(m["Team2"]):
                 upsert_series(m["MatchId"], m["Team1"], m["Team2"], m["Winner"], m["Team1Score"], m["Team2Score"], m["BestOf"],
-                              parse_utc(m["DateTime_UTC"]))
+                              parse_utc(m["DateTime_UTC"]), stage_of(m))
 
         participating: set[str] = set()
         for g in games:
@@ -556,24 +566,34 @@ def backfill_all(
     return dict(summary)
 
 
-def refresh_schedule(conn: psycopg.Connection, lp: Leaguepedia, log: Log = print, since: str | None = None) -> int:
-    """Fill series.scheduled_at from MatchSchedule for every series we already hold (no games are reloaded).
+def refresh_schedule(
+    conn: psycopg.Connection, lp: Leaguepedia, log: Log = print, since: str | None = None, pages: list[str] | None = None
+) -> int:
+    """Fill series.scheduled_at and the stage columns (round, order) from MatchSchedule for every series we hold.
 
-    `since` ("YYYY-MM-DD HH:MM:SS", UTC) only looks at matches from then on; the full table is 170k rows and
-    takes about ten minutes, while dates of matches long past never change.
+    No games are reloaded. `since` ("YYYY-MM-DD HH:MM:SS", UTC) only looks at matches from then on; the full table is
+    170k rows and takes about ten minutes, while dates and rounds of matches long past never change. `pages` (OverviewPages) limits it to those events.
     """
     where = "DateTime_UTC IS NOT NULL" + (f" AND DateTime_UTC >= '{since}'" if since else "")
-    rows = [
-        (parse_utc(r["DateTime_UTC"]), r["MatchId"])
-        for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC", where=where)
-        if r["MatchId"] and r["DateTime_UTC"]
+    if pages:
+        where += " AND OverviewPage IN (" + ",".join(cargo_quote(p) for p in pages) + ")"
+    fetched = [
+        r for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC,Tab,N_TabInPage,N_MatchInTab", where=where) if r["MatchId"]
     ]
-    log(f"{len(rows)} scheduled matches fetched")
+    rows = [(parse_utc(r["DateTime_UTC"]), r["MatchId"]) for r in fetched if r["DateTime_UTC"]]
+    stages = [(*stage_of(r), r["MatchId"]) for r in fetched if (r.get("Tab") or "").strip()]
+    log(f"{len(rows)} scheduled matches fetched, {len(stages)} with a round")
     with conn.cursor() as cur:
         cur.executemany(
             """UPDATE series SET scheduled_at = %s WHERE leaguepedia_id = %s AND scheduled_at IS DISTINCT FROM %s""",
             [(when, match_id, when) for when, match_id in rows],
         )
         updated = cur.rowcount
+        if stages:
+            cur.executemany(
+                """UPDATE series SET stage_tab = %s, stage_order = %s, stage_match = %s WHERE leaguepedia_id = %s
+                   AND (stage_tab, stage_order, stage_match) IS DISTINCT FROM (%s::text, %s::int, %s::int)""",
+                [(tab, order, match, match_id, tab, order, match) for tab, order, match, match_id in stages],
+            )
     conn.commit()
     return updated

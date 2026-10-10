@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type {
   MatchesResponse,
+  StagesResponse,
   StandingRow,
   TournamentChampion,
   TournamentContextResponse,
@@ -21,6 +22,7 @@ import {
 } from '../components/TournamentParts'
 import { usePageTitle } from '../lib/usePageTitle'
 import ErrorState from '../components/ErrorState'
+import TournamentStages from '../components/TournamentStages'
 
 const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
 
@@ -34,6 +36,7 @@ export default function TournamentPage({ id }: { id: string }) {
   const players = useApi<{ empty: boolean; minGames: number; players: TournamentPlayer[] }>(`${base}/players`)
   const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
   const context = useApi<TournamentContextResponse>(`${base}/context`)
+  const stages = useApi<StagesResponse>(`${base}/stages`)
   usePageTitle(tournament.data?.tournament.name ?? 'Tournament')
 
   if (tournament.error?.status === 404) {
@@ -69,6 +72,10 @@ export default function TournamentPage({ id }: { id: string }) {
           </div>
         ) : (
           <>
+            {stages.data && !stages.data.empty && (stages.data.stages.length > 1 || stages.data.stages[0].key === 'knockout') && (
+              <TournamentStages stages={stages.data.stages} />
+            )}
+
             <section aria-labelledby="records" className="section">
               <h2 id="records" className="section__title">
                 Standings and results

@@ -66,3 +66,25 @@ def test_refresh_schedule_ignores_rows_without_a_match_id_or_date():
     conn = FakeConn()
     refresh_schedule(conn, lp, log=lambda _: None)
     assert [p[1] for p in conn.cur.batches[0][1]] == ["LCK/2026/M4"]
+
+
+def test_refresh_schedule_also_fills_the_round_and_order_of_each_series():
+    lp = FakeLeaguepedia([
+        {"MatchId": "W/M1", "DateTime_UTC": "2025-11-01 09:00:00", "Tab": "Quarterfinals", "N_TabInPage": "6", "N_MatchInTab": "2"},
+        {"MatchId": "W/M2", "DateTime_UTC": "2025-11-02 09:00:00", "Tab": "", "N_TabInPage": "", "N_MatchInTab": ""},
+    ])
+    conn = FakeConn()
+    refresh_schedule(conn, lp, log=lambda _: None)
+
+    assert "Tab" in lp.calls[0][1] and "N_MatchInTab" in lp.calls[0][1]
+    sql, params = conn.cur.batches[1]
+    assert sql.startswith("UPDATE series SET stage_tab")
+    assert params == [("Quarterfinals", 6, 2, "W/M1", "Quarterfinals", 6, 2)]
+
+
+def test_stage_of_reads_the_tab_and_ignores_rows_without_one():
+    from lolsync.backfill import stage_of
+
+    assert stage_of({"Tab": " Finals ", "N_TabInPage": "5", "N_MatchInTab": "1"}) == ("Finals", 5, 1)
+    assert stage_of({"Tab": "", "N_TabInPage": "5"}) == (None, None, None)
+    assert stage_of({}) == (None, None, None)

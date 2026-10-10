@@ -1,0 +1,202 @@
+/*
+ * The stages section of a tournament page: tabs for the event's stages, and the series as a bracket (knockout) or as
+ * columns of rounds. A series card is two team rows; the winner is picked out in gold. The bracket scrolls sideways
+ * when it is wider than the page.
+ */
+.stagetabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.stagetabs__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  font: 600 15px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.stagetabs__tab:hover {
+  color: var(--text);
+}
+.stagetabs__tab.is-on {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+.stagetabs__count {
+  font: 500 12px var(--font-body);
+  color: var(--text-dim);
+  background: var(--bg-chip);
+  border-radius: 9px;
+  padding: 1px 7px;
+}
+
+.brk {
+  overflow-x: auto;
+  padding: 4px 2px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.brk:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+.brk__canvas {
+  position: relative;
+  margin: 14px 18px 8px;
+}
+.brk__lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.brk__lines path {
+  fill: none;
+  stroke: var(--border-strong);
+  stroke-width: 1.5;
+}
+.brk__lines path.is-won {
+  stroke: color-mix(in srgb, var(--gold) 55%, var(--border-strong));
+}
+.brk__head {
+  position: absolute;
+  top: 0;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-soft);
+  font: 600 14px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.brk__head--flow {
+  position: static;
+  margin: 0 0 10px;
+  width: 226px;
+}
+
+.brk__card {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.brk__abs {
+  position: absolute;
+}
+.brk__card.is-pending {
+  opacity: 0.72;
+}
+.brk__team {
+  display: grid;
+  grid-template-columns: 28px 20px minmax(0, 1fr) 26px;
+  align-items: center;
+  gap: 6px;
+  padding-right: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.brk__team + .brk__team {
+  border-top: 1px solid var(--border);
+}
+.brk__team.is-win {
+  color: var(--text);
+  font-weight: 700;
+  background: color-mix(in srgb, var(--gold) 9%, transparent);
+}
+.brk__tag {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  background: var(--bg-chip);
+  color: var(--text-muted);
+  font: 700 10px var(--font-display);
+  letter-spacing: 0.04em;
+  overflow: hidden;
+}
+.brk__tag[data-region='KR'] {
+  background: #4b3a78;
+  color: #d9ccff;
+}
+.brk__tag[data-region='CN'] {
+  background: #6e2a4a;
+  color: #ffc4dc;
+}
+.brk__tag[data-region='NA'] {
+  background: #28507a;
+  color: #bfdcff;
+}
+.brk__tag[data-region='EU'],
+.brk__tag[data-region='EMEA'] {
+  background: #2c5f58;
+  color: #bff2e8;
+}
+.brk__tag[data-region='APAC'],
+.brk__tag[data-region='VN'],
+.brk__tag[data-region='JP'],
+.brk__tag[data-region='SEA'] {
+  background: #6b5a1e;
+  color: #ffe9a6;
+}
+.brk__tag[data-region='BR'],
+.brk__tag[data-region='AM'] {
+  background: #2f6a3c;
+  color: #c8f5d0;
+}
+.brk__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+a.brk__name:hover {
+  text-decoration: underline;
+}
+.brk__team.is-empty .brk__name {
+  font-style: italic;
+  color: var(--text-dim);
+}
+.brk__score {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  background: var(--bg-page);
+  color: var(--text);
+  font-weight: 700;
+}
+.brk__logo {
+  border-radius: 3px;
+}
+
+.brk--rounds {
+  display: flex;
+  gap: 52px;
+  align-items: flex-start;
+  padding: 16px 18px 14px;
+}
+.brk__round {
+  display: grid;
+  gap: 14px;
+  flex: none;
+  align-content: start;
+}
+.brk__round .brk__head--flow {
+  position: static;
+}

@@ -194,3 +194,43 @@ describe('GET /api/tournaments/:id/players, /champions, /context', () => {
     expect(body.related).toEqual([])
   })
 })
+
+describe('GET /api/tournaments/:id/stages', () => {
+  it('groups series by their round and links each team to the series it came from', async () => {
+    // B beat C in the quarterfinal, then A beat B in the final; the other series have no round data
+    await pool.query(
+      `UPDATE series s SET stage_tab = 'Quarterfinals', stage_order = 1, stage_match = 1
+       FROM team a, team b WHERE s.tournament_id = $1 AND a.id = s.team1_id AND b.id = s.team2_id AND a.name = 'Bravo' AND b.name = 'Charlie' AND s.winner_id IS NOT NULL`,
+      [ids.playoffs],
+    )
+    await pool.query(
+      `UPDATE series s SET stage_tab = 'Finals', stage_order = 2, stage_match = 1
+       FROM team a, team b WHERE s.tournament_id = $1 AND a.id = s.team1_id AND b.id = s.team2_id AND a.name = 'Alpha' AND b.name = 'Bravo' AND s.winner_id IS NOT NULL`,
+      [ids.playoffs],
+    )
+    const { body } = await api(`/api/tournaments/${ids.playoffs}/stages`)
+    expect(body.empty).toBe(false)
+    expect(body.stages).toHaveLength(1)
+    const [stage] = body.stages
+    expect(stage).toMatchObject({ key: 'knockout', label: 'Playoffs' })
+    expect(stage.rounds.map((r: { name: string }) => r.name)).toEqual(['Quarterfinals', 'Finals'])
+    const [quarter, final] = stage.rounds.map((r: { series: unknown[] }) => r.series[0]) as {
+      seriesId: number
+      lane: string
+      played: boolean
+      slots: { team: string; score: number; won: boolean; from: unknown }[]
+    }[]
+    expect(quarter.slots.map((x) => [x.team, x.score, x.won])).toEqual([['Bravo', 2, true], ['Charlie', 0, false]])
+    expect(final.lane).toBe('final')
+    expect(final.slots.map((x) => [x.team, x.won, x.from])).toEqual([
+      ['Alpha', true, null],
+      ['Bravo', false, { seriesId: quarter.seriesId, as: 'won' }],
+    ])
+  })
+
+  it('is empty for an event with no round data, and 404s for an unknown one', async () => {
+    const empty = await api(`/api/tournaments/${ids.regular}/stages`)
+    expect(empty.body).toEqual({ empty: true, stages: [] })
+    expect((await api('/api/tournaments/999999/stages')).status).toBe(404)
+  })
+})
