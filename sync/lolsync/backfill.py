@@ -566,37 +566,58 @@ def backfill_all(
     return dict(summary)
 
 
+SCHEDULE_CHUNK = 2000
+
+
+def fetch_schedule(lp: Leaguepedia, log: Log = print, since: str | None = None, pages: list[str] | None = None) -> list[dict]:
+    """Every MatchSchedule row (id, date, round) for the events asked for. Reads Leaguepedia only; touches no database."""
+    where = "DateTime_UTC IS NOT NULL" + (f" AND DateTime_UTC >= '{since}'" if since else "")
+    if pages:
+        where += " AND OverviewPage IN (" + ",".join(cargo_quote(p) for p in pages) + ")"
+    fetched: list[dict] = []
+    for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC,Tab,N_TabInPage,N_MatchInTab", where=where):
+        if r["MatchId"]:
+            fetched.append(r)
+            if len(fetched) % 5000 == 0:
+                log(f"  {len(fetched)} matches fetched so far...")
+    return fetched
+
+
+def apply_schedule(conn: psycopg.Connection, fetched: list[dict], log: Log = print) -> int:
+    """Write dates and rounds onto the series we hold, 2000 at a time with a commit after each chunk, so a dropped
+    connection loses at most one chunk and a rerun picks up where it stopped. Returns how many series changed."""
+    rows = []
+    for r in fetched:
+        tab, order, match = stage_of(r)
+        rows.append((r["MatchId"], parse_utc(r["DateTime_UTC"]) if r.get("DateTime_UTC") else None, tab, order, match))
+    log(f"{len(rows)} scheduled matches fetched, {sum(1 for r in rows if r[2])} with a round")
+    updated = 0
+    with conn.cursor() as cur:
+        for i in range(0, len(rows), SCHEDULE_CHUNK):
+            part = rows[i : i + SCHEDULE_CHUNK]
+            cur.execute(
+                """UPDATE series s SET scheduled_at = COALESCE(v.at, s.scheduled_at), stage_tab = COALESCE(v.tab, s.stage_tab),
+                          stage_order = COALESCE(v.ord, s.stage_order), stage_match = COALESCE(v.n, s.stage_match)
+                   FROM unnest(%s::text[], %s::timestamptz[], %s::text[], %s::int[], %s::int[]) AS v(id, at, tab, ord, n)
+                   WHERE s.leaguepedia_id = v.id
+                     AND (s.scheduled_at, s.stage_tab, s.stage_order, s.stage_match) IS DISTINCT FROM
+                         (COALESCE(v.at, s.scheduled_at), COALESCE(v.tab, s.stage_tab), COALESCE(v.ord, s.stage_order), COALESCE(v.n, s.stage_match))""",
+                [[r[k] for r in part] for k in range(5)],
+            )
+            updated += cur.rowcount
+            conn.commit()
+            if (i // SCHEDULE_CHUNK) % 10 == 9:
+                log(f"  {i + len(part)} of {len(rows)} written")
+    return updated
+
+
 def refresh_schedule(
     conn: psycopg.Connection, lp: Leaguepedia, log: Log = print, since: str | None = None, pages: list[str] | None = None
 ) -> int:
     """Fill series.scheduled_at and the stage columns (round, order) from MatchSchedule for every series we hold.
 
     No games are reloaded. `since` ("YYYY-MM-DD HH:MM:SS", UTC) only looks at matches from then on; the full table is
-    170k rows and takes about ten minutes, while dates and rounds of matches long past never change. `pages` (OverviewPages) limits it to those events.
+    170k rows and takes about ten minutes to fetch, while dates and rounds of matches long past never change. `pages`
+    (OverviewPages) limits it to those events.
     """
-    where = "DateTime_UTC IS NOT NULL" + (f" AND DateTime_UTC >= '{since}'" if since else "")
-    if pages:
-        where += " AND OverviewPage IN (" + ",".join(cargo_quote(p) for p in pages) + ")"
-    fetched = []
-    for r in lp.cargo("MatchSchedule", "MatchId,DateTime_UTC,Tab,N_TabInPage,N_MatchInTab", where=where):
-        if r["MatchId"]:
-            fetched.append(r)
-        if len(fetched) % 5000 == 0 and fetched and fetched[-1] is r:
-            log(f"  {len(fetched)} matches fetched so far...")
-    rows = [(parse_utc(r["DateTime_UTC"]), r["MatchId"]) for r in fetched if r["DateTime_UTC"]]
-    stages = [(*stage_of(r), r["MatchId"]) for r in fetched if (r.get("Tab") or "").strip()]
-    log(f"{len(rows)} scheduled matches fetched, {len(stages)} with a round")
-    with conn.cursor() as cur:
-        cur.executemany(
-            """UPDATE series SET scheduled_at = %s WHERE leaguepedia_id = %s AND scheduled_at IS DISTINCT FROM %s""",
-            [(when, match_id, when) for when, match_id in rows],
-        )
-        updated = cur.rowcount
-        if stages:
-            cur.executemany(
-                """UPDATE series SET stage_tab = %s, stage_order = %s, stage_match = %s WHERE leaguepedia_id = %s
-                   AND (stage_tab, stage_order, stage_match) IS DISTINCT FROM (%s::text, %s::int, %s::int)""",
-                [(tab, order, match, match_id, tab, order, match) for tab, order, match, match_id in stages],
-            )
-    conn.commit()
-    return updated
+    return apply_schedule(conn, fetch_schedule(lp, log, since, pages), log)

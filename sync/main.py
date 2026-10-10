@@ -20,13 +20,14 @@ import psycopg
 from dotenv import load_dotenv
 
 from lolsync.backfill import (
+    apply_schedule,
     assign_splits,
     backfill_all,
     backfill_tournament,
+    fetch_schedule,
     fetch_tournament,
     list_scope_tournaments,
     pick_latest_tournament,
-    refresh_schedule,
 )
 from lolsync.client import Leaguepedia
 from lolsync.images import sync_champion_icons, sync_player_photos, sync_team_logos
@@ -142,9 +143,11 @@ def main() -> int:
             refresh_results(conn, lp, log)
         return 0
     if args.mode == "schedule":
+        since = f"{args.since} 00:00:00" if args.since else None
+        # fetch first, connect after: the fetch can take ten minutes, and a database connection left idle that long gets dropped
+        fetched = fetch_schedule(lp, log, since, args.tournament)
         with connect() as conn:
-            since = f"{args.since} 00:00:00" if args.since else None
-            log(f"series dates updated: {refresh_schedule(conn, lp, log, since=since, pages=args.tournament)}")
+            log(f"series updated: {apply_schedule(conn, fetched, log)}")
         return 0
     log(f"Leaguepedia login: {'bot account' if lp.authenticated else 'anonymous (slow, rate-limited)'}")
     resolver = LeagueResolver()
