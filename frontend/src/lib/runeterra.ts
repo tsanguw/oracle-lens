@@ -137,6 +137,9 @@ export const splashUrl = (key: string): string => `https://ddragon.leagueoflegen
 /** A soft cut-out of the champion in the card art (see public/masks), used as the near layer of the depth effect. */
 export const maskUrl = (champion: string): string => `${import.meta.env.BASE_URL}masks/${champion.replace(/[ ']/g, '')}.png`
 
+/** How far above the saved focus (the middle of the champion) a wide frame aims, so heads near the top of the art stay in. */
+const HEAD_LIFT = 0.17
+
 /**
  * The `object-position` that keeps the focus in view when an image of `imageRatio` (width / height) is cropped
  * to fill a frame of `frameRatio` with object-fit: cover. A wide image in a tall frame loses its sides, so the
@@ -145,7 +148,9 @@ export const maskUrl = (champion: string): string => `${import.meta.env.BASE_URL
 export function coverPosition(focus: Focus, imageRatio: number, frameRatio: number): string {
   const place = (f: number, visible: number) => (visible >= 1 ? 0.5 : Math.min(1, Math.max(0, (f - visible / 2) / (1 - visible))))
   if (frameRatio < imageRatio) return `${(place(focus[0], frameRatio / imageRatio) * 100).toFixed(1)}% 50%`
-  return `50% ${(place(focus[1], imageRatio / frameRatio) * 100).toFixed(1)}%`
+  // The saved focus is the middle of the champion and the head is above it. A wide frame crops top and bottom, so aim a
+  // little higher: a head near the top of the art stays in frame, and what is lost is mostly legs and ground.
+  return `50% ${(place(Math.max(0, focus[1] - HEAD_LIFT), imageRatio / frameRatio) * 100).toFixed(1)}%`
 }
 
 export interface RuneterraCard {

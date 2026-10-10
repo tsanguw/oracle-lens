@@ -29,7 +29,9 @@
 }
 .pstage__art {
   position: absolute;
-  inset: -175px -16px 0; /* taller than the header, so drifting it down on scroll never shows a gap */
+  /* exactly the header's height (a little wider for the depth drift), so every champion's head stays in frame; the gap
+     the scroll drift opens at the top is always above the viewport */
+  inset: 0 -16px 0;
   z-index: -3;
   will-change: transform;
   transform: translate3d(0, calc(var(--sy, 0) * 0.28px), 0);
