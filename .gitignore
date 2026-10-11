@@ -24,3 +24,6 @@ Thumbs.db
 
 # Sync run logs
 sync/logs/
+
+# Claude Code project instructions
+CLAUDE.md
