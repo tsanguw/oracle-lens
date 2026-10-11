@@ -96,6 +96,20 @@ const scoreOf = (score: string | null, side: 0 | 1): number | null => {
 /** "Bracket Round 2" reads as "Round 2" inside a bracket. */
 const roundName = (tab: string) => tab.replace(/^bracket\s+/i, '')
 
+/**
+ * The stages of an event whose play-in is a separate tournament: the main event's own stages, with everything the
+ * play-in played gathered into one Play-In stage in front (its rounds as Leaguepedia lists them; a play-in is never drawn
+ * as a bracket). `playInRows` are the series of the other tournaments of the event.
+ */
+export function buildEventStages(mainRows: StageSeriesRow[], playInRows: StageSeriesRow[], tournamentName: string): Stage[] {
+  const stages = buildStages(mainRows, tournamentName)
+  if (playInRows.length === 0) return stages
+  const list = [...playInRows].sort((a, b) => a.tabOrder - b.tabOrder || (a.n ?? 0) - (b.n ?? 0) || a.seriesId - b.seriesId)
+  const playIn: Stage = { key: 'playin', label: labelFor('playin', false), rounds: plainRounds(list) }
+  // a main event with a play-in tab of its own is replaced by the play-in tournament's real stage, not shown twice
+  return [playIn, ...stages.filter((s) => s.key !== 'playin')]
+}
+
 export function buildStages(rows: StageSeriesRow[], tournamentName: string): Stage[] {
   const playoffs = /playoffs?|knockout/i.test(tournamentName)
   const swissLike = rows.some((r) => /quarter|semi/i.test(r.tab))
@@ -205,15 +219,20 @@ function bracketRounds(list: StageSeriesRow[]): StageRound[] {
   return rounds
 }
 
-export async function loadStages(pool: pg.Pool, tournamentId: number, tournamentName: string): Promise<Stage[]> {
-  const { rows } = await pool.query<StageSeriesRow>(
-    `SELECT s.id AS "seriesId", s.stage_tab AS tab, s.stage_order AS "tabOrder", s.stage_match AS n,
+/** `event.id` is the main event; `event.memberIds` adds the play-in tournament(s) of the same competition. */
+export async function loadStages(pool: pg.Pool, event: { id: number; memberIds: number[]; name: string }): Promise<Stage[]> {
+  const { rows } = await pool.query<StageSeriesRow & { tournamentId: number }>(
+    `SELECT s.id AS "seriesId", s.tournament_id AS "tournamentId", s.stage_tab AS tab, s.stage_order AS "tabOrder", s.stage_match AS n,
             t1.name AS team1, t2.name AS team2, t1.region AS region1, t2.region AS region2,
             w.name AS winner, s.score, s.best_of AS "bestOf", s.scheduled_at AS at
      FROM series s
      LEFT JOIN team t1 ON t1.id = s.team1_id LEFT JOIN team t2 ON t2.id = s.team2_id LEFT JOIN team w ON w.id = s.winner_id
-     WHERE s.tournament_id = $1 AND s.stage_tab IS NOT NULL AND s.stage_order IS NOT NULL`,
-    [tournamentId],
+     WHERE s.tournament_id = ANY($1::int[]) AND s.stage_tab IS NOT NULL AND s.stage_order IS NOT NULL`,
+    [event.memberIds],
   )
-  return buildStages(rows, tournamentName)
+  return buildEventStages(
+    rows.filter((r) => r.tournamentId === event.id),
+    rows.filter((r) => r.tournamentId !== event.id),
+    event.name,
+  )
 }

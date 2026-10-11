@@ -7,7 +7,10 @@ import { FROM, ka, ok, perMin } from './playerQueries.js'
 export const tournamentListSchema = z.object({ limit: z.coerce.number().int().min(1).max(200).optional() })
 
 export interface TournamentRow {
+  /** The tournament that heads the event: the main event when this is a play-in (see the `event` view). */
   id: number
+  /** Every tournament in the event, the head included: a competition's play-in and its main event. */
+  memberIds: number[]
   name: string
   leaguepediaName: string
   league: string | null
@@ -22,17 +25,21 @@ export interface TournamentRow {
   endDate: string | null
 }
 
+/**
+ * The event `id` belongs to. A play-in's id gives its competition (the main event's row, dates stretched over both), so
+ * every old link to "Worlds 2025 Play-In" now opens "Worlds 2025"; the response's `id` tells the page where it landed.
+ */
 export async function findTournament(pool: pg.Pool, id: string): Promise<TournamentRow | null> {
   if (!/^\d+$/.test(id)) return null
   const { rows } = await pool.query(
-    `SELECT t.id, t.name, t.leaguepedia_name AS "leaguepediaName", l.name AS league, t.year, t.split, t.stage,
+    `SELECT t.id, t.member_ids AS "memberIds", t.name, t.leaguepedia_name AS "leaguepediaName", l.name AS league, t.year, t.split, t.stage,
             t.is_international AS "isInternational", ${STATUS_SQL} AS status,
             to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
             COALESCE((SELECT array_agg(DISTINCT x.name ORDER BY x.name)
                       FROM tournament_team_league ttl JOIN league x ON x.id = ttl.league_id
-                      WHERE ttl.tournament_id = t.id), '{}') AS leagues
-     FROM tournament t LEFT JOIN league l ON l.id = t.league_id
-     WHERE t.id = $1::int`,
+                      WHERE ttl.tournament_id = ANY(t.member_ids)), '{}') AS leagues
+     FROM event t LEFT JOIN league l ON l.id = t.league_id
+     WHERE t.id = (SELECT group_id FROM tournament_group WHERE id = $1::int)`,
     [id],
   )
   return rows[0] ?? null
@@ -61,10 +68,11 @@ export async function loadTournamentSummary(pool: pg.Pool, t: TournamentRow): Pr
               AVG(g.length_sec) FILTER (WHERE g.length_sec > 0)::float8 AS "avgGameLengthSec",
               AVG((tg.win)::int) FILTER (WHERE tg.side = 'blue')::float8 AS "blueWinRate",
               SUM(tg.kills)::float8 / NULLIF(COUNT(DISTINCT g.id) FILTER (WHERE tg.kills IS NOT NULL), 0) AS "killsPerGame"
-       FROM game g JOIN team_game tg ON tg.game_id = g.id WHERE g.tournament_id = $1`,
-      [t.id],
+       FROM game g JOIN team_game tg ON tg.game_id = g.id WHERE g.tournament_id = ANY($1::int[])`,
+      [t.memberIds],
     ),
-    pool.query(`SELECT DISTINCT patch FROM game WHERE tournament_id = $1 AND patch IS NOT NULL`, [t.id]),
+    pool.query(`SELECT DISTINCT patch FROM game WHERE tournament_id = ANY($1::int[]) AND patch IS NOT NULL`, [t.memberIds]),
+    // the champion and the leader come from the main event alone: nobody wins a competition by winning its play-in
     pool.query(
       `SELECT w.name
        FROM (SELECT s.winner_id, s.id, MAX(g.played_at) AS last_game
@@ -148,24 +156,25 @@ const SERIES_SELECT = `
   LEFT JOIN team t1 ON t1.id = s.team1_id LEFT JOIN team t2 ON t2.id = s.team2_id LEFT JOIN team w ON w.id = s.winner_id
   LEFT JOIN LATERAL (SELECT MAX(g.played_at) AS played_at FROM game g WHERE g.series_id = s.id) last ON true`
 
-export async function loadResults(pool: pg.Pool, tournamentId: number, limit = 30): Promise<SeriesRow[]> {
+/** Every tournament of the event (its play-in too), newest first. */
+export async function loadResults(pool: pg.Pool, tournamentIds: number[], limit = 30): Promise<SeriesRow[]> {
   const { rows } = await pool.query(
     `${SERIES_SELECT}
-     WHERE s.tournament_id = $1 AND s.winner_id IS NOT NULL AND EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)
+     WHERE s.tournament_id = ANY($1::int[]) AND s.winner_id IS NOT NULL AND EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)
      ORDER BY at DESC NULLS LAST, s.id DESC LIMIT $2`,
-    [tournamentId, limit],
+    [tournamentIds, limit],
   )
   return rows
 }
 
 /** Series with both teams set that have not been played and are scheduled from now on. */
-export async function loadUpcoming(pool: pg.Pool, tournamentId: number, limit = 5): Promise<SeriesRow[]> {
+export async function loadUpcoming(pool: pg.Pool, tournamentIds: number[], limit = 5): Promise<SeriesRow[]> {
   const { rows } = await pool.query(
     `${SERIES_SELECT}
-     WHERE s.tournament_id = $1 AND s.winner_id IS NULL AND s.scheduled_at >= now()
+     WHERE s.tournament_id = ANY($1::int[]) AND s.winner_id IS NULL AND s.scheduled_at >= now()
        AND NOT EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)
      ORDER BY s.scheduled_at LIMIT $2`,
-    [tournamentId, limit],
+    [tournamentIds, limit],
   )
   return rows.map((r) => ({ ...r, score: null }))
 }
@@ -185,7 +194,7 @@ export interface TournamentPlayer {
 /** Best KDA among players with the minimum sample; for very short events, everyone who played. */
 export async function loadTournamentPlayers(
   pool: pg.Pool,
-  tournamentId: number,
+  tournamentIds: number[],
   limit = 10,
 ): Promise<{ minGames: number; players: TournamentPlayer[] }> {
   const run = async (minGames: number) =>
@@ -204,10 +213,10 @@ export async function loadTournamentPlayers(
          ${perMin('pgm.damage')} AS "damagePerMin"
        ${FROM}
        JOIN player p ON p.id = pgm.player_id JOIN team pt ON pt.id = pgm.team_id
-       WHERE t.id = $1
+       WHERE t.id = ANY($1::int[])
        GROUP BY p.id HAVING COUNT(*) >= $2
        ORDER BY kda DESC NULLS LAST, games DESC, p.name LIMIT $3`,
-      [tournamentId, minGames, limit],
+      [tournamentIds, minGames, limit],
     )
   let min = MIN_SAMPLE
   let res = await run(min)
@@ -228,15 +237,15 @@ export interface TournamentChampion {
   presence: number
 }
 
-export async function loadTournamentChampions(pool: pg.Pool, tournamentId: number, limit = 15): Promise<TournamentChampion[]> {
+export async function loadTournamentChampions(pool: pg.Pool, tournamentIds: number[], limit = 15): Promise<TournamentChampion[]> {
   const { rows } = await pool.query(
     `WITH ev AS (
        SELECT pgm.game_id, pgm.champion_id, 'pick' AS kind, pgm.win
-       FROM player_game pgm JOIN game g ON g.id = pgm.game_id WHERE g.tournament_id = $1
+       FROM player_game pgm JOIN game g ON g.id = pgm.game_id WHERE g.tournament_id = ANY($1::int[])
        UNION ALL
        SELECT pb.game_id, pb.champion_id, 'ban', NULL::boolean
-       FROM pick_ban pb JOIN game g ON g.id = pb.game_id WHERE g.tournament_id = $1 AND pb.action = 'ban'),
-     tot AS (SELECT COUNT(*)::float8 AS n FROM game WHERE tournament_id = $1)
+       FROM pick_ban pb JOIN game g ON g.id = pb.game_id WHERE g.tournament_id = ANY($1::int[]) AND pb.action = 'ban'),
+     tot AS (SELECT COUNT(*)::float8 AS n FROM game WHERE tournament_id = ANY($1::int[]))
      SELECT c.name AS champion,
             COUNT(*) FILTER (WHERE ev.kind = 'pick')::int AS picks,
             COUNT(*) FILTER (WHERE ev.kind = 'pick' AND ev.win)::int AS wins,
@@ -244,7 +253,7 @@ export async function loadTournamentChampions(pool: pg.Pool, tournamentId: numbe
             COUNT(DISTINCT ev.game_id) / (SELECT n FROM tot) AS presence
      FROM ev JOIN champion c ON c.id = ev.champion_id
      GROUP BY c.id ORDER BY presence DESC, picks DESC, c.name LIMIT $2`,
-    [tournamentId, limit],
+    [tournamentIds, limit],
   )
   return rows.map((r) => ({ ...r, winRate: r.picks > 0 ? r.wins / r.picks : null }))
 }
@@ -263,11 +272,11 @@ export async function loadRelatedEvents(pool: pg.Pool, t: TournamentRow, limit =
   const { rows } = await pool.query(
     `SELECT x.id, x.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL.replace(/\bt\./g, 'x.')} AS status,
             to_char(x.start_date, 'YYYY-MM-DD') AS "startDate", to_char(x.end_date, 'YYYY-MM-DD') AS "endDate"
-     FROM tournament x LEFT JOIN league l ON l.id = x.league_id
+     FROM event x LEFT JOIN league l ON l.id = x.league_id
      WHERE x.id <> $1 AND x.year = $2
        AND (CASE WHEN $3::boolean THEN x.is_international ELSE x.league_id IS NOT DISTINCT FROM $4::int AND NOT x.is_international END)
        AND x.stage IS DISTINCT FROM 'Qualifier'
-       AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = x.id)
+       AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
      ORDER BY x.start_date, x.id LIMIT $5`,
     [t.id, t.year, t.isInternational, (await leagueId(pool, t.id)) ?? null, limit],
   )

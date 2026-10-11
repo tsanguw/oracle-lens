@@ -1,6 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, MIN_SAMPLE } from './filters.js'
+import { IS_EVENT_HEAD } from './homeQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { FROM, FROM_CORE, ka, ok, perMin } from './playerQueries.js'
 
@@ -331,7 +332,7 @@ export async function loadChampionContext(pool: pg.Pool, champion: ChampionRow):
               COUNT(*)::int AS games
        FROM player_game pgm JOIN game g ON g.id = pgm.game_id JOIN tournament t ON t.id = g.tournament_id
        LEFT JOIN league l ON l.id = t.league_id
-       WHERE pgm.champion_id = $1 AND t.stage IS DISTINCT FROM 'Qualifier'
+       WHERE pgm.champion_id = $1 AND t.stage IS DISTINCT FROM 'Qualifier' AND ${IS_EVENT_HEAD('t')}
        GROUP BY t.id, l.name ORDER BY t.start_date DESC NULLS LAST LIMIT 3`,
       [champion.id],
     ),
