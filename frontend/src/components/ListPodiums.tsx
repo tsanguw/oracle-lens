@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ChampionListRow, TeamListRow, TournamentListRow } from '../api/types'
 import { dateRange, decimal, duration, goldDiff, percent, shortTeam } from '../lib/format'
+import { tournamentPath } from '../lib/tournamentPath'
 import { ChampionIcon, TeamLogo } from './Images'
 
 interface Card {
@@ -112,7 +113,7 @@ export function LiveNow({ events }: { events: TournamentListRow[] }) {
   return (
     <section className="live" aria-label="In progress now">
       {events.map((t) => (
-        <Link key={t.id} to={`/tournaments/${t.id}`} className="lineup__card is-first live__card">
+        <Link key={t.id} to={tournamentPath(t)} className="lineup__card is-first live__card">
           <span className="lineup__role with-img">
             <span className="badge badge--live">In progress</span>
             {t.league}

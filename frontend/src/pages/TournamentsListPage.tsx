@@ -4,6 +4,7 @@ import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { ListHead, listState, Pager, SearchField } from '../components/ListParts'
 import { dateRange, shortTeam } from '../lib/format'
+import { tournamentPath } from '../lib/tournamentPath'
 import { TeamLogo } from '../components/Images'
 import { LiveNow } from '../components/ListPodiums'
 import { usePageMeta } from '../lib/usePageMeta'
@@ -83,7 +84,7 @@ export default function TournamentsListPage() {
                 {(data?.rows ?? []).map((t) => (
                   <tr key={t.id}>
                     <td className="lb__left lb__player">
-                      <Link to={`/tournaments/${t.id}`}>{t.name}</Link>
+                      <Link to={tournamentPath(t)}>{t.name}</Link>
                       {t.status === 'In progress' && <span className="badge badge--live lb__live">In progress</span>}
                     </td>
                     <td className="lb__left">

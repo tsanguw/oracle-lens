@@ -20,7 +20,7 @@ export interface SearchResults {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]
   champions: { name: string; role: string | null }[]
-  tournaments: { id: number; name: string; status: 'In progress' | 'Completed' }[]
+  tournaments: { id: number; slug: string; name: string; status: 'In progress' | 'Completed' }[]
 }
 
 /**
@@ -72,8 +72,8 @@ export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchS
       args,
     ),
     pool.query(
-      `SELECT t.id, t.name, ${STATUS_SQL} AS status
-       FROM event t
+      `SELECT t.id, es.slug, t.name, ${STATUS_SQL} AS status
+       FROM event t JOIN event_slug es ON es.id = t.id
        WHERE t.name ILIKE $1 AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))
        ORDER BY ${rank('t.name')}, t.start_date DESC NULLS LAST, t.name LIMIT $3`,
       args,
@@ -84,6 +84,7 @@ export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchS
 
 export interface RecentTournament {
   id: number
+  slug: string
   name: string
   league: string
   status: 'In progress' | 'Completed'
@@ -100,7 +101,7 @@ export interface RecentTournament {
  */
 export async function recentTournaments(pool: pg.Pool, limit: number): Promise<RecentTournament[]> {
   const { rows } = await pool.query(
-    `SELECT t.id, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
+    `SELECT t.id, es.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
        to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
        CASE WHEN ${STATUS_SQL} = 'In progress' THEN 'Leading'
             WHEN t.stage = 'Playoffs' OR t.is_international THEN 'Champion'
@@ -111,6 +112,7 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
        WHERE x.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
        ORDER BY x.start_date DESC NULLS LAST, x.id DESC LIMIT $1) t
      LEFT JOIN league l ON l.id = t.league_id
+     JOIN event_slug es ON es.id = t.id
      LEFT JOIN LATERAL (
        SELECT w.name
        FROM (SELECT s.winner_id, MAX(g.played_at) AS last_game

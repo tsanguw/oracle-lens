@@ -53,13 +53,13 @@ export async function loadPlayerContext(pool: pg.Pool, playerId: number): Promis
  */
 async function loadPlayerEvents(pool: pg.Pool, playerId: number): Promise<ContextEvent[]> {
   const { rows } = await pool.query(
-    `SELECT t.id, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
+    `SELECT t.id, ts.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
             to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
             tm.name AS team, tr.place, tr.group_name AS "group"
      FROM (SELECT g.tournament_id, mode() WITHIN GROUP (ORDER BY pgm.team_id) AS team_id
            FROM player_game pgm JOIN game g ON g.id = pgm.game_id
            WHERE pgm.player_id = $1 GROUP BY g.tournament_id) pe
-     JOIN tournament t ON t.id = pe.tournament_id
+     JOIN tournament t ON t.id = pe.tournament_id JOIN tournament_slug ts ON ts.id = t.id
      LEFT JOIN league l ON l.id = t.league_id
      JOIN team tm ON tm.id = pe.team_id
      LEFT JOIN tournament_result tr ON tr.tournament_id = t.id AND tr.team_id = pe.team_id
