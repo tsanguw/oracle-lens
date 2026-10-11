@@ -55,9 +55,9 @@ export async function loadSitemap(pool: pg.Pool): Promise<SitemapData> {
     ),
     pool.query(
       `SELECT t.id, COALESCE(t.end_date, MAX(g.played_at)) AS lastmod
-         FROM tournament t
-         JOIN game g ON g.tournament_id = t.id
-        GROUP BY t.id
+         FROM event t
+         JOIN game g ON g.tournament_id = ANY(t.member_ids)
+        GROUP BY t.id, t.end_date
         ORDER BY t.id`,
     ),
   ])

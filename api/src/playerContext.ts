@@ -1,5 +1,5 @@
 import type pg from 'pg'
-import { STATUS_SQL } from './homeQueries.js'
+import { IS_EVENT_HEAD, STATUS_SQL } from './homeQueries.js'
 import { EVENT_LIMIT, loadTeamContext, toEvent, type ContextEvent, type TeamContext } from './teamContext.js'
 
 export type { ContextEvent, ContextMatch, RosterPlayer } from './teamContext.js'
@@ -63,7 +63,7 @@ async function loadPlayerEvents(pool: pg.Pool, playerId: number): Promise<Contex
      LEFT JOIN league l ON l.id = t.league_id
      JOIN team tm ON tm.id = pe.team_id
      LEFT JOIN tournament_result tr ON tr.tournament_id = t.id AND tr.team_id = pe.team_id
-     WHERE t.stage IS DISTINCT FROM 'Qualifier'
+     WHERE t.stage IS DISTINCT FROM 'Qualifier' AND ${IS_EVENT_HEAD('t')}
      ORDER BY (${STATUS_SQL} = 'In progress') DESC, t.start_date DESC NULLS LAST
      LIMIT ${EVENT_LIMIT}`,
     [playerId],

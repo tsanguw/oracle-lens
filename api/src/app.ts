@@ -320,35 +320,36 @@ export function createApp(options: AppOptions = {}) {
 
   tournamentRoute('', async ({ tournament }) => {
     const summary = await loadTournamentSummary(pool, tournament)
-    return { tournament, empty: summary === null, summary }
+    const { memberIds: _members, ...info } = tournament
+    return { tournament: info, empty: summary === null, summary }
   })
   tournamentRoute('/standings', async ({ tournament }) => {
     const standings = await loadStandings(pool, tournament.id)
     return { empty: standings.length === 0, standings }
   })
   tournamentRoute('/matches', async ({ tournament, limit }) => {
-    const [upcoming, results] = await Promise.all([loadUpcoming(pool, tournament.id), loadResults(pool, tournament.id, limit)])
+    const [upcoming, results] = await Promise.all([loadUpcoming(pool, tournament.memberIds), loadResults(pool, tournament.memberIds, limit)])
     return { empty: upcoming.length === 0 && results.length === 0, upcoming, results }
   })
   tournamentRoute('/players', async ({ tournament, limit }) => {
-    const { minGames, players } = await loadTournamentPlayers(pool, tournament.id, limit)
+    const { minGames, players } = await loadTournamentPlayers(pool, tournament.memberIds, limit)
     return { empty: players.length === 0, minGames, players }
   })
   tournamentRoute('/champions', async ({ tournament, limit }) => {
-    const champions = await loadTournamentChampions(pool, tournament.id, limit)
+    const champions = await loadTournamentChampions(pool, tournament.memberIds, limit)
     return { empty: champions.length === 0, champions }
   })
   /** The event's series grouped into stages (play-in, swiss, groups, knockout), with the links a bracket is drawn from. */
   tournamentRoute('/stages', async ({ tournament }) => {
-    const stages = await loadStages(pool, tournament.id, tournament.name)
+    const stages = await loadStages(pool, tournament)
     return { empty: stages.length === 0, stages }
   })
   /** Leading teams, schedule and results, and related events for the related-info strip. */
   tournamentRoute('/context', async ({ tournament }) => {
     const [teams, upcoming, results, related] = await Promise.all([
       loadStandings(pool, tournament.id, 5),
-      loadUpcoming(pool, tournament.id),
-      loadResults(pool, tournament.id, 3),
+      loadUpcoming(pool, tournament.memberIds),
+      loadResults(pool, tournament.memberIds, 3),
       loadRelatedEvents(pool, tournament),
     ])
     return { teams, upcoming, results, related }

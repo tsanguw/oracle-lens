@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import type {
   MatchesResponse,
   StagesResponse,
@@ -63,6 +64,10 @@ export default function TournamentPage({ id }: { id: string }) {
         <ErrorState message={tournament.error.message} onRetry={tournament.reload} level={1} />
       </main>
     )
+  }
+  // A play-in's address opens its competition ("Worlds 2025 Play-In" is part of "Worlds 2025"): move to that address.
+  if (tournament.data && String(tournament.data.tournament.id) !== id) {
+    return <Navigate to={`/tournaments/${tournament.data.tournament.id}`} replace />
   }
 
   const data = tournament.data

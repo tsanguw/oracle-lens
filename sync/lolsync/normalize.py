@@ -12,6 +12,12 @@ import yaml
 ALIASES_PATH = Path(__file__).resolve().parent.parent / "league_aliases.yaml"
 
 
+def display_name(name: str, page: str) -> str:
+    """The name to show for a tournament. Leaguepedia calls a competition's main stage "Worlds 2025 Main Event"
+    (its page is ".../Main Event", next to ".../Play-In"); the competition itself is "Worlds 2025"."""
+    return name.removesuffix(" Main Event") if page.endswith("/Main Event") else name
+
+
 def clean_row(row: dict[str, Any]) -> dict[str, Any]:
     """Cargo returns underscores as spaces and adds *__precision keys; undo both."""
     return {k.replace(" ", "_"): v for k, v in row.items() if not k.endswith("__precision")}

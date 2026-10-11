@@ -255,7 +255,8 @@ export async function loadTournamentsList(
 ): Promise<{ total: number; page: number; pageSize: number; empty: boolean; rows: TournamentListRow[] }> {
   const params: unknown[] = []
   const p = (v: unknown) => `$${params.push(v)}`
-  const conds = [`EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id)`]
+  // one row per event (a play-in is part of its competition), counted over every tournament in it
+  const conds = [`EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))`]
   conds.push(q.stage ? `t.stage = ${p(q.stage)}` : `t.stage IS DISTINCT FROM 'Qualifier'`)
   if (q.league === 'INTL') conds.push('t.is_international')
   else if (q.league) {
@@ -282,9 +283,9 @@ export async function loadTournamentsList(
                    JOIN league zl ON zl.id = z.league_id WHERE z.tournament_id = t.id), '—') AS league,
          ${STATUS_SQL} AS status,
          to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
-         (SELECT COUNT(*)::int FROM game g WHERE g.tournament_id = t.id) AS games,
+         (SELECT COUNT(*)::int FROM game g WHERE g.tournament_id = ANY(t.member_ids)) AS games,
          COUNT(*) OVER ()::int AS total
-       FROM tournament t LEFT JOIN league l ON l.id = t.league_id
+       FROM event t LEFT JOIN league l ON l.id = t.league_id
        WHERE ${conds.join(' AND ')}
        ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}) t
      LEFT JOIN LATERAL (
