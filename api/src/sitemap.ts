@@ -16,7 +16,8 @@ export interface SitemapData {
   players: SitemapEntry[]
   teams: SitemapEntry[]
   champions: { name: string }[]
-  tournaments: { id: number; lastmod: string | null }[]
+  /** `id` is the old numeric address (kept so an older front end still builds working links); `slug` is the one to use. */
+  tournaments: { id: number; slug: string; lastmod: string | null }[]
 }
 
 const day = (v: unknown): string | null => (v instanceof Date ? v.toISOString().slice(0, 10) : typeof v === 'string' ? v.slice(0, 10) : null)
@@ -54,10 +55,11 @@ export async function loadSitemap(pool: pg.Pool): Promise<SitemapData> {
         ORDER BY c.name`,
     ),
     pool.query(
-      `SELECT t.id, COALESCE(t.end_date, MAX(g.played_at)) AS lastmod
+      `SELECT t.id, es.slug, COALESCE(t.end_date, MAX(g.played_at)) AS lastmod
          FROM event t
+         JOIN event_slug es ON es.id = t.id
          JOIN game g ON g.tournament_id = ANY(t.member_ids)
-        GROUP BY t.id, t.end_date
+        GROUP BY t.id, es.slug, t.end_date
         ORDER BY t.id`,
     ),
   ])
@@ -65,6 +67,6 @@ export async function loadSitemap(pool: pg.Pool): Promise<SitemapData> {
     players: players.rows.map((r) => ({ name: r.name, lastmod: day(r.lastmod) })),
     teams: teams.rows.map((r) => ({ name: r.name, lastmod: day(r.lastmod) })),
     champions: champions.rows.map((r) => ({ name: r.name })),
-    tournaments: tournaments.rows.map((r) => ({ id: r.id, lastmod: day(r.lastmod) })),
+    tournaments: tournaments.rows.map((r) => ({ id: r.id, slug: r.slug, lastmod: day(r.lastmod) })),
   }
 }

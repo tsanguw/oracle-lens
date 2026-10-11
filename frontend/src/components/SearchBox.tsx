@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { SearchResponse } from '../api/types'
 import { apiUrl } from '../api/base'
+import { tournamentPath } from '../lib/tournamentPath'
 
 interface Item {
   group: 'Players' | 'Teams' | 'Champions' | 'Tournaments'
@@ -38,7 +39,7 @@ const toItems = (r: SearchResponse): Item[] => [
     key: `o:${t.id}`,
     label: t.name,
     meta: t.status,
-    to: `/tournaments/${t.id}`,
+    to: tournamentPath(t),
   })),
 ]
 

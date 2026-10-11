@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ContextEvent, ContextMatch, RosterPlayer } from '../api/types'
 import { dateRange, matchTime, placeLabel } from '../lib/format'
+import { tournamentPath } from '../lib/tournamentPath'
 import { PlayerPhoto } from './Images'
 
 /*
@@ -131,7 +132,7 @@ export function EventList({ events }: { events: ContextEvent[] }) {
     <ul className="ctx__list">
       {events.map((e) => (
         <li key={e.id}>
-          <Link to={`/tournaments/${e.id}`} className="ctx__event">
+          <Link to={tournamentPath(e)} className="ctx__event">
             <span className="ctx__event-top">
               <span className="tag tag--small">{e.league}</span>
               {e.status === 'Completed' && e.placement ? (
@@ -163,7 +164,7 @@ export function MatchList({ matches, result }: { matches: ContextMatch[]; result
     <ul className="ctx__list">
       {matches.map((m) => (
         <li key={m.seriesId}>
-          <Link to={`/tournaments/${m.tournamentId}`} className="ctx__match">
+          <Link to={tournamentPath({ slug: m.tournamentSlug, id: m.tournamentId })} className="ctx__match">
             <span>
               <span className="ctx__meta">vs.</span> <span className="ctx__name">{m.opponent ?? 'TBD'}</span>
             </span>

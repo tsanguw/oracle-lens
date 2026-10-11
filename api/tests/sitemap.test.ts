@@ -48,7 +48,7 @@ describe('GET /api/sitemap', () => {
     expect(res.body.teams).toEqual([{ name: 'T1', lastmod: '2025-03-10' }])
     expect(res.body.champions).toEqual([{ name: 'Azir' }])
     // the end date wins when there is one; a tournament with no games is not listed
-    expect(res.body.tournaments).toEqual([{ id: 1, lastmod: '2025-04-20' }])
+    expect(res.body.tournaments).toEqual([{ id: 1, slug: 'lck-2025-spring', lastmod: '2025-04-20' }])
   })
 
   it('leaves out players and teams under the minimum number of games', async () => {

@@ -23,6 +23,7 @@ import {
 } from '../components/TournamentParts'
 import { usePageMeta, useJsonLd } from '../lib/usePageMeta'
 import { notFoundSeo, tournamentLd, tournamentSeo } from '../lib/seoText'
+import { tournamentPath } from '../lib/tournamentPath'
 import ErrorState from '../components/ErrorState'
 import TournamentStages from '../components/TournamentStages'
 
@@ -65,9 +66,10 @@ export default function TournamentPage({ id }: { id: string }) {
       </main>
     )
   }
-  // A play-in's address opens its competition ("Worlds 2025 Play-In" is part of "Worlds 2025"): move to that address.
-  if (tournament.data && String(tournament.data.tournament.id) !== id) {
-    return <Navigate to={`/tournaments/${tournament.data.tournament.id}`} replace />
+  // Move to the readable address: an old numeric id, a play-in's id (it is part of its competition) or another letter case
+  // all open the page, and this puts the competition's own slug in the address bar.
+  if (tournament.data?.tournament.slug && tournament.data.tournament.slug !== id) {
+    return <Navigate to={tournamentPath(tournament.data.tournament)} replace />
   }
 
   const data = tournament.data
