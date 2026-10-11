@@ -9,6 +9,8 @@ export const tournamentListSchema = z.object({ limit: z.coerce.number().int().mi
 export interface TournamentRow {
   /** The tournament that heads the event: the main event when this is a play-in (see the `event` view). */
   id: number
+  /** The readable address segment (`worlds-2025`), derived from the name; see the `event_slug` view. */
+  slug: string
   /** Every tournament in the event, the head included: a competition's play-in and its main event. */
   memberIds: number[]
   name: string
@@ -26,21 +28,24 @@ export interface TournamentRow {
 }
 
 /**
- * The event `id` belongs to. A play-in's id gives its competition (the main event's row, dates stretched over both), so
- * every old link to "Worlds 2025 Play-In" now opens "Worlds 2025"; the response's `id` tells the page where it landed.
+ * The event an address names: a slug (`worlds-2025`, any case) or an old numeric id. A play-in's id gives its
+ * competition (the main event's row, dates stretched over both). The response's `slug` tells the page the address it
+ * should be shown at, so numeric ids and play-in ids redirect to the readable one.
  */
-export async function findTournament(pool: pg.Pool, id: string): Promise<TournamentRow | null> {
-  if (!/^\d+$/.test(id)) return null
+export async function findTournament(pool: pg.Pool, ref: string): Promise<TournamentRow | null> {
+  const byId = /^\d+$/.test(ref)
+  if (!byId && !/^[a-z0-9-]{1,100}$/i.test(ref)) return null
   const { rows } = await pool.query(
-    `SELECT t.id, t.member_ids AS "memberIds", t.name, t.leaguepedia_name AS "leaguepediaName", l.name AS league, t.year, t.split, t.stage,
+    `SELECT t.id, es.slug, t.member_ids AS "memberIds", t.name, t.leaguepedia_name AS "leaguepediaName", l.name AS league, t.year, t.split, t.stage,
             t.is_international AS "isInternational", ${STATUS_SQL} AS status,
             to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
             COALESCE((SELECT array_agg(DISTINCT x.name ORDER BY x.name)
                       FROM tournament_team_league ttl JOIN league x ON x.id = ttl.league_id
                       WHERE ttl.tournament_id = ANY(t.member_ids)), '{}') AS leagues
      FROM event t LEFT JOIN league l ON l.id = t.league_id
-     WHERE t.id = (SELECT group_id FROM tournament_group WHERE id = $1::int)`,
-    [id],
+     JOIN event_slug es ON es.id = t.id
+     WHERE ${byId ? 't.id = (SELECT group_id FROM tournament_group WHERE id = $1::int)' : 'es.slug = lower($1)'}`,
+    [ref],
   )
   return rows[0] ?? null
 }
@@ -260,6 +265,7 @@ export async function loadTournamentChampions(pool: pg.Pool, tournamentIds: numb
 
 export interface RelatedEvent {
   id: number
+  slug: string
   name: string
   league: string
   status: 'In progress' | 'Completed'
@@ -270,9 +276,9 @@ export interface RelatedEvent {
 /** Other events of the same league and year (or the other internationals of the year), in date order. */
 export async function loadRelatedEvents(pool: pg.Pool, t: TournamentRow, limit = 6): Promise<RelatedEvent[]> {
   const { rows } = await pool.query(
-    `SELECT x.id, x.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL.replace(/\bt\./g, 'x.')} AS status,
+    `SELECT x.id, es.slug, x.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL.replace(/\bt\./g, 'x.')} AS status,
             to_char(x.start_date, 'YYYY-MM-DD') AS "startDate", to_char(x.end_date, 'YYYY-MM-DD') AS "endDate"
-     FROM event x LEFT JOIN league l ON l.id = x.league_id
+     FROM event x LEFT JOIN league l ON l.id = x.league_id JOIN event_slug es ON es.id = x.id
      WHERE x.id <> $1 AND x.year = $2
        AND (CASE WHEN $3::boolean THEN x.is_international ELSE x.league_id IS NOT DISTINCT FROM $4::int AND NOT x.is_international END)
        AND x.stage IS DISTINCT FROM 'Qualifier'

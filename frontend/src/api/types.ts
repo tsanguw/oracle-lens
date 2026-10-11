@@ -166,6 +166,8 @@ export interface ContextEvent {
   /** The team the player played for in this event (player pages). */
   team?: string
   id: number
+  /** The readable address segment (`worlds-2025`). */
+  slug: string
   name: string
   league: string
   status: 'In progress' | 'Completed'
@@ -177,6 +179,7 @@ export interface ContextMatch {
   seriesId: number
   scheduledAt: string | null
   tournamentId: number
+  tournamentSlug: string
   tournament: string
   opponent: string | null
   bestOf: number | null
@@ -291,6 +294,8 @@ export interface ChampionContextResponse {
 
 export interface TournamentInfo {
   id: number
+  /** The readable address segment (`worlds-2025`); the page moves to it if it was opened by a numeric id. */
+  slug: string
   name: string
   leaguepediaName: string
   league: string | null
@@ -372,7 +377,7 @@ export interface TournamentContextResponse {
   teams: StandingRow[]
   upcoming: SeriesRow[]
   results: SeriesRow[]
-  related: { id: number; name: string; league: string; status: 'In progress' | 'Completed'; startDate: string | null; endDate: string | null }[]
+  related: { id: number; slug: string; name: string; league: string; status: 'In progress' | 'Completed'; startDate: string | null; endDate: string | null }[]
 }
 
 export interface TeamSummary {
@@ -474,11 +479,12 @@ export interface SearchResponse {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]
   champions: { name: string; role: string | null }[]
-  tournaments: { id: number; name: string; status: 'In progress' | 'Completed' }[]
+  tournaments: { id: number; slug: string; name: string; status: 'In progress' | 'Completed' }[]
 }
 
 export interface RecentTournament {
   id: number
+  slug: string
   name: string
   league: string
   status: 'In progress' | 'Completed'
@@ -532,6 +538,7 @@ export interface ChampionListRow {
 
 export interface TournamentListRow {
   id: number
+  slug: string
   name: string
   league: string
   stage: string | null

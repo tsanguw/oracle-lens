@@ -310,6 +310,7 @@ export interface ChampionContext {
   teams: ChampionTeam[]
   events: {
     id: number
+    slug: string
     name: string
     league: string
     status: 'In progress' | 'Completed'
@@ -326,14 +327,14 @@ export async function loadChampionContext(pool: pg.Pool, champion: ChampionRow):
     loadChampionPlayers(pool, defaults, champion, 5),
     loadChampionTeams(pool, defaults, champion, 5),
     pool.query(
-      `SELECT t.id, t.name, COALESCE(l.name, 'INTL') AS league,
+      `SELECT t.id, ts.slug, t.name, COALESCE(l.name, 'INTL') AS league,
               (CASE WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN 'In progress' ELSE 'Completed' END) AS status,
               to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
               COUNT(*)::int AS games
        FROM player_game pgm JOIN game g ON g.id = pgm.game_id JOIN tournament t ON t.id = g.tournament_id
-       LEFT JOIN league l ON l.id = t.league_id
+       JOIN tournament_slug ts ON ts.id = t.id LEFT JOIN league l ON l.id = t.league_id
        WHERE pgm.champion_id = $1 AND t.stage IS DISTINCT FROM 'Qualifier' AND ${IS_EVENT_HEAD('t')}
-       GROUP BY t.id, l.name ORDER BY t.start_date DESC NULLS LAST LIMIT 3`,
+       GROUP BY t.id, ts.slug, l.name ORDER BY t.start_date DESC NULLS LAST LIMIT 3`,
       [champion.id],
     ),
   ])

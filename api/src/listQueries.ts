@@ -237,6 +237,7 @@ export type TournamentsListQuery = z.infer<typeof tournamentsListSchema>
 
 export interface TournamentListRow {
   id: number
+  slug: string
   name: string
   league: string
   stage: string | null
@@ -272,12 +273,12 @@ export async function loadTournamentsList(
   const order = q.sort === 'name' ? `t.name ${dir}, t.id` : `t.start_date ${dir} NULLS LAST, t.id ${dir}`
 
   const { rows } = await pool.query(
-    `SELECT t.id, t.name, t.league, t.stage, t.year, t.status, t."startDate", t."endDate", t.games, t.total,
+    `SELECT t.id, t.slug, t.name, t.league, t.stage, t.year, t.status, t."startDate", t."endDate", t.games, t.total,
        CASE WHEN t.status = 'In progress' THEN 'Leading'
             WHEN t.stage = 'Playoffs' OR t.is_international THEN 'Champion' ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
-       SELECT t.id, t.name, t.stage, t.year, t.is_international, t.start_date,
+       SELECT t.id, es.slug, t.name, t.stage, t.year, t.is_international, t.start_date,
          COALESCE(l.name, CASE WHEN t.is_international THEN 'INTL' END,
                   (SELECT string_agg(DISTINCT zl.name, ' / ' ORDER BY zl.name) FROM tournament_team_league z
                    JOIN league zl ON zl.id = z.league_id WHERE z.tournament_id = t.id), '—') AS league,
@@ -285,7 +286,7 @@ export async function loadTournamentsList(
          to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
          (SELECT COUNT(*)::int FROM game g WHERE g.tournament_id = ANY(t.member_ids)) AS games,
          COUNT(*) OVER ()::int AS total
-       FROM event t LEFT JOIN league l ON l.id = t.league_id
+       FROM event t LEFT JOIN league l ON l.id = t.league_id JOIN event_slug es ON es.id = t.id
        WHERE ${conds.join(' AND ')}
        ORDER BY ${order} LIMIT ${limit} OFFSET ${offset}) t
      LEFT JOIN LATERAL (

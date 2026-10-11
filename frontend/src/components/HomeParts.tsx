@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { ChampionListRow, LeaderboardResponse, ListResponse, RecentTournament } from '../api/types'
 import { useApi, type ApiState } from '../api/useApi'
 import { dateRange, decimal, percent } from '../lib/format'
+import { tournamentPath } from '../lib/tournamentPath'
 import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
 
 function InlineError({ onRetry }: { onRetry: () => void }) {
@@ -64,7 +65,7 @@ export function TournamentRows({ tournaments }: { tournaments: RecentTournament[
     <ol className="trn">
       {tournaments.map((t, i) => (
         <li key={t.id} style={{ ['--i' as string]: i }}>
-          <Link to={`/tournaments/${t.id}`} className={`trn__row${i === 0 ? ' trn__row--lead' : ''}`}>
+          <Link to={tournamentPath(t)} className={`trn__row${i === 0 ? ' trn__row--lead' : ''}`}>
             <span className="trn__tags">
               <span className="tag tag--small">{t.league}</span>
               <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>

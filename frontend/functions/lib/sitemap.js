@@ -23,7 +23,8 @@ export function buildSitemap(origin, data) {
   const entries = [
     ...STATIC_PATHS.map((path) => ({ path, lastmod: null })),
     ...list(data?.champions).map((c) => ({ path: `/champions/${segment(c.name)}`, lastmod: null })),
-    ...list(data?.tournaments).map((t) => ({ path: `/tournaments/${t.id}`, lastmod: t.lastmod ?? null })),
+    // the readable slug; the numeric id only while an API that sends no slugs yet is still answering (it redirects anyway)
+    ...list(data?.tournaments).map((t) => ({ path: `/tournaments/${segment(t.slug ?? t.id)}`, lastmod: t.lastmod ?? null })),
     ...list(data?.teams).map((t) => ({ path: `/teams/${segment(t.name)}`, lastmod: t.lastmod ?? null })),
     ...list(data?.players).map((p) => ({ path: `/players/${segment(p.name)}`, lastmod: p.lastmod ?? null })),
   ].slice(0, MAX_URLS)

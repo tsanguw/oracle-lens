@@ -14,7 +14,10 @@ const data = {
   ],
   teams: [{ name: 'Dplus Kia', lastmod: '2025-04-20' }],
   champions: [{ name: "Kai'Sa" }],
-  tournaments: [{ id: 587, lastmod: '2025-11-09' }],
+  tournaments: [
+    { id: 587, slug: 'worlds-2025', lastmod: '2025-11-09' },
+    { id: 12, lastmod: null },
+  ],
 }
 
 describe('buildSitemap', () => {
@@ -32,7 +35,10 @@ describe('buildSitemap', () => {
     assert.ok(locs.includes(`${origin}/teams/Dplus%20Kia`))
     // an apostrophe is left alone by encodeURIComponent, so XML escaping is what keeps the file valid
     assert.ok(locs.includes(`${origin}/champions/Kai&apos;Sa`))
-    assert.ok(locs.includes(`${origin}/tournaments/587`))
+    assert.ok(locs.includes(`${origin}/tournaments/worlds-2025`))
+    assert.ok(!locs.includes(`${origin}/tournaments/587`), 'a tournament with a slug is listed at the slug, not the old id')
+    // an API that does not send slugs yet still gets a working address
+    assert.ok(locs.includes(`${origin}/tournaments/12`))
   })
 
   it('escapes anything that would break the XML', () => {

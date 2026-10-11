@@ -14,6 +14,7 @@ export interface RosterPlayer {
 
 export interface ContextEvent {
   id: number
+  slug: string
   name: string
   league: string
   status: 'In progress' | 'Completed'
@@ -29,6 +30,8 @@ export interface ContextMatch {
   seriesId: number
   scheduledAt: string | null
   tournamentId: number
+  /** The event's readable address segment; for a play-in's series, its competition's. */
+  tournamentSlug: string
   tournament: string
   opponent: string | null
   bestOf: number | null
@@ -85,10 +88,10 @@ export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlaye
     ),
     // Events the team is playing right now; if none, the ones it played most recently.
     pool.query(
-      `SELECT t.id, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
+      `SELECT t.id, ts.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
               to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
               tr.place, tr.group_name AS "group"
-       FROM tournament t LEFT JOIN league l ON l.id = t.league_id
+       FROM tournament t LEFT JOIN league l ON l.id = t.league_id JOIN tournament_slug ts ON ts.id = t.id
        LEFT JOIN tournament_result tr ON tr.tournament_id = t.id AND tr.team_id = $1
        WHERE t.id IN (SELECT DISTINCT g.tournament_id FROM team_game tg JOIN game g ON g.id = tg.game_id WHERE tg.team_id = $1)
          AND t.stage IS DISTINCT FROM 'Qualifier' AND ${IS_EVENT_HEAD('t')}
@@ -97,10 +100,10 @@ export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlaye
       [teamId],
     ),
     pool.query(
-      `SELECT s.id AS "seriesId", s.scheduled_at AS "scheduledAt", t.id AS "tournamentId", t.name AS tournament,
+      `SELECT s.id AS "seriesId", s.scheduled_at AS "scheduledAt", t.id AS "tournamentId", ts.slug AS "tournamentSlug", t.name AS tournament,
               opp.name AS opponent, s.best_of AS "bestOf"
        FROM series s
-       JOIN tournament t ON t.id = s.tournament_id
+       JOIN tournament t ON t.id = s.tournament_id JOIN tournament_slug ts ON ts.id = t.id
        LEFT JOIN team opp ON opp.id = (CASE WHEN s.team1_id = $1 THEN s.team2_id ELSE s.team1_id END)
        WHERE $1 IN (s.team1_id, s.team2_id) AND s.winner_id IS NULL AND s.scheduled_at >= now()
        ORDER BY s.scheduled_at LIMIT 5`,
@@ -108,10 +111,10 @@ export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlaye
     ),
     pool.query(
       `SELECT s.id AS "seriesId", COALESCE(s.scheduled_at, last.played_at) AS "scheduledAt",
-              t.id AS "tournamentId", t.name AS tournament, opp.name AS opponent, s.best_of AS "bestOf",
+              t.id AS "tournamentId", ts.slug AS "tournamentSlug", t.name AS tournament, opp.name AS opponent, s.best_of AS "bestOf",
               s.score, (s.winner_id = $1) AS won, (s.team1_id = $1) AS "isTeam1"
        FROM series s
-       JOIN tournament t ON t.id = s.tournament_id
+       JOIN tournament t ON t.id = s.tournament_id JOIN tournament_slug ts ON ts.id = t.id
        LEFT JOIN team opp ON opp.id = (CASE WHEN s.team1_id = $1 THEN s.team2_id ELSE s.team1_id END)
        LEFT JOIN LATERAL (SELECT MAX(g.played_at) AS played_at FROM game g WHERE g.series_id = s.id) last ON true
        WHERE $1 IN (s.team1_id, s.team2_id) AND s.winner_id IS NOT NULL
