@@ -1,5 +1,5 @@
 import type pg from 'pg'
-import { STATUS_SQL } from './homeQueries.js'
+import { IS_EVENT_HEAD, STATUS_SQL } from './homeQueries.js'
 
 export interface RosterPlayer {
   page: string
@@ -91,7 +91,7 @@ export async function loadTeamContext(pool: pg.Pool, teamId: number, viewedPlaye
        FROM tournament t LEFT JOIN league l ON l.id = t.league_id
        LEFT JOIN tournament_result tr ON tr.tournament_id = t.id AND tr.team_id = $1
        WHERE t.id IN (SELECT DISTINCT g.tournament_id FROM team_game tg JOIN game g ON g.id = tg.game_id WHERE tg.team_id = $1)
-         AND t.stage IS DISTINCT FROM 'Qualifier'
+         AND t.stage IS DISTINCT FROM 'Qualifier' AND ${IS_EVENT_HEAD('t')}
        ORDER BY (${STATUS_SQL} = 'In progress') DESC, t.start_date DESC NULLS LAST
        LIMIT ${EVENT_LIMIT}`,
       [teamId],

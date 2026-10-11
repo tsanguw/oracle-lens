@@ -5,6 +5,7 @@ from lolsync.normalize import (
     LeagueResolver,
     cargo_quote,
     clean_row,
+    display_name,
     length_sec,
     parse_utc,
     player_side,
@@ -14,6 +15,21 @@ from lolsync.normalize import (
     to_int,
 )
 from lolsync.resolve import ResolveCache
+
+
+def test_a_competitions_main_event_is_just_the_competition():
+    page = "2025 Season World Championship/Main Event"
+    assert display_name("Worlds 2025 Main Event", page) == "Worlds 2025"
+    assert display_name("MSI 2017 Main Event", "2017 Mid-Season Invitational/Main Event") == "MSI 2017"
+
+
+def test_other_names_are_left_alone():
+    # the play-in keeps its name, and so does anything whose page is not a main event
+    assert display_name("Worlds 2025 Play-In", "2025 Season World Championship/Play-In") == "Worlds 2025 Play-In"
+    assert display_name("LCK 2026 Season Playoffs", "LCK/2026 Season/Season Playoffs") == "LCK 2026 Season Playoffs"
+    assert display_name("Worlds 2016", "2016 Season World Championship") == "Worlds 2016"
+    # a name that merely ends in the words, on a page that is not a main event, is not touched
+    assert display_name("Rift Rivals Main Event", "Rift Rivals 2019") == "Rift Rivals Main Event"
 
 
 def test_clean_row_restores_underscores_and_drops_precision():

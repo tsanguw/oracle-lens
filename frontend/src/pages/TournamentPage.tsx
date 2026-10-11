@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import type {
   MatchesResponse,
   StagesResponse,
@@ -25,15 +26,20 @@ import { notFoundSeo, tournamentLd, tournamentSeo } from '../lib/seoText'
 import ErrorState from '../components/ErrorState'
 import TournamentStages from '../components/TournamentStages'
 
+/** Results shown before "Show all results" is pressed; the API's own cap (200) is how many "all" can be. */
+const RESULTS_PREVIEW = 20
+
 const Skeleton = () => <div className="skeleton" style={{ height: 240 }} aria-busy="true" />
 
 export default function TournamentPage({ id }: { id: string }) {
   const [showAll, setShowAll] = useState(false)
+  const resultsId = useId()
+  const toggleRef = useRef<HTMLButtonElement>(null)
   const base = `/api/tournaments/${encodeURIComponent(id)}`
 
   const tournament = useApi<TournamentResponse>(base)
   const standings = useApi<{ empty: boolean; standings: StandingRow[] }>(`${base}/standings`)
-  const matches = useApi<MatchesResponse>(`${base}/matches?limit=${showAll ? 200 : 20}`)
+  const matches = useApi<MatchesResponse>(`${base}/matches?limit=200`)
   const players = useApi<{ empty: boolean; minGames: number; players: TournamentPlayer[] }>(`${base}/players`)
   const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
   const context = useApi<TournamentContextResponse>(`${base}/context`)
@@ -59,9 +65,23 @@ export default function TournamentPage({ id }: { id: string }) {
       </main>
     )
   }
+  // A play-in's address opens its competition ("Worlds 2025 Play-In" is part of "Worlds 2025"): move to that address.
+  if (tournament.data && String(tournament.data.tournament.id) !== id) {
+    return <Navigate to={`/tournaments/${tournament.data.tournament.id}`} replace />
+  }
 
   const data = tournament.data
   const results = matches.data?.results ?? []
+  // The longer list is fetched once and sliced here, so the button works both ways at once, with no reload and no
+  // flicker, and stays the same element (it keeps keyboard focus).
+  const visibleResults = showAll ? results : results.slice(0, RESULTS_PREVIEW)
+  const canToggleResults = results.length > RESULTS_PREVIEW
+  const toggleResults = () => {
+    const collapsing = showAll
+    setShowAll(!showAll)
+    // Collapsing a long list moves the button up the page; bring it back into view if it was left off screen.
+    if (collapsing) requestAnimationFrame(() => toggleRef.current?.scrollIntoView({ block: 'nearest' }))
+  }
 
   return (
     <>
@@ -95,10 +115,19 @@ export default function TournamentPage({ id }: { id: string }) {
                       <p className="section__note">No results yet.</p>
                     ) : (
                       <>
-                        <ResultsTable results={results} />
-                        {!showAll && results.length >= 20 && (
-                          <button type="button" className="btn-reset btn-reset--inline" onClick={() => setShowAll(true)}>
-                            Show all results
+                        <div id={resultsId}>
+                          <ResultsTable results={visibleResults} />
+                        </div>
+                        {canToggleResults && (
+                          <button
+                            ref={toggleRef}
+                            type="button"
+                            className="btn-reset btn-reset--inline"
+                            aria-expanded={showAll}
+                            aria-controls={resultsId}
+                            onClick={toggleResults}
+                          >
+                            {showAll ? 'Show fewer results' : 'Show all results'}
                           </button>
                         )}
                       </>

@@ -13,6 +13,7 @@ from .client import Leaguepedia
 from .normalize import (
     LeagueResolver,
     cargo_quote,
+    display_name,
     is_placeholder,
     length_sec,
     real_names,
@@ -324,7 +325,7 @@ def _load(
                  end_date = EXCLUDED.end_date
                RETURNING id""",
             (
-                page, t["Name"], league_id, year, t["Split"] or None, stage,
+                page, display_name(t["Name"], page), league_id, year, t["Split"] or None, stage,
                 res.is_international, res.sub_region, t["DateStart"] or None, t["Date"] or None,
             ),
         )

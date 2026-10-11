@@ -23,6 +23,13 @@ export interface SearchResults {
   tournaments: { id: number; name: string; status: 'In progress' | 'Completed' }[]
 }
 
+/**
+ * True for a tournament that is an event of its own: everything except a play-in whose main event is loaded (those are
+ * part of the main event; see the `event` view). `alias` is the tournament table's alias in the query.
+ */
+export const IS_EVENT_HEAD = (alias: string) =>
+  `NOT EXISTS (SELECT 1 FROM tournament_group tg WHERE tg.id = ${alias}.id AND tg.group_id <> ${alias}.id)`
+
 export const STATUS_SQL = `(CASE WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN 'In progress' ELSE 'Completed' END)`
 
 export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchSchema>): Promise<SearchResults> {
@@ -66,8 +73,8 @@ export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchS
     ),
     pool.query(
       `SELECT t.id, t.name, ${STATUS_SQL} AS status
-       FROM tournament t
-       WHERE t.name ILIKE $1 AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id)
+       FROM event t
+       WHERE t.name ILIKE $1 AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))
        ORDER BY ${rank('t.name')}, t.start_date DESC NULLS LAST, t.name LIMIT $3`,
       args,
     ),
@@ -100,8 +107,8 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
             ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
-       SELECT * FROM tournament x
-       WHERE x.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = x.id)
+       SELECT * FROM event x
+       WHERE x.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
        ORDER BY x.start_date DESC NULLS LAST, x.id DESC LIMIT $1) t
      LEFT JOIN league l ON l.id = t.league_id
      LEFT JOIN LATERAL (
