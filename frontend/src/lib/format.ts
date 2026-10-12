@@ -65,6 +65,29 @@ export const dateRange = (start: string | null, end: string | null): string => {
   return `${fmt(start, !sameYear)} – ${fmt(end, true)}`
 }
 
+const monthYear = (iso: string): string =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
+
+/** "Jun 2014 – Sep 2014", "Nov 2020 – Present", "Jun 2013 – ?" (no known end), or one month ("Jul 2026") when it began and ended in it. Dates are ISO (YYYY-MM-DD). */
+export const stintSpan = (start: string, end: string | null, endUnknown = false): string => {
+  const from = monthYear(start)
+  if (!end) return `${from} – ${endUnknown ? '?' : 'Present'}`
+  const to = monthYear(end)
+  return from === to ? from : `${from} – ${to}`
+}
+
+/** "3 yr 1 mo", "8 mo", "Under a month": whole months from start to end (to today while it is running); empty when the end is not known. */
+export const stintLength = (start: string, end: string | null, endUnknown = false, today: Date = new Date()): string => {
+  if (!end && endUnknown) return ''
+  const a = new Date(`${start}T00:00:00Z`)
+  const b = end ? new Date(`${end}T00:00:00Z`) : today
+  const months = Math.max(0, (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + b.getUTCMonth() - a.getUTCMonth() - (b.getUTCDate() < a.getUTCDate() ? 1 : 0))
+  if (months === 0) return 'Under a month'
+  const [years, rest] = [Math.floor(months / 12), months % 12]
+  // Non-breaking spaces keep each number with its unit.
+  return [years ? `${years} yr` : '', rest ? `${rest} mo` : ''].filter(Boolean).join(' ')
+}
+
 /** "LYON (2024 American Team)" -> "LYON": Leaguepedia adds the bracket to tell same-named teams apart; it is noise on screen. */
 export const shortTeam = (name: string): string => name.replace(/\s*\([^)]*\)\s*$/, '') || name
 

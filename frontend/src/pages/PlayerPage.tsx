@@ -7,6 +7,7 @@ import type {
   PlayerContextResponse,
   PlayerMatchupsResponse,
   PlayerResponse,
+  PlayerTeamHistoryResponse,
   TargetBansResponse,
 } from '../api/types'
 import { useApi } from '../api/useApi'
@@ -17,6 +18,7 @@ import MatchupPanel from '../components/MatchupPanel'
 import PlayerAccomplishments, { noAccomplishments, PlayerAccomplishmentsSkeleton } from '../components/PlayerAccomplishments'
 import PlayerContext from '../components/PlayerContext'
 import PlayerHeader, { PlayerHeaderSkeleton } from '../components/PlayerHeader'
+import PlayerTeamHistory, { PlayerTeamHistorySkeleton } from '../components/PlayerTeamHistory'
 import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
 import TargetBans, { TargetBansSkeleton } from '../components/TargetBans'
 import { opposingLabel } from '../lib/format'
@@ -38,6 +40,7 @@ export default function PlayerPage({ name }: { name: string }) {
   const bans = useApi<TargetBansResponse>(`${base}/target-bans${qs}`)
   const context = useApi<PlayerContextResponse>(`${base}/context`)
   const accomplishments = useApi<PlayerAccomplishmentsResponse>(`${base}/accomplishments`)
+  const teamHistory = useApi<PlayerTeamHistoryResponse>(`${base}/team-history`)
   const filters = useApi<FiltersResponse>('/api/filters')
   const missing = player.error?.status === 404
   usePageMeta({ ...(missing ? notFoundSeo('Player') : playerSeo(name, player.data)), noindex: missing })
@@ -169,6 +172,17 @@ export default function PlayerPage({ name }: { name: string }) {
               )}
             </section>
           </>
+        )}
+
+        {/* Career-wide like Accomplishments, so it ignores the filters and shows even when the range has no games. It sits last:
+            it is lookup information, and loading in below the stats shifts nothing the reader is looking at. */}
+        {(!teamHistory.data ? teamHistory.loading : teamHistory.data.stints.length > 0) && (
+          <section aria-labelledby="team-history" className="section">
+            <h2 id="team-history" className="section__title">
+              Team history
+            </h2>
+            {teamHistory.data ? <PlayerTeamHistory data={teamHistory.data} /> : <PlayerTeamHistorySkeleton />}
+          </section>
         )}
       </main>
       <FilterBar

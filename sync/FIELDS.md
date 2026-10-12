@@ -105,6 +105,32 @@ These display as N/A, never 0.
 - Three games in `LCK 2023 Spring` have only one team's scoreboard row (and 0 or 5 player rows) in Leaguepedia, so they cannot be stored as complete games (`skipped_games_bad_team_rows`).
 - Team spellings `bleiz eSPORTS` and `Bleiz e-SPORTS` are probably one team but differ by punctuation with no redirect, so they stay separate.
 
+## Team history: `RosterChanges` (2026-10-12, bot login)
+
+Source of `player_team_stint` (see `lolsync/rosters.py`). 279,301 rows. Fields used: `Date_Sort`, `Player`, `Direction`, `Team`,
+`RolesIngame`, `RoleModifier`, `Status`. `Player` is the Leaguepedia page (`Mata (Edgar Cepurnieks)`), so it matches `player.name`.
+
+- `Direction` is only `Join` or `Leave`. A spell with a team is a Join and a later Leave. A role swap, contract extension, team
+  rename or switch to inactive is written as a Leave **and** a Join for the same team on the same day, so the log has to be
+  folded: a Join straight back for the same team (same day, or within 45 days) continues the stint.
+- `Date_Sort__precision` is `1` (a full day) for all but 3 rows, so it cannot flag an approximate date. The wiki's "approximate"
+  marking is something else; we show the month and year only.
+- `RolesIngame` is empty on staff rows (coaches, managers). A player who becomes a coach on the same team keeps only their player
+  stint. `RolesIngame` can also be set alongside a staff role (`Mid` + `Part-Owner`): that is still a player stint.
+- `Status` on a Join is the state being entered and on a Leave the state being left: `inactive` (Join with `inactive`, later a Leave
+  with `inactive`), `on_loan`, `official_sub`. We skip the ones that are not a spell with a team: `pickup` (amateur one-off squads),
+  `opportunities` (open to offers), `trial`, `draft_pick`, `set_to_join` / `set_to_leave` (announced, not happened), `temp_sub`
+  (one-off stand-in) and `loaned_out` (the home team's note that a player is away on loan). Not checked against a real loan.
+- `RoleModifier` is `Sub` (31,535 rows) or `Trainee` (586). Both are kept as a note on the stint, and a sub signing does not end
+  the player's main stint.
+- `Preload` names the kind of edit (`join`, `leave`, `role_swap`, `extended`, `remain`, `to_inactive`, `to_active`,
+  `team_rename`, `team_rename_same_page`, `retirement`, `expire`, `gcd_*`, ...). We do not need it: Direction, Team and the dates
+  carry everything we use.
+- Team names are the name at the time (`SK Telecom T1`), and are resolved to the current name (`T1`) through `Teams.RenamedTo`
+  like the scoreboard teams. Teams we hold no games for are kept, as plain text.
+- Missing Leave rows exist: a full-time Join elsewhere closes the earlier stint on that date.
+- Anonymous `cargoquery` and `Special:CargoQuery` are blocked or rate-limited; this needs the bot login.
+
 ## Rate limits
 
 Anonymous `cargoquery` hit `ratelimited` within a few requests. `cargotables` and `cargofields` were fine.

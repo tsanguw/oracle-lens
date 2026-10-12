@@ -491,3 +491,76 @@
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   }
 }
+
+/* Team history: one row per stint, newest first. Team and role on the left, the span on the right. */
+.hist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+.hist > li + li {
+  border-top: 1px solid var(--border);
+}
+.more .hist {
+  margin-top: 12px;
+}
+.hist__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 8px 20px;
+  align-items: center;
+  padding: 12px 16px;
+}
+.hist__team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.hist__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+a.hist__name:hover {
+  color: var(--accent-text);
+}
+.hist__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.hist__when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 170px;
+}
+.hist__dates {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hist__len {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .hist__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .hist__when {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+  }
+}

@@ -5,7 +5,9 @@
   python main.py backfill --all --list               # show what would run, load nothing
   python main.py backfill --latest                   # most recent finished LCK regular-season split
   python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"
-  python main.py nightly                             # only what is new: unfinished tournaments, match dates, champion icons
+  python main.py nightly                             # only what is new: unfinished tournaments, match dates, champion icons, team history
+  python main.py rosters                             # every player's team history (a few minutes)
+  python main.py rosters --since 2026-09-01          # only players with a roster change from that date on
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ from lolsync.images import sync_champion_icons, sync_player_photos, sync_team_lo
 from lolsync.nightly import nightly
 from lolsync.normalize import LeagueResolver
 from lolsync.results import refresh_results
+from lolsync.rosters import refresh_rosters
 from lolsync.tones import classify_logos
 from lolsync.resolve import ResolveCache
 
@@ -98,6 +101,8 @@ def main() -> int:
     lt.add_argument("--out", default=str(Path(__file__).resolve().parent.parent / "frontend" / "public" / "img"), help="folder with the cached images")
     lt.add_argument("--redo", action="store_true", help="measure every logo again, not only the ones with no tone yet")
     sub.add_parser("results", help="fetch final placements for every event we hold (fast)")
+    ro = sub.add_parser("rosters", help="rebuild each player's team history from Leaguepedia roster changes")
+    ro.add_argument("--since", help="only players with a roster change from this date on (YYYY-MM-DD); default is every player")
     sc = sub.add_parser("schedule", help="refresh match dates and rounds for series already loaded (no games reloaded)")
     sc.add_argument("--since", help="only matches from this date on (YYYY-MM-DD); the full history takes about ten minutes")
     sc.add_argument("--tournament", action="append", help="only this OverviewPage (repeat for several); default is every event")
@@ -151,6 +156,10 @@ def main() -> int:
     if args.mode == "results":
         with connect() as conn:
             refresh_results(conn, lp, log)
+        return 0
+    if args.mode == "rosters":
+        log(f"Leaguepedia login: {'bot account' if lp.authenticated else 'anonymous (slow, rate-limited)'}")
+        refresh_rosters(connect, lp, log, since=args.since)  # opens its own short connections: the fetch is slow
         return 0
     if args.mode == "schedule":
         since = f"{args.since} 00:00:00" if args.since else None
