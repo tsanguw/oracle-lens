@@ -39,7 +39,7 @@ export function ContextStrip({ children }: { children: ReactNode }) {
   return (
     <div className="container ctx-wrap">
       <div className="ctx-bar">
-        <span className="ctx-bar__summary">Related info</span>
+        <h2 className="section__title">Related info</h2>
         <button type="button" className="ctx-bar__toggle" aria-label={`${hidden ? 'Show' : 'Hide'} related info`} aria-expanded={!hidden} aria-controls="related-info" onClick={toggle}>
           {hidden ? 'Show' : 'Hide'}
           <span aria-hidden="true"> {hidden ? '▾' : '▴'}</span>
@@ -55,7 +55,7 @@ export function ContextStrip({ children }: { children: ReactNode }) {
 export function ContextPanel({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
   return (
     <section className="ctx__panel" aria-label={title}>
-      <h2 className="ctx__title">{title}</h2>
+      <h3 className="ctx__title">{title}</h3>
       {children}
       {note && <p className="ctx__note">{note}</p>}
     </section>
@@ -87,11 +87,11 @@ export function EventsPanel({ events }: { events: ContextEvent[] }) {
 export function SchedulePanel({ upcoming, results }: { upcoming: ContextMatch[]; results: ContextMatch[] }) {
   return (
     <ContextPanel title="Schedule">
-      <h3 className="ctx__sub">Upcoming</h3>
+      <h4 className="ctx__sub">Upcoming</h4>
       {upcoming.length > 0 ? <MatchList matches={upcoming} /> : <p className="ctx__empty">No upcoming matches scheduled.</p>}
       {results.length > 0 && (
         <>
-          <h3 className="ctx__sub">Recent results</h3>
+          <h4 className="ctx__sub">Recent results</h4>
           <MatchList matches={results.slice(0, 3)} result />
         </>
       )}
@@ -119,7 +119,7 @@ export function RosterList({ roster }: { roster: RosterPlayer[] }) {
       <ul className="ctx__list">{starters.map(row)}</ul>
       {subs.length > 0 && (
         <>
-          <h3 className="ctx__sub">Substitutes</h3>
+          <h4 className="ctx__sub">Substitutes</h4>
           <ul className="ctx__list">{subs.map(row)}</ul>
         </>
       )}

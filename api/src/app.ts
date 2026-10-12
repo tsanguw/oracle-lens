@@ -5,6 +5,7 @@ import { z, ZodError } from 'zod'
 import { pool } from './db.js'
 import { filterSchema, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
+import { loadPlayerAccomplishments } from './playerAccomplishments.js'
 import { loadPlayerContext } from './playerContext.js'
 import { loadImageManifest } from './assets.js'
 import { loadSitemap } from './sitemap.js'
@@ -151,6 +152,16 @@ export function createApp(options: AppOptions = {}) {
       return
     }
     res.json(await loadPlayerContext(pool, player.id))
+  }))
+
+  /** Worlds/MSI/First Stand appearances and best finish, plus split, regional title and runner-up counts. Independent of the stat filters. */
+  app.get('/api/players/:id/accomplishments', wrap(async (req, res) => {
+    const player = await findPlayer(pool, String(req.params.id))
+    if (!player) {
+      res.status(404).json({ error: 'Player not found' })
+      return
+    }
+    res.json(await loadPlayerAccomplishments(pool, player.id))
   }))
 
   /** Registers a list endpoint that resolves the player's scope and returns `{ range, empty, [key] }`. */
