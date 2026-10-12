@@ -499,6 +499,18 @@
   font-size: 13px;
   color: var(--text-dim);
 }
+/* The tiles and any footnote share the group's second column; min-width 0 lets the tile grid shrink inside it. */
+.acc__main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.acc__footnote {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
 .acc .tiles {
   background: none;
   border: 0;
