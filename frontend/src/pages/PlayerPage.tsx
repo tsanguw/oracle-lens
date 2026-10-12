@@ -3,6 +3,7 @@ import type {
   ChampionMatchupsResponse,
   ChampionsResponse,
   FiltersResponse,
+  PlayerAccomplishmentsResponse,
   PlayerContextResponse,
   PlayerMatchupsResponse,
   PlayerResponse,
@@ -13,6 +14,7 @@ import ChampionPoolTable, { ChampionFeatured, ChampionPoolSkeleton } from '../co
 import EmptyState from '../components/EmptyState'
 import FilterBar from '../components/FilterBar'
 import MatchupPanel from '../components/MatchupPanel'
+import PlayerAccomplishments, { noAccomplishments, PlayerAccomplishmentsSkeleton } from '../components/PlayerAccomplishments'
 import PlayerContext from '../components/PlayerContext'
 import PlayerHeader, { PlayerHeaderSkeleton } from '../components/PlayerHeader'
 import StatTiles, { StatTilesSkeleton } from '../components/StatTiles'
@@ -35,6 +37,7 @@ export default function PlayerPage({ name }: { name: string }) {
   const vsChampions = useApi<ChampionMatchupsResponse>(`${base}/matchups/champions${qs}`)
   const bans = useApi<TargetBansResponse>(`${base}/target-bans${qs}`)
   const context = useApi<PlayerContextResponse>(`${base}/context`)
+  const accomplishments = useApi<PlayerAccomplishmentsResponse>(`${base}/accomplishments`)
   const filters = useApi<FiltersResponse>('/api/filters')
   const missing = player.error?.status === 404
   usePageMeta({ ...(missing ? notFoundSeo('Player') : playerSeo(name, player.data)), noindex: missing })
@@ -69,6 +72,16 @@ export default function PlayerPage({ name }: { name: string }) {
       {data ? <PlayerHeader data={data} champions={champions.data?.champions} results={context.data?.results} /> : <PlayerHeaderSkeleton />}
       <PlayerContext data={context.data} />
       <main className="main container" style={{ opacity: data && stale ? 0.6 : 1 }}>
+        {/* Career results do not depend on the filters, so they show even when the chosen range has no games. */}
+        {(!accomplishments.data ? accomplishments.loading : !noAccomplishments(accomplishments.data)) && (
+          <section aria-labelledby="accomplishments" className="section">
+            <h2 id="accomplishments" className="section__title">
+              Accomplishments
+            </h2>
+            {accomplishments.data ? <PlayerAccomplishments data={accomplishments.data} /> : <PlayerAccomplishmentsSkeleton />}
+          </section>
+        )}
+
         {data?.empty ? (
           <EmptyState onReset={reset} />
         ) : (
