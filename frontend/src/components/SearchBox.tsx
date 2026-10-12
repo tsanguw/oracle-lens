@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type Ref } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { SearchResponse } from '../api/types'
 import { apiUrl } from '../api/base'
@@ -44,21 +44,45 @@ const toItems = (r: SearchResponse): Item[] => [
 ]
 
 const GROUPS: Item['group'][] = ['Players', 'Teams', 'Champions', 'Tournaments']
+const SEARCH_FAILED = 'Search isn’t responding. Check your connection and try again.'
 
-export default function SearchBox() {
+export function SearchIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg className="search__icon" viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M15.5 15.5 21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+interface SearchBoxProps {
+  /** "hero" is the big box on the home page; "bar" is the one in the bar that slides open in the site header. */
+  variant?: 'hero' | 'bar'
+  inputRef?: Ref<HTMLInputElement>
+  /** Escape was pressed (the results close first; the header bar then closes itself). */
+  onEscape?: () => void
+  /** A result was chosen, so the header bar does not stay open over a page it did not change. */
+  onNavigate?: () => void
+}
+
+export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavigate }: SearchBoxProps) {
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<Item[] | null>(null)
+  const [failed, setFailed] = useState(false)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
   const boxRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const listId = useId()
+  const inputId = useId()
+  const bar = variant === 'bar'
   const q = query.trim()
 
   // Debounced search; a newer keystroke aborts the older request so results never arrive out of order.
   useEffect(() => {
     if (q.length < 2) {
       setItems(null)
+      setFailed(false)
       return
     }
     const controller = new AbortController()
@@ -67,10 +91,13 @@ export default function SearchBox() {
         .then((res) => (res.ok ? (res.json() as Promise<SearchResponse>) : Promise.reject(new Error('search failed'))))
         .then((data) => {
           setItems(toItems(data))
+          setFailed(false)
           setActive(-1)
         })
         .catch(() => {
-          if (!controller.signal.aborted) setItems([])
+          if (controller.signal.aborted) return
+          setItems([])
+          setFailed(true)
         })
     }, 200)
     return () => {
@@ -79,21 +106,46 @@ export default function SearchBox() {
     }
   }, [q])
 
+  // Listens for a click elsewhere only while the results are open (the home page has two of these boxes).
   useEffect(() => {
+    if (!open) return
     const close = (e: PointerEvent) => {
       if (!boxRef.current?.contains(e.target as Node)) setOpen(false)
     }
     document.addEventListener('pointerdown', close)
     return () => document.removeEventListener('pointerdown', close)
-  }, [])
+  }, [open])
+
+  // The results panel is up from the second letter on: "Searching…" until the answer arrives.
+  const showPanel = open && q.length >= 2
+  // Screen readers hear the outcome once it is known, not every keystroke.
+  const announcement =
+    !showPanel || items === null
+      ? ''
+      : failed
+        ? SEARCH_FAILED
+        : items.length === 0
+          ? `No matches for ${q}.`
+          : `${items.length} ${items.length === 1 ? 'result' : 'results'}.`
+
+  /** After choosing a result: close the results and clear the box, so it is empty on the next page (or when the same page is chosen). */
+  const reset = () => {
+    setOpen(false)
+    setQuery('')
+    setItems(null)
+  }
 
   const go = (item: Item) => {
-    setOpen(false)
+    reset()
     navigate(item.to)
+    onNavigate?.()
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') setOpen(false)
+    if (e.key === 'Escape') {
+      setOpen(false)
+      onEscape?.()
+    }
     if (!items?.length) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -108,30 +160,28 @@ export default function SearchBox() {
     }
   }
 
-  const showPanel = open && q.length >= 2 && items !== null
-
   return (
-    <div className="search" ref={boxRef}>
-      <label className="search__label" htmlFor="global-search">
+    <div className={`search${bar ? ' search--bar' : ''}`} ref={boxRef}>
+      <label className={bar ? 'sr-only' : 'search__label'} htmlFor={inputId}>
         Search players, teams, champions, tournaments
       </label>
       <div className={`search__box${showPanel ? ' is-open' : ''}`}>
-        <svg className="search__icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-          <circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" />
-          <path d="M15.5 15.5 21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
+        <SearchIcon />
         <input
-          id="global-search"
+          id={inputId}
+          ref={inputRef}
           className="search__input"
           type="search"
           name="q"
           spellCheck={false}
           autoComplete="off"
-          placeholder="Try “Faker”, “T1” or “Azir”"
+          placeholder={bar ? 'Search players, teams…' : 'Try “Faker”, “T1” or “Azir”'}
           value={query}
           role="combobox"
+          enterKeyHint="search"
+          aria-autocomplete="list"
           aria-expanded={showPanel}
-          aria-controls={listId}
+          aria-controls={showPanel ? listId : undefined}
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
           onChange={(e) => {
             setQuery(e.target.value)
@@ -142,9 +192,16 @@ export default function SearchBox() {
         />
         <kbd className="search__hint">Enter</kbd>
       </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
       {showPanel && (
         <div className="search__panel" id={listId} role="listbox" aria-label="Search results">
-          {items.length === 0 ? (
+          {items === null ? (
+            <p className="search__none">Searching…</p>
+          ) : failed ? (
+            <p className="search__none">{SEARCH_FAILED}</p>
+          ) : items.length === 0 ? (
             <p className="search__none">No matches for “{q}”.</p>
           ) : (
             GROUPS.map((group) => {
@@ -161,7 +218,10 @@ export default function SearchBox() {
                       role="option"
                       aria-selected={index === active}
                       className={`search__row${index === active ? ' is-active' : ''}`}
-                      onClick={() => setOpen(false)}
+                      onClick={() => {
+                        reset()
+                        onNavigate?.()
+                      }}
                       onMouseEnter={() => setActive(index)}
                     >
                       <span className="search__row-name">{item.label}</span>
