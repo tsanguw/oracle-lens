@@ -1,8 +1,9 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import type { LastUpdatedResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import { preloadRoute } from '../lib/routeChunks'
+import HeaderSearch from './HeaderSearch'
 
 const TABS = [
   { to: '/players', label: 'Players' },
@@ -51,10 +52,72 @@ function SkipLink() {
   )
 }
 
+const TEXT_FIELD = /^(INPUT|TEXTAREA|SELECT)$/
+
+/** True when the key was typed into something that takes text, where "/" has to stay a character. */
+const typing = (target: EventTarget | null): boolean =>
+  target instanceof HTMLElement && (target.isContentEditable || TEXT_FIELD.test(target.tagName))
+
 function Header() {
+  const { pathname } = useLocation()
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchPath, setSearchPath] = useState(pathname)
+  const [searchKey, setSearchKey] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const returnFocus = useRef(false)
+
+  // Going to another page folds the search bar away (state adjusted while rendering, not in an effect).
+  if (pathname !== searchPath) {
+    setSearchPath(pathname)
+    setSearchOpen(false)
+  }
+
+  // Every open starts with an empty box.
+  const openSearch = () => {
+    setSearchKey((k) => k + 1)
+    setSearchOpen(true)
+  }
+
+  const toggleSearch = () => (searchOpen ? closeSearch(false) : openSearch())
+
+  // Escape puts focus back on the icon; choosing a result, or any click elsewhere, leaves focus to the page.
+  const closeSearch = (focusIcon: boolean) => {
+    returnFocus.current = focusIcon
+    setSearchOpen(false)
+  }
+
+  // "/" opens it from anywhere that is not a text field.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return
+      e.preventDefault()
+      openSearch()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  // Opening puts the cursor in the box; closing it from the keyboard puts focus back on the icon.
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus()
+    else if (returnFocus.current) toggleRef.current?.focus()
+    returnFocus.current = false
+  }, [searchOpen])
+
+  // A click anywhere outside the header folds it away.
+  useEffect(() => {
+    if (!searchOpen) return
+    const away = (e: PointerEvent) => {
+      if (!(e.target as Element).closest('.site-header')) closeSearch(false)
+    }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [searchOpen])
+
   return (
     <header className="site-header">
-      <div className="site-header__inner">
+      <div className={`site-header__inner${searchOpen ? ' is-searching' : ''}`}>
         <Link to="/" className="brand">
           <span className="brand__mark" aria-hidden="true" />
           <span className="brand__name">Oracle Lens</span>
@@ -66,6 +129,16 @@ function Header() {
             </NavLink>
           ))}
         </nav>
+        <HeaderSearch
+          id="header-search"
+          open={searchOpen}
+          resetKey={searchKey}
+          inputRef={inputRef}
+          toggleRef={toggleRef}
+          onToggle={toggleSearch}
+          onClose={() => closeSearch(true)}
+          onNavigate={() => closeSearch(false)}
+        />
       </div>
     </header>
   )

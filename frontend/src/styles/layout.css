@@ -6,6 +6,8 @@
 
 /* Header */
 .site-header {
+  position: relative;
+  z-index: 40; /* above the sticky filter bar (30), so the search strip and its results hang over the page; below the skip link (100) */
   border-bottom: 1px solid var(--border);
   background: var(--bg-bar);
 }
@@ -56,6 +58,133 @@
 .tabs__link.active {
   color: var(--accent-text);
   border-bottom-color: var(--accent);
+}
+
+/* Search: an icon at the far right of the header, on every page, that slides a search bar open across the header. */
+.tabs {
+  margin-left: auto; /* the brand stays left; the tabs and the search icon sit together at the right */
+}
+.hsearch__toggle {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.hsearch__toggle:hover {
+  color: var(--text);
+  border-bottom-color: var(--border-strong);
+}
+
+/* The search field grows leftwards out of the icon (HeaderSearch.tsx). It is a flex item of the header, so as it takes space the tabs,
+   which are right-aligned by their auto margin, move left. flex-grow animates from 0 to 1 (below 1, an item gets only that share of
+   the free space) and max-width (400px) caps it; the negative margin takes back the gap a zero-width item would still add. This animates
+   layout on purpose: the tabs have to move. Closed, the field has no width, is hidden, and cannot be tabbed into. */
+.site-header__inner {
+  position: relative; /* the results are placed against it, so they line up with the icon's right edge */
+}
+.brand,
+.tabs {
+  flex-shrink: 0;
+}
+.hfield {
+  flex: 0 1 0;
+  min-width: 0;
+  max-width: 400px;
+  margin-left: -28px; /* the header's 24px gap plus the field's own 4px of padding, so a closed field takes up no room at all */
+  margin-block: -2px; /* likewise vertically: the padding must not make the header's first row taller than the icon */
+  padding: 2px; /* room for the box's focus ring, which overflow: hidden would clip */
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    flex-grow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    margin-left 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease,
+    visibility 0s 0.28s; /* hidden only once it has closed */
+}
+.hfield.is-open {
+  flex-grow: 1;
+  margin-left: 0;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.hsearch__toggle[aria-expanded='true'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+/* SearchBox in the header: static, so its results are placed against the header instead of the narrow field. */
+.hfield .search--bar {
+  position: static;
+  max-width: none;
+  margin: 0;
+  gap: 0;
+}
+.search--bar .search__box {
+  height: 44px;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom-width: 2px;
+}
+.search--bar .search__input {
+  font-size: 16px; /* 16px keeps iOS from zooming the page when the box is focused */
+}
+.search--bar .search__hint {
+  display: none;
+}
+/* The icon button turns into the close X in the same place, and empties the box next time it opens, so the browser's own clear X is hidden. */
+.search--bar .search__input::-webkit-search-cancel-button {
+  appearance: none;
+  display: none;
+}
+/* The results hang under the header, right-aligned with the icon: they open leftwards too. */
+.search--bar .search__panel {
+  left: auto;
+  right: 32px;
+  width: min(560px, calc(100% - 64px));
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain; /* scrolling the results never scrolls the page behind them */
+}
+/* Room for the field: below 1100px the brand's name gives way to its mark while the field is open. */
+.brand__name {
+  max-width: 240px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition:
+    max-width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.2s ease;
+}
+@media (max-width: 1099px) {
+  .is-searching .brand__name {
+    max-width: 0;
+    opacity: 0;
+  }
+}
+@media (max-width: 860px) {
+  .hfield {
+    order: 1; /* between the brand and the icon, on the first row; the tabs keep their own row */
+    margin-left: -20px; /* the header's 16px gap here, plus the field's 4px of padding */
+  }
+  .search--bar .search__panel {
+    left: 16px;
+    right: 16px;
+    width: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hfield,
+  .brand__name {
+    transition: none;
+  }
 }
 
 /* Footer */
@@ -151,7 +280,12 @@
     padding: 10px 16px 0;
     gap: 2px 16px;
   }
+  .hsearch__toggle {
+    order: 2;
+    margin-left: auto;
+  }
   .tabs {
+    order: 3;
     width: 100%;
     justify-content: space-between;
     flex-wrap: nowrap;
@@ -168,6 +302,19 @@
   .site-footer__inner {
     padding-left: 16px;
     padding-right: 16px;
+  }
+  /* One column of results on a phone, with a hairline between the groups. */
+  .search--bar .search__panel {
+    grid-template-columns: 1fr;
+  }
+  .search--bar .search__group,
+  .search--bar .search__group:nth-child(odd),
+  .search--bar .search__group:nth-last-child(-n + 2):nth-child(odd) {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .search--bar .search__group:last-child {
+    border-bottom: 0;
   }
 }
 @media (max-width: 360px) {
