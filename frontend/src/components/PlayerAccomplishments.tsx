@@ -21,10 +21,16 @@ interface Group {
   /** The league, as a tag next to the region. */
   tag?: string
   note: string
+  /** Explains a result the tiles may not make obvious; shown under them. */
+  footnote?: string
   tiles: Tile[]
 }
 
-const title = (count: number, event: ContextEvent | null, win = false): Omit<Tile, 'label'> => ({
+/** These finals are filed under their split's playoffs, so they count as a title or runner-up but not as a split of their own. */
+const SIDE_EVENT = /\b(lock[- ]in|mid-season showdown)\b/i
+const SIDE_EVENT_NOTE = 'Lock In and Mid-Season Showdown finals count as playoffs. They are counted within their split, not as a split of their own.'
+
+const title =(count: number, event: ContextEvent | null, win = false): Omit<Tile, 'label'> => ({
   value: String(count),
   sub: event ? '' : 'None yet',
   event,
@@ -77,6 +83,7 @@ function regional(r: RegionAccomplishments): Group {
     title: r.region,
     tag: r.league,
     note: 'Playoff finishes',
+    footnote: [r.playoffsFirst.mostRecent, r.playoffsSecond.mostRecent].some((e) => e && SIDE_EVENT.test(e.name)) ? SIDE_EVENT_NOTE : undefined,
     tiles: [
       {
         label: 'Splits played',
@@ -105,23 +112,26 @@ const PlayerAccomplishments = memo(function PlayerAccomplishments({ data }: { da
             {g.tag && <span className="tag tag--small">{g.tag}</span>}
             <span className="acc__note">{g.note}</span>
           </div>
-          <div className="tiles tiles--three">
-            {g.tiles.map((tile) => (
-              <div key={tile.label} className={`tile${tile.win ? ' tile--win' : ''}${tile.value === '0' ? ' tile--empty' : ''}`}>
-                <span className="tile__label">{tile.label}</span>
-                <span className="tile__value">{tile.value}</span>
-                {tile.sub && <span className="tile__sub">{tile.sub}</span>}
-                {tile.extra}
-                {tile.event && (
-                  <span className="tile__sub">
-                    Most recent:{' '}
-                    <Link to={tournamentPath(tile.event)} className="tile__event">
-                      {tile.event.name}
-                    </Link>
-                  </span>
-                )}
-              </div>
-            ))}
+          <div className="acc__main">
+            <div className="tiles tiles--three">
+              {g.tiles.map((tile) => (
+                <div key={tile.label} className={`tile${tile.win ? ' tile--win' : ''}${tile.value === '0' ? ' tile--empty' : ''}`}>
+                  <span className="tile__label">{tile.label}</span>
+                  <span className="tile__value">{tile.value}</span>
+                  {tile.sub && <span className="tile__sub">{tile.sub}</span>}
+                  {tile.extra}
+                  {tile.event && (
+                    <span className="tile__sub">
+                      Most recent:{' '}
+                      <Link to={tournamentPath(tile.event)} className="tile__event">
+                        {tile.event.name}
+                      </Link>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            {g.footnote && <p className="acc__footnote">{g.footnote}</p>}
           </div>
         </div>
       ))}
