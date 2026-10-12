@@ -255,6 +255,8 @@
   font-weight: 700;
   font-size: 40px;
   line-height: 1;
+  /* Large standalone figures use proportional digits; the page-wide tabular digits make "10" and "121" look loose. */
+  font-variant-numeric: proportional-nums;
 }
 .tile__sub {
   font-size: 13px;

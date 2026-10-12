@@ -204,6 +204,34 @@ export interface PlayerContextResponse {
   results: ContextMatch[]
 }
 
+export interface InternationalAccomplishment {
+  key: 'worlds' | 'msi' | 'firstStand'
+  label: string
+  appearances: number
+  /** Their best finish and every event they had it in, oldest first; null while no placement is known. */
+  best: { place: string; events: ContextEvent[] } | null
+}
+
+export interface TitleAccomplishment {
+  count: number
+  mostRecent: ContextEvent | null
+}
+
+export interface RegionAccomplishments {
+  region: string
+  league: string
+  splitsPlayed: number
+  lastSplit: { year: number; split: string; event: ContextEvent } | null
+  playoffsFirst: TitleAccomplishment
+  playoffsSecond: TitleAccomplishment
+}
+
+export interface PlayerAccomplishmentsResponse {
+  international: InternationalAccomplishment[]
+  /** One block per region the player has played a split in, the most recent first. */
+  regions: RegionAccomplishments[]
+}
+
 /** What the filter bar needs from any page's range: whether it is the default, and what that resolved to. */
 export interface FilterRange {
   isDefault: boolean

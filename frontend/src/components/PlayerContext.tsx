@@ -22,7 +22,7 @@ export default function PlayerContext({ data }: { data: PlayerContextResponse | 
           <span className="ctx__team-name">{team.name}</span>
           {team.league && <span className="tag tag--small">{team.league}</span>}
         </Link>
-        <h3 className="ctx__sub">Roster</h3>
+        <h4 className="ctx__sub">Roster</h4>
         <RosterList roster={data.roster} />
       </ContextPanel>
       <EventsPanel events={data.events} />

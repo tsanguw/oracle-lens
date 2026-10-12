@@ -23,6 +23,18 @@ def normalize_place(place: str | None) -> tuple[str, int | None] | None:
     return text, int(match.group()) if match else None
 
 
+def result_pages(pages: list[tuple[int, str | None]]) -> dict[str, int]:
+    """Leaguepedia page -> our tournament id, for the pages TournamentResults may be filed under. Worlds and MSI keep
+    their results on the parent page ("2024 Season World Championship"), not on ".../Main Event" or ".../Play-In", so
+    the parent counts as the Main Event; it also lists the play-in teams, which only that row can hold."""
+    out = {page: tid for tid, page in pages if page}
+    for tid, page in pages:
+        parent = page.removesuffix("/Main Event") if page and page.endswith("/Main Event") else None
+        if parent:
+            out.setdefault(parent, tid)
+    return out
+
+
 def team_lookup(conn: psycopg.Connection) -> dict[str, int]:
     """Team name (any case, current or former) -> team id."""
     lookup: dict[str, int] = {}
@@ -56,11 +68,7 @@ def refresh_results(conn: psycopg.Connection, lp: Leaguepedia, log: Log = print,
     if recent_days is not None:
         where = f"""WHERE t.end_date >= CURRENT_DATE - {int(recent_days)}
                        OR NOT EXISTS (SELECT 1 FROM tournament_result r WHERE r.tournament_id = t.id)"""
-    tournaments = {
-        page: tid
-        for tid, page in conn.execute(f"SELECT t.id, t.leaguepedia_name FROM tournament t {where}")
-        if page
-    }
+    tournaments = result_pages(list(conn.execute(f"SELECT t.id, t.leaguepedia_name FROM tournament t {where}")))
     teams = team_lookup(conn)
     pages = sorted(tournaments)
     rows: list[dict[str, Any]] = []

@@ -157,11 +157,11 @@ export function TournamentContext({ data }: { data: TournamentContextResponse | 
         )}
       </ContextPanel>
       <ContextPanel title="Schedule">
-        <h3 className="ctx__sub">Upcoming</h3>
+        <h4 className="ctx__sub">Upcoming</h4>
         {data.upcoming.length > 0 ? <SeriesList series={data.upcoming} /> : <p className="ctx__empty">No upcoming matches scheduled.</p>}
         {data.results.length > 0 && (
           <>
-            <h3 className="ctx__sub">Latest results</h3>
+            <h4 className="ctx__sub">Latest results</h4>
             <SeriesList series={data.results} />
           </>
         )}

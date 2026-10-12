@@ -1,4 +1,16 @@
-from lolsync.results import normalize_place, parse_rows
+from lolsync.results import normalize_place, parse_rows, result_pages
+
+
+def test_main_event_also_answers_to_its_parent_page():
+    pages = [(1, "2024 Season World Championship/Main Event"), (2, "2024 Season World Championship/Play-In"), (3, "LCK/2026 Season/Playoffs"), (4, None)]
+    assert result_pages(pages) == {
+        "2024 Season World Championship/Main Event": 1,
+        "2024 Season World Championship/Play-In": 2,
+        "2024 Season World Championship": 1,
+        "LCK/2026 Season/Playoffs": 3,
+    }
+    # a parent page that is its own tournament is never taken over
+    assert result_pages([(1, "X/Main Event"), (5, "X")])["X"] == 5
 
 
 def test_places_keep_their_text_and_first_number():
