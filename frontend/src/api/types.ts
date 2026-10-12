@@ -232,6 +232,32 @@ export interface PlayerAccomplishmentsResponse {
   regions: RegionAccomplishments[]
 }
 
+/** A run with one team, from Leaguepedia's roster changes (not from games played). */
+export interface TeamStint {
+  /** The team's current name. */
+  team: string
+  /** Our team page, when we hold games for the team; null for a team known only from the roster log. */
+  teamPage: string | null
+  region: string | null
+  role: string | null
+  /** "Sub" or "Trainee". */
+  modifier: string | null
+  /** YYYY-MM-DD. */
+  start: string
+  /** YYYY-MM-DD; null while the stint is running (or when endUnknown). */
+  end: string | null
+  /** A Join with no Leave and nothing written about the player for years: not known to be running. */
+  endUnknown: boolean
+  /** Inactive when the stint ended (or is now). */
+  inactive: boolean
+  loan: boolean
+}
+
+export interface PlayerTeamHistoryResponse {
+  /** Newest first. */
+  stints: TeamStint[]
+}
+
 /** What the filter bar needs from any page's range: whether it is the default, and what that resolved to. */
 export interface FilterRange {
   isDefault: boolean
