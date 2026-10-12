@@ -17,8 +17,10 @@ from .client import Leaguepedia
 from .images import sync_champion_icons
 from .normalize import LeagueResolver
 from .results import refresh_results
+from .rosters import refresh_rosters
 
 RESULTS_DAYS = 45  # placements appear when an event ends; events older than this are only checked if they have none
+ROSTER_DAYS = 30  # players with a roster change this recent get their team history rebuilt; the full pull is `main.py rosters`
 RESCHEDULE_DAYS = 14  # match times can move until the day; older ones are settled
 
 
@@ -42,4 +44,6 @@ def nightly(
         summary["schedules"] = refresh_schedule(conn, lp, log, since=since)
         refresh_results(conn, lp, log, recent_days=RESULTS_DAYS)
         sync_champion_icons(conn, log)
+    roster_since = (datetime.now(timezone.utc) - timedelta(days=ROSTER_DAYS)).strftime("%Y-%m-%d")
+    summary["stints"] = refresh_rosters(connect, lp, log, since=roster_since)["stints"]  # opens its own short connections
     return summary
