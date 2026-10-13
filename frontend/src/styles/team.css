@@ -289,6 +289,71 @@
   margin-bottom: 16px;
 }
 
+/* Tournament rosters: one card per team, its players Top to Support with the games each played. */
+.rosters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+.roster__team {
+  margin: 0;
+}
+.roster__name {
+  gap: 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.roster__name:hover {
+  color: var(--accent-text);
+}
+.roster__players {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--border);
+}
+.roster__player {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.roster__player:hover .roster__who,
+.roster__player:focus-visible .roster__who {
+  color: var(--accent-text);
+}
+.roster__who {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.roster__role {
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.roster__games {
+  min-width: 2ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
 /* On phones the "Showing" label lines up with the content above it instead of hugging the right edge. */
 @media (max-width: 720px) {
   .showing {

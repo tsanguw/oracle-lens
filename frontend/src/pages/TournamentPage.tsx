@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import type {
   MatchesResponse,
+  RostersResponse,
   StagesResponse,
   StandingRow,
   TournamentChampion,
@@ -25,6 +26,7 @@ import { usePageMeta, useJsonLd } from '../lib/usePageMeta'
 import { notFoundSeo, tournamentLd, tournamentSeo } from '../lib/seoText'
 import { tournamentPath } from '../lib/tournamentPath'
 import ErrorState from '../components/ErrorState'
+import TournamentRosters, { TournamentRostersSkeleton } from '../components/TournamentRosters'
 import TournamentStages from '../components/TournamentStages'
 
 /** Results shown before "Show all results" is pressed; the API's own cap (200) is how many "all" can be. */
@@ -43,6 +45,7 @@ export default function TournamentPage({ id }: { id: string }) {
   const matches = useApi<MatchesResponse>(`${base}/matches?limit=200`)
   const players = useApi<{ empty: boolean; minGames: number; players: TournamentPlayer[] }>(`${base}/players`)
   const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
+  const rosters = useApi<RostersResponse>(`${base}/rosters`)
   const context = useApi<TournamentContextResponse>(`${base}/context`)
   const stages = useApi<StagesResponse>(`${base}/stages`)
   const missing = tournament.error?.status === 404
@@ -140,6 +143,18 @@ export default function TournamentPage({ id }: { id: string }) {
                 </div>
               </div>
             </section>
+
+            {!rosters.data?.empty && (
+              <section aria-labelledby="rosters" className="section">
+                <div className="section__head">
+                  <h2 id="rosters" className="section__title">
+                    Rosters
+                  </h2>
+                  <span className="section__note">Who played for each team in this event, with games played</span>
+                </div>
+                {rosters.data ? <TournamentRosters data={rosters.data} /> : <TournamentRostersSkeleton />}
+              </section>
+            )}
 
             <section aria-labelledby="players" className="section">
               <div className="section__head">
