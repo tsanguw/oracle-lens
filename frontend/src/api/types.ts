@@ -418,6 +418,23 @@ export interface TournamentPlayer {
   damagePerMin: number | null
 }
 
+export interface RosterPlayer {
+  page: string
+  name: string
+  role: string | null
+  games: number
+}
+
+export interface TeamRoster {
+  team: string
+  players: RosterPlayer[]
+}
+
+export interface RostersResponse {
+  empty: boolean
+  teams: TeamRoster[]
+}
+
 export interface TournamentChampion {
   champion: string
   picks: number
