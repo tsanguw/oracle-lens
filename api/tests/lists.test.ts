@@ -62,7 +62,7 @@ beforeAll(async () => {
       )
     }
     for (const [teamId, championId] of bans) {
-      await pool.query(`INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES ($1,$2,$3,'ban',1)`, [g, teamId, championId])
+      await pool.query(`INSERT INTO game_ban (game_id, team_id, champion_id, draft_order) VALUES ($1,$2,$3,1)`, [g, teamId, championId])
     }
   }
   for (let i = 0; i < 5; i++) await game(summer, day(-50 + i), A, B, i < 3 ? [[B, azir]] : [])

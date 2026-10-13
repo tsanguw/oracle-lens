@@ -80,7 +80,7 @@ async function addGame(opts: {
   ]
   for (const [teamId, championId, slot] of bans) {
     await pool.query(
-      `INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES ($1,$2,$3,'ban',$4)`,
+      `INSERT INTO game_ban (game_id, team_id, champion_id, draft_order) VALUES ($1,$2,$3,$4)`,
       [gameId, teamId, championId, slot],
     )
   }

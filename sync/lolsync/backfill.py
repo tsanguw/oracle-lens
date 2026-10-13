@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date
 from typing import Any, Callable
 
@@ -207,6 +207,21 @@ def build_draft(
                 ]
                 used_scoreboard = True
     return draft, used_scoreboard
+
+
+def pick_orders(draft: Draft, champion_id: Callable[[str], int]) -> dict[tuple[int, int], int]:
+    """Where each pick fell in its team's draft: {(team id, champion id): place 1-5}.
+
+    Only picks with a known place count (a pick taken from the scoreboard lists has none), and a champion a team picked
+    twice is left out, since the two picks cannot be told apart.
+    """
+    seen: dict[tuple[int, int], list[int | None]] = {}
+    for (tid, action), entries in draft.items():
+        if action != "pick":
+            continue
+        for champ, slot in entries:
+            seen.setdefault((tid, champion_id(champ)), []).append(slot)
+    return {key: slots[0] for key, slots in seen.items() if len(slots) == 1 and slots[0] is not None}
 
 
 def fits_team_row(team_facts: dict[int, tuple[str, bool]], team: int, side: str, win: bool) -> bool:
@@ -414,7 +429,7 @@ def _load(
                 (gid, series_id, tournament_id, g["Patch"] or None, parse_utc(g["DateTime_UTC"]), length_sec(g["Gamelength_Number"])),
             )
             game_id = cur.fetchone()[0]
-            for table in ("team_game", "player_game", "pick_ban"):
+            for table in ("team_game", "player_game", "game_ban"):
                 cur.execute(f"DELETE FROM {table} WHERE game_id = %s", (game_id,))
 
             team_rows = []
@@ -432,6 +447,9 @@ def _load(
             )
             counts["team_games"] += len(team_rows)
 
+            draft, used_scoreboard = build_draft(pb_by_game.get(gid), trs, team_id)
+            order_of = pick_orders(draft, load.champion)
+
             team_facts = {row[1]: (row[2], row[3]) for row in team_rows}
             player_rows = []
             for r in prs:
@@ -447,31 +465,35 @@ def _load(
                     to_int(r["Kills"]), to_int(r["Deaths"]), to_int(r["Assists"]), to_int(r["CS"]),
                     to_int(r["Gold"]), to_int(r["DamageToChampions"]), to_int(r["VisionScore"]),
                 ))
+            # A pick's place in the draft goes on the one player who played it; if two of a team's players are listed
+            # on the same champion (a source error) the place cannot be told apart, so it stays NULL.
+            played = Counter((row[2], row[3]) for row in player_rows)
+            player_rows = [row + (order_of.get((row[2], row[3])) if played[(row[2], row[3])] == 1 else None,) for row in player_rows]
             cur.executemany(
                 """INSERT INTO player_game
                      (game_id, player_id, team_id, champion_id, role, side, win,
-                      kills, deaths, assists, cs, gold, damage, vision, first_blood)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL)
+                      kills, deaths, assists, cs, gold, damage, vision, pick_order, first_blood)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NULL)
                    ON CONFLICT (game_id, player_id) DO NOTHING""",
                 player_rows,
             )
             counts["player_games"] += len(player_rows)
 
-            draft, used_scoreboard = build_draft(pb_by_game.get(gid), trs, team_id)
-            draft_rows = [
-                (game_id, tid, load.champion(champ), action, slot)
+            ban_rows = [
+                (game_id, tid, load.champion(champ), slot)
                 for (tid, action), entries in draft.items()
+                if action == "ban"
                 for champ, slot in entries
             ]
-            if not draft_rows:
+            if not any(draft.values()):
                 counts["games_without_draft"] += 1
             elif used_scoreboard:
                 counts["games_draft_from_scoreboard"] += 1
             cur.executemany(
-                "INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES (%s,%s,%s,%s,%s)",
-                draft_rows,
+                "INSERT INTO game_ban (game_id, team_id, champion_id, draft_order) VALUES (%s,%s,%s,%s)",
+                ban_rows,
             )
-            counts["pick_bans"] += len(draft_rows)
+            counts["bans"] += len(ban_rows)
             counts["games"] += 1
 
         if res.multi_league:
@@ -558,7 +580,7 @@ def backfill_all(
             summary["already_done"] += 1
             continue
         summary["synced"] += 1
-        for key in ("games", "player_games", "pick_bans"):
+        for key in ("games", "player_games", "bans"):
             summary[key] += counts.get(key, 0)
         extras = {k: v for k, v in counts.items() if k.startswith(("skipped", "games_without", "games_draft", "unmapped"))}
         log(

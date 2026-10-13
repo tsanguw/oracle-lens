@@ -248,8 +248,8 @@ export async function loadTournamentChampions(pool: pg.Pool, tournamentIds: numb
        SELECT pgm.game_id, pgm.champion_id, 'pick' AS kind, pgm.win
        FROM player_game pgm JOIN game g ON g.id = pgm.game_id WHERE g.tournament_id = ANY($1::int[])
        UNION ALL
-       SELECT pb.game_id, pb.champion_id, 'ban', NULL::boolean
-       FROM pick_ban pb JOIN game g ON g.id = pb.game_id WHERE g.tournament_id = ANY($1::int[]) AND pb.action = 'ban'),
+       SELECT gb.game_id, gb.champion_id, 'ban', NULL::boolean
+       FROM game_ban gb JOIN game g ON g.id = gb.game_id WHERE g.tournament_id = ANY($1::int[])),
      tot AS (SELECT COUNT(*)::float8 AS n FROM game WHERE tournament_id = ANY($1::int[]))
      SELECT c.name AS champion,
             COUNT(*) FILTER (WHERE ev.kind = 'pick')::int AS picks,

@@ -32,7 +32,8 @@ Despite the `S7` suffix, `PicksAndBansS7` is the current picks/bans table.
 
 **player_game** <- `ScoreboardPlayers`: `Name`, `Link`, `Champion`, `Role`, `Side` (Integer, probably 1/2), `Team`, `Kills/Deaths/Assists`, `CS`, `Gold`, `DamageToChampions`, `VisionScore`, `TeamKills`, `TeamGold`, `PlayerWin` (String, probably "Yes"/"No"), `GameId`.
 
-**pick_ban** <- `PicksAndBansS7` (ordered slots) or the `Team1Bans/Picks` lists on `ScoreboardGames` (no order).
+**game_ban** (bans only) <- `PicksAndBansS7` (ordered slots) or the `Team1Bans` lists on `ScoreboardGames` (slot = list position).
+**player_game.pick_order** <- the same draft's picks (`PicksAndBansS7` slots 1-5), matched to the player who played that champion; NULL when the source has no order (picks from the `Team1Picks` lists are listed by role, not in draft order) or a team lists one champion twice. Picks themselves are not stored in `game_ban`: `player_game.champion_id` is the only record of who played what (migration 016; before it, picks were stored twice and could disagree).
 
 ## Gaps and decisions needed
 

@@ -57,7 +57,7 @@ beforeAll(async () => {
       [g, o.alphaMid[0], alpha, o.alphaMid[1], o.win, oppMid, o.opp, o.oppMid, !o.win],
     )
     for (const c of o.bans ?? []) {
-      await pool.query(`INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES ($1,$2,$3,'ban',1)`, [g, o.opp, c])
+      await pool.query(`INSERT INTO game_ban (game_id, team_id, champion_id, draft_order) VALUES ($1,$2,$3,1)`, [g, o.opp, c])
     }
   }
   const day = (i: number) => `2026-04-${String(i + 10).padStart(2, '0')}T10:00:00Z`
