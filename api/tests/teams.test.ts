@@ -56,11 +56,11 @@ beforeAll(async () => {
       [g, replaceTop ? sub : top, alpha, gnar, side, win, mid, azir, oppTop, opp, ornn, other, !win],
     )
     await pool.query(
-      `INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES ($1,$2,$3,'ban',1)`,
+      `INSERT INTO game_ban (game_id, team_id, champion_id, draft_order) VALUES ($1,$2,$3,1)`,
       [g, alpha, camille],
     )
     if (oppBansAzir) {
-      await pool.query(`INSERT INTO pick_ban (game_id, team_id, champion_id, action, draft_order) VALUES ($1,$2,$3,'ban',1)`, [g, opp, azir])
+      await pool.query(`INSERT INTO game_ban (game_id, team_id, champion_id, draft_order) VALUES ($1,$2,$3,1)`, [g, opp, azir])
     }
   }
   await game(spring, '2026-02-01T10:00:00Z', 0, true, bravo, false, false)

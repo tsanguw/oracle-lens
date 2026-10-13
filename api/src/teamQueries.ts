@@ -175,9 +175,8 @@ export async function loadTeamDraft(pool: pg.Pool, scope: PlayerScope, limit = D
        SELECT c.name AS champion, COUNT(*)::int AS games,
               COUNT(*)::float8 / NULLIF((SELECT COUNT(*) FROM base), 0) AS rate
        FROM base
-       JOIN pick_ban pb ON pb.game_id = base.game_id AND pb.action = 'ban'
-                       AND pb.team_id ${own ? '=' : '<>'} base.team_id
-       JOIN champion c ON c.id = pb.champion_id
+       JOIN game_ban gb ON gb.game_id = base.game_id AND gb.team_id ${own ? '=' : '<>'} base.team_id
+       JOIN champion c ON c.id = gb.champion_id
        GROUP BY c.name ORDER BY games DESC, c.name LIMIT ${lim}`,
       params,
     )

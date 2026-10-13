@@ -412,9 +412,9 @@ export async function loadTargetBans(
             COUNT(DISTINCT m.game_id)::int AS games,
             COUNT(DISTINCT m.game_id)::float8 / (SELECT n FROM total) AS rate
      FROM mine m
-     JOIN pick_ban pb ON pb.game_id = m.game_id AND pb.action = 'ban' AND pb.team_id <> m.team_id
-     JOIN champion c ON c.id = pb.champion_id
-     WHERE pb.champion_id IN (SELECT champion_id FROM mine)
+     JOIN game_ban gb ON gb.game_id = m.game_id AND gb.team_id <> m.team_id
+     JOIN champion c ON c.id = gb.champion_id
+     WHERE gb.champion_id IN (SELECT champion_id FROM mine)
      GROUP BY c.name
      ORDER BY rate DESC, c.name
      LIMIT $${params.length}`,

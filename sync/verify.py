@@ -30,24 +30,22 @@ CHECKS = {
         SELECT COUNT(*) FROM game g WHERE (SELECT COUNT(*) FROM player_game x WHERE x.game_id = g.id) <> 10""",
     "games without exactly one winning team": """
         SELECT COUNT(*) FROM (SELECT game_id FROM team_game GROUP BY game_id HAVING SUM(win::int) <> 1) s""",
-    "games with no draft rows at all": """
-        SELECT COUNT(*) FROM game g WHERE NOT EXISTS (SELECT 1 FROM pick_ban x WHERE x.game_id = g.id)""",
     "player rows whose team is not in the game": """
         SELECT COUNT(*) FROM player_game p
         WHERE NOT EXISTS (SELECT 1 FROM team_game t WHERE t.game_id = p.game_id AND t.team_id = p.team_id)""",
     "tournaments with no games": """
         SELECT COUNT(*) FROM tournament t WHERE NOT EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id)""",
     "games with NULL played_at": "SELECT COUNT(*) FROM game WHERE played_at IS NULL",
-    "draft rows naming a placeholder as a champion (None, Missing Data)": """
-        SELECT COUNT(*) FROM pick_ban b JOIN champion c ON c.id = b.champion_id
+    "ban rows naming a placeholder as a champion (None, Missing Data)": """
+        SELECT COUNT(*) FROM game_ban b JOIN champion c ON c.id = b.champion_id
         WHERE lower(c.name) IN ('none', 'null', 'missing data', 'tbd', '')""",
-    "draft rows for a team that did not play that game": """
-        SELECT COUNT(*) FROM pick_ban b
+    "ban rows for a team that did not play that game": """
+        SELECT COUNT(*) FROM game_ban b
         WHERE NOT EXISTS (SELECT 1 FROM team_game t WHERE t.game_id = b.game_id AND t.team_id = b.team_id)""",
-    "teams with no games, draft rows or series (ghost rows)": """
+    "teams with no games, ban rows or series (ghost rows)": """
         SELECT COUNT(*) FROM team t
         WHERE NOT EXISTS (SELECT 1 FROM team_game x WHERE x.team_id = t.id)
-          AND NOT EXISTS (SELECT 1 FROM pick_ban x WHERE x.team_id = t.id)
+          AND NOT EXISTS (SELECT 1 FROM game_ban x WHERE x.team_id = t.id)
           AND NOT EXISTS (SELECT 1 FROM series s WHERE t.id IN (s.team1_id, s.team2_id, s.winner_id))
           AND NOT EXISTS (SELECT 1 FROM tournament_team_league x WHERE x.team_id = t.id)
           AND NOT EXISTS (SELECT 1 FROM team_alias a WHERE a.team_id = t.id)""",
@@ -84,7 +82,7 @@ def main() -> int:
         for label, sql in [
             ("tournaments", "SELECT COUNT(*) FROM tournament"), ("series", "SELECT COUNT(*) FROM series"),
             ("games", "SELECT COUNT(*) FROM game"), ("player rows", "SELECT COUNT(*) FROM player_game"),
-            ("pick/ban rows", "SELECT COUNT(*) FROM pick_ban"), ("players", "SELECT COUNT(*) FROM player"),
+            ("ban rows", "SELECT COUNT(*) FROM game_ban"), ("players", "SELECT COUNT(*) FROM player"),
             ("teams", "SELECT COUNT(*) FROM team"), ("champions", "SELECT COUNT(*) FROM champion"),
             ("player aliases", "SELECT COUNT(*) FROM player_alias"), ("team aliases", "SELECT COUNT(*) FROM team_alias"),
             ("multi-league team rows", "SELECT COUNT(*) FROM tournament_team_league"),

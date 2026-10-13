@@ -156,7 +156,7 @@ export async function loadChampionsList(pool: pg.Pool, q: ChampionsListQuery): P
        ev AS (
          SELECT p.game_id, p.champion_id, false AS ban FROM player_game p JOIN games USING (game_id)
          UNION ALL
-         SELECT b.game_id, b.champion_id, true FROM pick_ban b JOIN games USING (game_id) WHERE b.action = 'ban')
+         SELECT b.game_id, b.champion_id, true FROM game_ban b JOIN games USING (game_id))
        SELECT c.id, c.name, COUNT(DISTINCT ev.game_id)::int AS present,
               COUNT(DISTINCT ev.game_id) FILTER (WHERE ev.ban)::int AS banned,
               (SELECT COUNT(*) FROM games)::int AS total
