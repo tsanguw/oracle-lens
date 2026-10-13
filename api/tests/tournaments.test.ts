@@ -195,6 +195,21 @@ describe('GET /api/tournaments/:id/players, /champions, /context', () => {
   })
 })
 
+describe('GET /api/tournaments/:id/rosters', () => {
+  it('lists the players each team fielded, teams in standings order', async () => {
+    const { body, status } = await api(`/api/tournaments/${ids.playoffs}/rosters`)
+    expect(status).toBe(200)
+    expect(body.empty).toBe(false)
+    expect(body.teams.map((t: { team: string }) => t.team)).toEqual(['Alpha', 'Bravo', 'Charlie'])
+    expect(body.teams[0].players).toEqual([{ page: 'A Mid', name: 'A Mid', role: 'Mid', games: 5 }])
+    expect(body.teams[2].players).toEqual([{ page: 'C Mid', name: 'C Mid', role: 'Mid', games: 4 }])
+  })
+
+  it('404s for an unknown event', async () => {
+    expect((await api('/api/tournaments/999999/rosters')).status).toBe(404)
+  })
+})
+
 describe('GET /api/tournaments/:id/stages', () => {
   it('groups series by their round and links each team to the series it came from', async () => {
     // B beat C in the quarterfinal, then A beat B in the final; the other series have no round data

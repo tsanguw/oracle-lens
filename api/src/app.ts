@@ -25,6 +25,7 @@ import {
   tournamentListSchema,
   type TournamentRow,
 } from './tournamentQueries.js'
+import { loadTournamentRosters } from './tournamentRosters.js'
 import {
   championSchema,
   findChampion,
@@ -356,6 +357,11 @@ export function createApp(options: AppOptions = {}) {
   tournamentRoute('/players', async ({ tournament, limit }) => {
     const { minGames, players } = await loadTournamentPlayers(pool, tournament.memberIds, limit)
     return { empty: players.length === 0, minGames, players }
+  })
+  /** Who played for each team in the event, from its games: standings order, players Top to Support. */
+  tournamentRoute('/rosters', async ({ tournament }) => {
+    const teams = await loadTournamentRosters(pool, tournament)
+    return { empty: teams.length === 0, teams }
   })
   tournamentRoute('/champions', async ({ tournament, limit }) => {
     const champions = await loadTournamentChampions(pool, tournament.memberIds, limit)
