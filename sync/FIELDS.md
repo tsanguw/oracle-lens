@@ -32,7 +32,8 @@ Despite the `S7` suffix, `PicksAndBansS7` is the current picks/bans table.
 
 **player_game** <- `ScoreboardPlayers`: `Name`, `Link`, `Champion`, `Role`, `Side` (Integer, probably 1/2), `Team`, `Kills/Deaths/Assists`, `CS`, `Gold`, `DamageToChampions`, `VisionScore`, `TeamKills`, `TeamGold`, `PlayerWin` (String, probably "Yes"/"No"), `GameId`.
 
-**pick_ban** <- `PicksAndBansS7` (ordered slots) or the `Team1Bans/Picks` lists on `ScoreboardGames` (no order).
+**game_ban** (bans only) <- `PicksAndBansS7` (ordered slots) or the `Team1Bans` lists on `ScoreboardGames` (slot = list position).
+**player_game.pick_order** <- the same draft's picks (`PicksAndBansS7` slots 1-5), matched to the player who played that champion; NULL when the source has no order (picks from the `Team1Picks` lists are listed by role, not in draft order) or a team lists one champion twice. Picks themselves are not stored in `game_ban`: `player_game.champion_id` is the only record of who played what (migration 016; before it, picks were stored twice and could disagree).
 
 ## Gaps and decisions needed
 
@@ -103,6 +104,8 @@ These display as N/A, never 0.
 
 ### Known source gaps
 - Three games in `LCK 2023 Spring` have only one team's scoreboard row (and 0 or 5 player rows) in Leaguepedia, so they cannot be stored as complete games (`skipped_games_bad_team_rows`).
+- A player scoreboard row must agree with that game's team rows: the team played the game, on that side, with that result. The database enforces it (migration 015, a foreign key from `player_game` to `team_game` over game, team, side and win), so the load skips a row that disagrees and counts it as `skipped_player_rows_team_mismatch` instead of failing the tournament. Production had none when the constraint was added.
+- `ScoreboardPlayers.Role` must be one of Top, Jungle, Mid, Bot, Support: the database enforces it (migration 017, `player_game_role_check`; `ROLES` in `backfill.py` is the same list, and a test keeps them equal), so the load skips any other role and counts it as `skipped_player_rows_unknown_role`. `tournament.stage` is derived by the sync from `IsQualifier`/`IsPlayoffs` (Qualifier, Playoffs, Regular season) and is checked too. `tournament.split`, the region columns and `player_team_stint.role` are not constrained (see the migration's note).
 - Team spellings `bleiz eSPORTS` and `Bleiz e-SPORTS` are probably one team but differ by punctuation with no redirect, so they stay separate.
 
 ## Team history: `RosterChanges` (2026-10-12, bot login)

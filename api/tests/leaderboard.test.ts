@@ -28,6 +28,7 @@ async function play(playerId: number, teamId: number, tournamentId: number, cham
       `INSERT INTO game (leaguepedia_id, tournament_id, played_at, length_sec) VALUES ($1,$2,$3,1800) RETURNING id`,
       [`LB${++n}`, tournamentId, `${o.when}T1${i}:00:00Z`],
     )
+    await pool.query(`INSERT INTO team_game (game_id, team_id, side, win) VALUES ($1,$2,'blue',$3)`, [gameId, teamId, i < o.wins])
     await pool.query(
       `INSERT INTO player_game (game_id, player_id, team_id, champion_id, role, side, win, kills, deaths, assists, cs, damage, vision)
        VALUES ($1,$2,$3,$4,'Mid','blue',$5,$6,$7,$8,270,5400,$9)`,

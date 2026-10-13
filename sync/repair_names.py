@@ -25,7 +25,7 @@ from lolsync.resolve import ResolveCache, resolve_players, resolve_team_names
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 # (table, column) pairs that point at team.id / player.id.
-TEAM_REFS = [("team_game", "team_id"), ("player_game", "team_id"), ("pick_ban", "team_id"),
+TEAM_REFS = [("team_game", "team_id"), ("player_game", "team_id"), ("game_ban", "team_id"),
              ("series", "team1_id"), ("series", "team2_id"), ("series", "winner_id")]
 
 

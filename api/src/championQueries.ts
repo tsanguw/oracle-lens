@@ -116,10 +116,10 @@ export async function loadChampionSummary(
   const cov = await pool.query(
     `SELECT COUNT(DISTINCT pgm.game_id)::int AS total,
             COUNT(DISTINCT pgm.game_id) FILTER (WHERE pp.game_id IS NOT NULL)::int AS picked,
-            COUNT(DISTINCT pgm.game_id) FILTER (WHERE pb.id IS NOT NULL)::int AS banned,
-            COUNT(DISTINCT pgm.game_id) FILTER (WHERE pp.game_id IS NOT NULL OR pb.id IS NOT NULL)::int AS present
+            COUNT(DISTINCT pgm.game_id) FILTER (WHERE gb.id IS NOT NULL)::int AS banned,
+            COUNT(DISTINCT pgm.game_id) FILTER (WHERE pp.game_id IS NOT NULL OR gb.id IS NOT NULL)::int AS present
      ${FROM_TEAM}
-     LEFT JOIN pick_ban pb ON pb.game_id = pgm.game_id AND pb.champion_id = ${idParam} AND pb.action = 'ban'
+     LEFT JOIN game_ban gb ON gb.game_id = pgm.game_id AND gb.champion_id = ${idParam}
      LEFT JOIN player_game pp ON pp.game_id = pgm.game_id AND pp.champion_id = ${idParam}
      WHERE ${wide.conditions.join(' AND ')}`,
     wide.params,
