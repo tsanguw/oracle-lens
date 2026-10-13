@@ -209,6 +209,11 @@ def build_draft(
     return draft, used_scoreboard
 
 
+# The roles player_game.role may hold; the database enforces the same list (migration 017). A player row with any other
+# role is skipped and counted (skipped_player_rows_unknown_role) instead of failing the tournament's load.
+ROLES = frozenset({"Top", "Jungle", "Mid", "Bot", "Support"})
+
+
 def pick_orders(draft: Draft, champion_id: Callable[[str], int]) -> dict[tuple[int, int], int]:
     """Where each pick fell in its team's draft: {(team id, champion id): place 1-5}.
 
@@ -455,6 +460,9 @@ def _load(
             for r in prs:
                 if not r["Link"] or not r["Champion"] or not r["Role"] or player_side(r["Side"]) is None:
                     counts["skipped_player_rows"] += 1
+                    continue
+                if r["Role"] not in ROLES:
+                    counts["skipped_player_rows_unknown_role"] += 1
                     continue
                 if not fits_team_row(team_facts, team_id(r["Team"]), player_side(r["Side"]), bool(to_bool(r["PlayerWin"]))):
                     counts["skipped_player_rows_team_mismatch"] += 1

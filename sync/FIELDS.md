@@ -105,6 +105,7 @@ These display as N/A, never 0.
 ### Known source gaps
 - Three games in `LCK 2023 Spring` have only one team's scoreboard row (and 0 or 5 player rows) in Leaguepedia, so they cannot be stored as complete games (`skipped_games_bad_team_rows`).
 - A player scoreboard row must agree with that game's team rows: the team played the game, on that side, with that result. The database enforces it (migration 015, a foreign key from `player_game` to `team_game` over game, team, side and win), so the load skips a row that disagrees and counts it as `skipped_player_rows_team_mismatch` instead of failing the tournament. Production had none when the constraint was added.
+- `ScoreboardPlayers.Role` must be one of Top, Jungle, Mid, Bot, Support: the database enforces it (migration 017, `player_game_role_check`; `ROLES` in `backfill.py` is the same list, and a test keeps them equal), so the load skips any other role and counts it as `skipped_player_rows_unknown_role`. `tournament.stage` is derived by the sync from `IsQualifier`/`IsPlayoffs` (Qualifier, Playoffs, Regular season) and is checked too. `tournament.split`, the region columns and `player_team_stint.role` are not constrained (see the migration's note).
 - Team spellings `bleiz eSPORTS` and `Bleiz e-SPORTS` are probably one team but differ by punctuation with no redirect, so they stay separate.
 
 ## Team history: `RosterChanges` (2026-10-12, bot login)
