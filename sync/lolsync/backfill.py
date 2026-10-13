@@ -209,6 +209,15 @@ def build_draft(
     return draft, used_scoreboard
 
 
+def fits_team_row(team_facts: dict[int, tuple[str, bool]], team: int, side: str, win: bool) -> bool:
+    """Whether a player's row agrees with the game's team rows: the team played the game, on that side, with that result.
+
+    The database enforces this (player_game's foreign key over game, team, side and win), so a row that fails it is
+    skipped and counted here instead of aborting the whole tournament's load.
+    """
+    return team_facts.get(team) == (side, win)
+
+
 def _set_state(conn: psycopg.Connection, page: str, status: str, error: str | None = None) -> None:
     conn.execute(
         """INSERT INTO sync_state (tournament_name, status, last_synced_at, error)
@@ -423,10 +432,14 @@ def _load(
             )
             counts["team_games"] += len(team_rows)
 
+            team_facts = {row[1]: (row[2], row[3]) for row in team_rows}
             player_rows = []
             for r in prs:
                 if not r["Link"] or not r["Champion"] or not r["Role"] or player_side(r["Side"]) is None:
                     counts["skipped_player_rows"] += 1
+                    continue
+                if not fits_team_row(team_facts, team_id(r["Team"]), player_side(r["Side"]), bool(to_bool(r["PlayerWin"]))):
+                    counts["skipped_player_rows_team_mismatch"] += 1
                     continue
                 player_rows.append((
                     game_id, player_id(r["Link"], r["Name"]), team_id(r["Team"]), load.champion(r["Champion"]),

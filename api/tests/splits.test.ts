@@ -73,6 +73,7 @@ beforeAll(async () => {
         `INSERT INTO game (leaguepedia_id, tournament_id, played_at, length_sec) VALUES ($1,$2,$3,1800) RETURNING id`,
         [`S${++g}`, t.id, `2024-${t.name === 'LPL 2024 Summer' ? '06' : t.name.includes('Playoffs') ? '08' : '09'}-0${i + 1}T10:00:00Z`],
       )
+      await pool.query(`INSERT INTO team_game (game_id, team_id, side, win) VALUES ($1,$2,'blue',true)`, [id, teamR])
       await pool.query(
         `INSERT INTO player_game (game_id, player_id, team_id, champion_id, role, side, win) VALUES ($1,$2,$3,$4,'Mid','blue',true)`,
         [id, player, teamR, champ],

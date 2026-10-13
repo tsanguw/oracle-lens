@@ -57,8 +57,8 @@ async function addGame(opts: {
   )
   const gameId = g.rows[0].id
   await pool.query(
-    `INSERT INTO team_game (game_id, team_id, side, win, kills) VALUES ($1,$2,$3,$4,20)`,
-    [gameId, ids.teamA, opts.side, opts.win],
+    `INSERT INTO team_game (game_id, team_id, side, win, kills) VALUES ($1,$2,$3,$4,20), ($1,$5,$6,$7,15)`,
+    [gameId, ids.teamA, opts.side, opts.win, opp.teamId, oppSide, !opts.win],
   )
   await pool.query(
     `INSERT INTO player_game (game_id, player_id, team_id, champion_id, role, side, win,
@@ -424,6 +424,10 @@ describe('cross-conference (multi-league) tournaments', () => {
         [`LTA${++g}`, tournamentId, `2025-${day}T10:00:00Z`],
       )
       for (const [playerId, teamId] of rows) {
+        await pool.query(
+          `INSERT INTO team_game (game_id, team_id, side, win) VALUES ($1,$2,'blue',true) ON CONFLICT DO NOTHING`,
+          [id, teamId],
+        )
         await pool.query(
           `INSERT INTO player_game (game_id, player_id, team_id, champion_id, role, side, win, kills, deaths, assists)
            VALUES ($1,$2,$3,$4,'Mid','blue',true,1,1,1)`,
