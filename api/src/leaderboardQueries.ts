@@ -1,6 +1,6 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { buildConditions, filterSchema, hasRangeFilter, MIN_SAMPLE, type Filters } from './filters.js'
+import { buildConditions, filterSchema, hasRangeFilter, isAllTime, MIN_SAMPLE, type Filters } from './filters.js'
 import { likeEscape } from './homeQueries.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
@@ -27,6 +27,8 @@ export type RangeQuery = Filters & { qualifiers: boolean }
 
 export interface LeaderboardRange {
   label: string
+  /** A line under the label; only the all-time range has one. */
+  description?: string
   isDefault: boolean
   /** The year/split the default range resolved to when every league shares it; otherwise null. */
   resolved: { year: number; split: string | null } | null
@@ -54,7 +56,7 @@ export interface LeaderboardRow {
 const NOT_QUALIFIER = `t.stage IS DISTINCT FROM 'Qualifier'`
 
 /**
- * Explicit filters replace the default range. With none, each league contributes its most recent
+ * Explicit filters replace the default range, and `range=all` (with none of them) means all history. With neither, each league contributes its most recent
  * split (playoffs included), plus international events from the earliest such split onward. Only
  * leagues that played in the most recent year count, so a league that has stopped adds no stale data.
  */
@@ -70,6 +72,21 @@ export async function resolveRange(
     return {
       conditions: [...base, ...buildConditions(q, params)],
       range: { label: parts.length ? parts.join(' ') : 'Selected filters', isDefault: false, resolved: null, leagues: [] },
+    }
+  }
+
+  if (isAllTime(q)) {
+    // With qualifiers wanted and no other filter there is nothing to restrict; callers join conditions into a WHERE.
+    const conditions = [...base, ...buildConditions(q, params)]
+    return {
+      conditions: conditions.length ? conditions : ['true'],
+      range: {
+        label: 'All time',
+        description: q.domestic ? 'Tier 1 leagues only, domestic only' : 'Tier 1 leagues and internationals only',
+        isDefault: false,
+        resolved: null,
+        leagues: [],
+      },
     }
   }
 

@@ -13,6 +13,8 @@ import { resetDb } from './resetDb.js'
  *  - The lane opponent plays Zed in games 0-2 (Azir wins all) and Syndra in games 3-5 (Azir wins game 3 only).
  *  - Bravo bans Azir in games 2, 3 and 8, so Azir is banned in 3 of 12 games and present (picked or banned) in 7.
  *  - Games 6-9 and the Worlds games: Alpha Mid plays Ahri.
+ *  - Outside the default range, for the all-time view: MSI 2026 (international, ended before Summer began) has 2
+ *    Azir games, and LCK 2025 Summer has 1. Both are left out of the default range.
  */
 
 const app = createApp()
@@ -29,15 +31,17 @@ beforeAll(async () => {
   const [mid, sub, oppMid] = [await player('Alpha Mid'), await player('Sub'), await player('Opp Mid')]
   const champ = (name: string) => one(`INSERT INTO champion (name) VALUES ($1) RETURNING id`, [name])
   const [azir, ahri, zed, syndra] = [await champ('Azir'), await champ('Ahri'), await champ('Zed'), await champ('Syndra')]
-  const tour = (name: string, split: string | null, stage: string, intl: boolean, leagueId: number | null, start: string, end: string) =>
+  const tour = (name: string, split: string | null, stage: string, intl: boolean, leagueId: number | null, start: string, end: string, year = 2026) =>
     one(
       `INSERT INTO tournament (leaguepedia_name, name, league_id, year, split, stage, is_international, start_date, end_date)
-       VALUES ($1,$1,$2,2026,$3,$4,$5,$6,$7) RETURNING id`,
-      [name, leagueId, split, stage, intl, start, end],
+       VALUES ($1,$1,$2,$8,$3,$4,$5,$6,$7) RETURNING id`,
+      [name, leagueId, split, stage, intl, start, end, year],
     )
   const summer = await tour('LCK 2026 Summer', 'Summer', 'Regular season', false, lck, '2026-04-01', '2026-06-01')
   const promo = await tour('LCK 2026 Summer Promotion', 'Summer', 'Qualifier', false, lck, '2026-07-01', '2026-07-10')
   const worlds = await tour('Worlds 2026', null, 'Playoffs', true, null, '2026-10-01', '2026-11-01')
+  const msi = await tour('MSI 2026', null, 'Playoffs', true, null, '2026-03-10', '2026-03-25')
+  const summer25 = await tour('LCK 2025 Summer', 'Summer', 'Regular season', false, lck, '2025-04-01', '2025-06-01', 2025)
 
   const game = async (o: {
     tournament: number; at: string; patch: string; opp: number; win: boolean
@@ -74,6 +78,10 @@ beforeAll(async () => {
   for (let i = 0; i < 2; i++) {
     await game({ tournament: worlds, at: `2026-10-0${i + 5}T10:00:00Z`, patch: '26.19', opp: charlie, win: false, alphaMid: [mid, ahri], oppMid: zed })
   }
+  for (let i = 0; i < 2; i++) {
+    await game({ tournament: msi, at: `2026-03-1${i + 2}T10:00:00Z`, patch: '26.5', opp: charlie, win: true, alphaMid: [mid, azir], oppMid: zed })
+  }
+  await game({ tournament: summer25, at: '2025-04-12T10:00:00Z', patch: '25.8', opp: bravo, win: false, alphaMid: [mid, azir], oppMid: zed })
   for (let i = 0; i < 3; i++) {
     await game({ tournament: promo, at: `2026-07-0${i + 2}T10:00:00Z`, patch: '26.14', opp: charlie, win: true, alphaMid: [mid, azir], oppMid: zed })
   }
@@ -131,6 +139,50 @@ describe('GET /api/champions/:name', () => {
 
   it('finds a champion regardless of capitalisation', async () => {
     expect((await api('/api/champions/azir')).body.champion.name).toBe('Azir')
+  })
+})
+
+describe('range=all (all time)', () => {
+  it('includes games outside the default range, such as an international that ended before the latest split', async () => {
+    const { body } = await api('/api/champions/Azir?range=all')
+    expect(body.range).toMatchObject({
+      label: 'All time',
+      description: 'Tier 1 leagues and internationals only',
+      isDefault: false,
+      resolved: null,
+    })
+    // 6 Summer + 2 MSI + 1 LCK 2025; the default range has only the 6, and the Promotion qualifier stays out.
+    expect(body.summary.games).toBe(9)
+    expect(body.summary.totalGames).toBe(15)
+    expect((await api('/api/champions/Azir')).body.summary.games).toBe(6)
+  })
+
+  it('adds qualifiers only when asked, and layers domestic and role on top', async () => {
+    expect((await api('/api/champions/Azir?range=all&qualifiers=true')).body.summary.games).toBe(12)
+    const domestic = await api('/api/champions/Azir?range=all&domestic=true')
+    expect(domestic.body.range.description).toBe('Tier 1 leagues only, domestic only')
+    expect(domestic.body.summary.games).toBe(7) // the MSI games drop out
+    expect((await api('/api/champions/Azir?range=all&role=Top')).body.empty).toBe(true)
+  })
+
+  it('yields to any real range filter', async () => {
+    const { body } = await api('/api/champions/Azir?range=all&year=2025')
+    expect(body.range).toMatchObject({ label: '2025', isDefault: false })
+    expect(body.summary.games).toBe(1)
+  })
+
+  it('applies to every champion sub-endpoint', async () => {
+    for (const path of ['roles', 'players', 'teams', 'matchups', 'patches']) {
+      const { body, status } = await api(`/api/champions/Azir/${path}?range=all`)
+      expect(status).toBe(200)
+      expect(body.range?.label ?? 'All time').toBe('All time')
+    }
+    const patches = (await api('/api/champions/Azir/patches?range=all')).body.patches
+    expect(patches.map((p: { patch: string }) => p.patch)).toContain('25.8')
+  })
+
+  it('leaves URLs without range on the default range', async () => {
+    expect((await api('/api/champions/Azir')).body.range.isDefault).toBe(true)
   })
 })
 
