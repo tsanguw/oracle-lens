@@ -362,8 +362,12 @@ export function createApp(options: AppOptions = {}) {
     const standings = await loadStandings(pool, tournament.id)
     return { empty: standings.length === 0, standings }
   })
+  /** `limit` caps both lists, so a page that filters by team or day can ask for every scheduled and played series. */
   tournamentRoute('/matches', async ({ tournament, limit }) => {
-    const [upcoming, results] = await Promise.all([loadUpcoming(pool, tournament.memberIds), loadResults(pool, tournament.memberIds, limit)])
+    const [upcoming, results] = await Promise.all([
+      loadUpcoming(pool, tournament.memberIds, limit),
+      loadResults(pool, tournament.memberIds, limit),
+    ])
     return { empty: upcoming.length === 0 && results.length === 0, upcoming, results }
   })
   tournamentRoute('/players', async ({ tournament, limit }) => {
