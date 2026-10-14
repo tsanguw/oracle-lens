@@ -3,7 +3,7 @@ interface Props {
   onRetry: () => void
   heading?: string
   /** Heading level, so each page keeps a sensible outline (h1 when the error replaces the whole page). */
-  level?: 1 | 2 | 3
+  level?: 1 | 2 | 3 | 4
 }
 
 export default function ErrorState({ message, onRetry, heading = 'Something went wrong', level = 2 }: Props) {

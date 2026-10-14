@@ -50,6 +50,12 @@ export const matchTime = (iso: string | null): string => {
   return `${day} · ${time}`
 }
 
+/** "9:00 AM" in the visitor's own time zone, for rows that already sit under a day heading. */
+export const matchClock = (iso: string | null): string => {
+  if (!iso) return NA
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
 /** "Sep 5 – Oct 10, 2026" from two ISO dates (YYYY-MM-DD); either may be missing. */
 export const dateRange = (start: string | null, end: string | null): string => {
   if (!start && !end) return NA
