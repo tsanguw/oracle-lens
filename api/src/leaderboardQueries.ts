@@ -57,8 +57,8 @@ const NOT_QUALIFIER = `t.stage IS DISTINCT FROM 'Qualifier'`
 
 /**
  * Explicit filters replace the default range, and `range=all` (with none of them) means all history. With neither, each league contributes its most recent
- * split (playoffs included), plus international events from the earliest such split onward. Only
- * leagues that played in the most recent year count, so a league that has stopped adds no stale data.
+ * split (playoffs included), plus every international event of the most recent year. Only leagues
+ * that played in the most recent year count, so a league that has stopped adds no stale data.
  */
 export async function resolveRange(
   pool: pg.Pool,
@@ -112,8 +112,7 @@ export async function resolveRange(
     const s = `$${params.push(r.split)}`
     return `(l.id = ${l} AND t.year = ${y} AND t.split IS NOT DISTINCT FROM ${s})`
   })
-  const since = latest.map((r) => r.start_date as Date).reduce((a, b) => (a < b ? a : b))
-  const intl = q.domestic ? '' : ` OR (t.is_international = true AND t.end_date >= $${params.push(since)})`
+  const intl = q.domestic ? '' : ` OR (t.is_international = true AND t.year = $${params.push(newest)})`
 
   const labels = new Set(latest.map((r) => [r.year, r.split].filter(Boolean).join(' ')))
   const shared = labels.size === 1

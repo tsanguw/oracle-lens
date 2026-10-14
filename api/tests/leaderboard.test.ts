@@ -12,6 +12,8 @@ import { resetDb } from './resetDb.js'
  * LCK 2026 Summer Promotion (a qualifier, later start): Ace plays 3 more games, which must not count.
  * Worlds 2026 (international, after the splits): Ace plays 2 more games, 0/3/0, which count by default.
  * LCK 2025 Spring (older): Bob plays 5 games and would top the 2025 board.
+ * MSI 2026 (international, ended before either split began): Fay plays 5 games, 5/1/5 each (KDA 10). The default
+ * range takes every international of the newest year, so she is ranked by default.
  */
 
 const app = createApp()
@@ -55,9 +57,10 @@ beforeAll(async () => {
   const promo = await tour('LCK 2026 Summer Promotion', lck, 2026, 'Summer', 'Qualifier', false, '2026-07-01', '2026-07-20')
   const split3 = await tour('LPL 2026 Split 3', lpl, 2026, 'Split 3', 'Regular season', false, '2026-04-10', '2026-06-10')
   const worlds = await tour('Worlds 2026', null, 2026, null, 'Playoffs', true, '2026-10-01', '2026-11-01')
+  const msi = await tour('MSI 2026', null, 2026, null, 'Playoffs', true, '2026-03-10', '2026-03-25')
   const spring25 = await tour('LCK 2025 Spring', lck, 2025, 'Spring', 'Regular season', false, '2025-01-15', '2025-03-30')
 
-  const [ace, bob, cy, dan, eve] = [await player('Ace'), await player('Bob'), await player('Cy'), await player('Dan'), await player('Eve')]
+  const [ace, bob, cy, dan, eve, fay] = [await player('Ace'), await player('Bob'), await player('Cy'), await player('Dan'), await player('Eve'), await player('Fay')]
   await play(ace, tA, summer, champion, { count: 6, k: 4, d: 1, a: 5, wins: 5, vision: 45, when: '2026-04-10' })
   await play(bob, tB, summer, champion, { count: 6, k: 2, d: 2, a: 2, wins: 2, vision: 30, when: '2026-04-11' })
   await play(cy, tB, summer, champion, { count: 4, k: 9, d: 0, a: 9, wins: 4, vision: 30, when: '2026-04-12' })
@@ -65,6 +68,7 @@ beforeAll(async () => {
   await play(eve, tC, split3, champion, { count: 5, k: 1, d: 4, a: 1, wins: 1, vision: null, when: '2026-04-21' })
   await play(ace, tA, promo, champion, { count: 3, k: 20, d: 0, a: 20, wins: 3, vision: 45, when: '2026-07-05' })
   await play(ace, tA, worlds, champion, { count: 2, k: 0, d: 3, a: 0, wins: 0, vision: 45, when: '2026-10-05' })
+  await play(fay, tC, msi, champion, { count: 5, k: 5, d: 1, a: 5, wins: 4, vision: 40, when: '2026-03-12' })
   await play(bob, tB, spring25, champion, { count: 5, k: 10, d: 1, a: 10, wins: 5, vision: 30, when: '2025-02-10' })
 })
 
@@ -78,8 +82,8 @@ describe('GET /api/leaderboard/players (default range)', () => {
     expect(status).toBe(200)
     expect(body.range).toMatchObject({ isDefault: true, label: 'Latest split of each league, 2026 + internationals' })
     // Ace: 6 Summer + 2 Worlds games = 8; the 3 qualifier games (KDA 40) are excluded, so Ace is not far ahead.
-    expect(names(body)).toEqual(['Dan', 'Ace', 'Bob', 'Eve'])
-    expect(body.total).toBe(4)
+    expect(names(body)).toEqual(['Dan', 'Fay', 'Ace', 'Bob', 'Eve'])
+    expect(body.total).toBe(5)
     expect(body.empty).toBe(false)
     expect(body.minGames).toBe(5)
   })
@@ -98,7 +102,7 @@ describe('GET /api/leaderboard/players (default range)', () => {
     expect(ace.team).toBe('Alpha')
     expect(ace.league).toBe('LCK')
     expect(ace.role).toBe('Mid')
-    expect(ace.rank).toBe(2)
+    expect(ace.rank).toBe(3) // behind Dan and Fay
   })
 
   it('treats a missing stat as N/A, never zero', async () => {
@@ -116,6 +120,7 @@ describe('GET /api/leaderboard/players (default range)', () => {
   it('domestic=true drops the international games', async () => {
     const { body } = await api('/api/leaderboard/players?domestic=true')
     expect(body.range.label).toBe('Latest split of each league, 2026')
+    expect(names(body)).not.toContain('Fay') // her games are all at MSI
     const ace = body.players.find((p: { name: string }) => p.name === 'Ace')
     expect(ace.games).toBe(6)
     expect(ace.kda).toBeCloseTo(9)
@@ -159,18 +164,18 @@ describe('GET /api/leaderboard/players (filters, sorting, paging)', () => {
 
   it('sorts by any allowed column in either direction, with missing values last', async () => {
     const asc = await api('/api/leaderboard/players?sort=visionPerMin&dir=asc')
-    expect(names(asc.body)).toEqual(['Bob', 'Dan', 'Ace', 'Eve']) // Bob and Dan tie at 1.0; more games ranks first
+    expect(names(asc.body)).toEqual(['Bob', 'Dan', 'Fay', 'Ace', 'Eve']) // Bob and Dan tie at 1.0; more games ranks first
     const desc = await api('/api/leaderboard/players?sort=visionPerMin&dir=desc')
-    expect(names(desc.body)).toEqual(['Ace', 'Bob', 'Dan', 'Eve'])
+    expect(names(desc.body)).toEqual(['Ace', 'Fay', 'Bob', 'Dan', 'Eve'])
     const games = await api('/api/leaderboard/players?sort=games')
     expect(names(games.body)[0]).toBe('Ace')
   })
 
   it('pages results and numbers ranks across pages', async () => {
     const p2 = await api('/api/leaderboard/players?pageSize=2&page=2')
-    expect(p2.body.total).toBe(4)
+    expect(p2.body.total).toBe(5)
     expect(p2.body.players.map((p: { rank: number }) => p.rank)).toEqual([3, 4])
-    expect(names(p2.body)).toEqual(['Bob', 'Eve'])
+    expect(names(p2.body)).toEqual(['Ace', 'Bob'])
   })
 
   it('rejects an unknown sort column', async () => {
