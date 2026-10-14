@@ -25,6 +25,7 @@ import {
   tournamentListSchema,
   type TournamentRow,
 } from './tournamentQueries.js'
+import { loadSeriesGames, seriesParamsSchema } from './seriesGames.js'
 import { loadTournamentRosters } from './tournamentRosters.js'
 import {
   championSchema,
@@ -326,8 +327,14 @@ export function createApp(options: AppOptions = {}) {
     res.json({ tournaments: await recentTournaments(pool, limit) })
   }))
 
-  /** Resolves :id to a tournament (404 if unknown) and hands it, with the optional `limit`, to `load`. */
-  const tournamentRoute = <T>(path: string, load: (ctx: { tournament: TournamentRow; limit: number | undefined }) => Promise<T>) =>
+  /**
+   * Resolves :id to a tournament (404 if unknown) and hands it, with the optional `limit` and the route's params, to
+   * `load`. A `load` that returns null answers 404 too (a sub-resource that is not part of this tournament).
+   */
+  const tournamentRoute = <T>(
+    path: string,
+    load: (ctx: { tournament: TournamentRow; limit: number | undefined; params: Request['params'] }) => Promise<T | null>,
+  ) =>
     app.get(
       `/api/tournaments/:id${path}`,
       wrap(async (req, res) => {
@@ -337,7 +344,12 @@ export function createApp(options: AppOptions = {}) {
           res.status(404).json({ error: 'Tournament not found' })
           return
         }
-        res.json(await load({ tournament, limit }))
+        const body = await load({ tournament, limit, params: req.params })
+        if (body === null) {
+          res.status(404).json({ error: 'Not found' })
+          return
+        }
+        res.json(body)
       }),
     )
 
@@ -350,8 +362,12 @@ export function createApp(options: AppOptions = {}) {
     const standings = await loadStandings(pool, tournament.id)
     return { empty: standings.length === 0, standings }
   })
+  /** `limit` caps both lists, so a page that filters by team or day can ask for every scheduled and played series. */
   tournamentRoute('/matches', async ({ tournament, limit }) => {
-    const [upcoming, results] = await Promise.all([loadUpcoming(pool, tournament.memberIds), loadResults(pool, tournament.memberIds, limit)])
+    const [upcoming, results] = await Promise.all([
+      loadUpcoming(pool, tournament.memberIds, limit),
+      loadResults(pool, tournament.memberIds, limit),
+    ])
     return { empty: upcoming.length === 0 && results.length === 0, upcoming, results }
   })
   tournamentRoute('/players', async ({ tournament, limit }) => {
@@ -362,6 +378,11 @@ export function createApp(options: AppOptions = {}) {
   tournamentRoute('/rosters', async ({ tournament }) => {
     const teams = await loadTournamentRosters(pool, tournament)
     return { empty: teams.length === 0, teams }
+  })
+  /** One series with each game's draft: bans and picks per side. */
+  tournamentRoute('/series/:seriesId', async ({ tournament, params }) => {
+    const { seriesId } = seriesParamsSchema.parse(params)
+    return loadSeriesGames(pool, tournament, seriesId)
   })
   tournamentRoute('/champions', async ({ tournament, limit }) => {
     const champions = await loadTournamentChampions(pool, tournament.memberIds, limit)
