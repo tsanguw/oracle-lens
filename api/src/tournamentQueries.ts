@@ -154,7 +154,7 @@ export interface SeriesRow {
   bestOf: number | null
 }
 
-const SERIES_SELECT = `
+export const SERIES_SELECT = `
   SELECT s.id AS "seriesId", COALESCE(s.scheduled_at, last.played_at) AS at,
          t1.name AS team1, t2.name AS team2, w.name AS winner, s.score, s.best_of AS "bestOf"
   FROM series s
