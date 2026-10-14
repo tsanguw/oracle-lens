@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { Fragment, useId, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import type {
   SeriesRow,
@@ -8,11 +8,13 @@ import type {
   TournamentPlayer,
   TournamentResponse,
 } from '../api/types'
-import { dateRange, decimal, duration, matchTime, NA, percent, whole } from '../lib/format'
+import { dateRange, decimal, duration, matchClock, matchTime, NA, percent, whole } from '../lib/format'
+import { dayLabel, groupByDay } from '../lib/matchFilter'
 import { ChampionPicker, StageBackdrop, StageMotion, stageClass, usePresenceStage } from './ChampionStage'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
 import { CountUp, Letters } from './StageBits'
 import { ChampionIcon, PlayerPhoto, TeamLogo } from './Images'
+import SeriesGames from './SeriesGames'
 
 const teamLink = (name: string) => `/teams/${encodeURIComponent(name)}`
 
@@ -235,7 +237,8 @@ export function TournamentChampionTiles({ champions }: { champions: TournamentCh
   )
 }
 
-function Table({ head, children }: { head: { label: string; left?: boolean }[]; children: React.ReactNode }) {
+/** `grouped`: the children are `<tbody>`s (one per day) instead of rows. */
+function Table({ head, children, grouped = false }: { head: { label: string; left?: boolean }[]; children: React.ReactNode; grouped?: boolean }) {
   return (
     <div className="table-wrap">
       <table className="pool">
@@ -248,15 +251,16 @@ function Table({ head, children }: { head: { label: string; left?: boolean }[]; 
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        {grouped ? children : <tbody>{children}</tbody>}
       </table>
     </div>
   )
 }
 
-export function StandingsTable({ standings }: { standings: StandingRow[] }) {
+/** `onTeam`, when given, adds an icon button per team that filters the match list to that team. */
+export function StandingsTable({ standings, onTeam }: { standings: StandingRow[]; onTeam?: (team: string) => void }) {
   return (
-    <Table head={[{ label: '#', left: true }, { label: 'Team', left: true }, { label: 'Series' }, { label: 'Games' }, { label: 'Game win rate' }]}>
+    <Table head={[{ label: '#', left: true }, { label: 'Team', left: true }, { label: 'Series' }, { label: 'Games' }, { label: 'Game win %' }]}>
       {standings.map((r, i) => (
         <tr key={r.team}>
           <td className="pool__champ pool__role">{i + 1}</td>
@@ -266,6 +270,17 @@ export function StandingsTable({ standings }: { standings: StandingRow[] }) {
               <Link to={teamLink(r.team)} className="pool__link">
                 {r.team}
               </Link>
+              {onTeam && (
+                <button
+                  type="button"
+                  className="row-action"
+                  aria-label={`Show matches for ${r.team}`}
+                  title={`Show matches for ${r.team}`}
+                  onClick={() => onTeam(r.team)}
+                >
+                  {CalendarIcon}
+                </button>
+              )}
             </span>
           </td>
           <td>{`${r.seriesWins}-${r.seriesLosses}`}</td>
@@ -277,30 +292,125 @@ export function StandingsTable({ standings }: { standings: StandingRow[] }) {
   )
 }
 
-export function ResultsTable({ results }: { results: SeriesRow[] }) {
+const CalendarIcon = (
+  <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+    <path d="M2.5 3.5h11v10h-11zM2.5 6.5h11M5.5 1.5v3M10.5 1.5v3" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" />
+  </svg>
+)
+
+const DATE_CELL_STYLE: CSSProperties = { textTransform: 'none', letterSpacing: 0, fontSize: 14 }
+
+function MatchTeams({ s }: { s: SeriesRow }) {
   return (
-    <Table head={[{ label: 'Date', left: true }, { label: 'Match', left: true }, { label: 'Score' }]}>
-      {results.map((s) => (
-        <tr key={s.seriesId}>
-          <td className="pool__champ pool__role" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 14 }}>
-            {matchTime(s.at)}
-          </td>
-          <td className="pool__champ">
-            {[s.team1, s.team2].map((team, i) => (
-              <span key={i}>
-                {i > 0 && <span className="series__vs"> vs </span>}
-                {team ? (
-                  <Link to={teamLink(team)} className={`pool__link${s.winner === team ? ' series__winner' : ''}`}>
-                    {team}
-                  </Link>
-                ) : (
-                  'TBD'
+    <>
+      {[s.team1, s.team2].map((team, i) => (
+        <span key={i}>
+          {i > 0 && <span className="series__vs"> vs </span>}
+          {team ? (
+            <Link to={teamLink(team)} className={`pool__link${s.winner === team ? ' series__winner' : ''}`}>
+              {team}
+            </Link>
+          ) : (
+            'TBD'
+          )}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/** The heading row of one day's matches. */
+function DayRow({ day, cols }: { day: string | null; cols: number }) {
+  return (
+    <tr className="day-row">
+      <th scope="rowgroup" colSpan={cols}>
+        {day ? dayLabel(day) : 'Date to be announced'}
+      </th>
+    </tr>
+  )
+}
+
+/** Scheduled series under a heading per day, soonest first. They have no games yet, so there is nothing to open. */
+export function UpcomingTable({ upcoming }: { upcoming: SeriesRow[] }) {
+  return (
+    <Table head={[{ label: 'Time', left: true }, { label: 'Match', left: true }]} grouped>
+      {groupByDay(upcoming).map((g, i) => (
+        <tbody key={`${g.day}-${i}`}>
+          <DayRow day={g.day} cols={2} />
+          {g.rows.map((s) => (
+            <tr key={s.seriesId}>
+              <td className="pool__champ pool__role" style={DATE_CELL_STYLE}>
+                {matchClock(s.at)}
+              </td>
+              <td className="pool__champ">
+                <MatchTeams s={s} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      ))}
+    </Table>
+  )
+}
+
+const ToggleChevron = (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+    <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+/**
+ * Played series under a heading per day. Each series opens to show its games' bans and picks. `base` is the tournament's
+ * API path. A series' games are fetched the first time it is opened and stay mounted (hidden) after, so closing and
+ * reopening does not fetch again.
+ */
+export function ResultsTable({ results, base }: { results: SeriesRow[]; base: string }) {
+  const uid = useId()
+  // Present once a series has been opened; the value is whether it is open now.
+  const [opened, setOpened] = useState<Record<number, boolean>>({})
+  return (
+    <Table head={[{ label: 'Time', left: true }, { label: 'Match', left: true }, { label: 'Score' }]} grouped>
+      {groupByDay(results).map((g, i) => (
+        <tbody key={`${g.day}-${i}`}>
+          <DayRow day={g.day} cols={3} />
+          {g.rows.map((s) => {
+            const open = opened[s.seriesId] === true
+            const detailId = `${uid}-${s.seriesId}`
+            return (
+              <Fragment key={s.seriesId}>
+                <tr className={open ? 'is-open' : undefined}>
+                  {/* The toggle leads the first column: on a phone the table scrolls sideways and the last column is off screen. */}
+                  <td className="pool__champ pool__role" style={DATE_CELL_STYLE}>
+                    <span className="date-cell">
+                      <button
+                        type="button"
+                        className="row-toggle"
+                        aria-expanded={open}
+                        aria-controls={detailId}
+                        aria-label={`Games: ${s.team1 ?? 'TBD'} vs ${s.team2 ?? 'TBD'}`}
+                        onClick={() => setOpened((o) => ({ ...o, [s.seriesId]: !o[s.seriesId] }))}
+                      >
+                        {ToggleChevron}
+                      </button>
+                      {matchClock(s.at)}
+                    </span>
+                  </td>
+                  <td className="pool__champ">
+                    <MatchTeams s={s} />
+                  </td>
+                  <td>{s.score ?? NA}</td>
+                </tr>
+                {s.seriesId in opened && (
+                  <tr id={detailId} className="games-row" hidden={!open}>
+                    <td colSpan={3}>
+                      <SeriesGames path={`${base}/series/${s.seriesId}`} />
+                    </td>
+                  </tr>
                 )}
-              </span>
-            ))}
-          </td>
-          <td>{s.score ?? NA}</td>
-        </tr>
+              </Fragment>
+            )
+          })}
+        </tbody>
       ))}
     </Table>
   )

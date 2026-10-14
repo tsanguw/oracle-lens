@@ -435,6 +435,41 @@ export interface RostersResponse {
   teams: TeamRoster[]
 }
 
+export interface SeriesPick {
+  champion: string
+  role: string | null
+  /** The player's page name, for the link. */
+  page: string
+  player: string
+  /** Place 1-5 in the team's draft; null when unknown. */
+  pickOrder: number | null
+}
+
+export interface SeriesSide {
+  side: 'blue' | 'red'
+  team: string
+  win: boolean
+  kills: number | null
+  /** Champion names in ban-slot order. */
+  bans: string[]
+  picks: SeriesPick[]
+}
+
+export interface SeriesGame {
+  gameId: number
+  /** 1, 2, 3 ... in played order. */
+  number: number
+  lengthSec: number | null
+  patch: string | null
+  /** Blue side first. */
+  sides: SeriesSide[]
+}
+
+export interface SeriesGamesResponse {
+  series: SeriesRow
+  games: SeriesGame[]
+}
+
 export interface TournamentChampion {
   champion: string
   picks: number

@@ -298,3 +298,408 @@
 .hero-img .img--plate {
   background: var(--plate);
 }
+
+/* Results table: a series opens to show each game's draft (components/SeriesGames.tsx). */
+.date-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.row-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  margin: -8px 0 -8px -12px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  border: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.row-toggle:hover {
+  color: var(--accent-text);
+}
+.row-toggle svg {
+  transition: transform 0.15s;
+}
+.row-toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .row-toggle svg {
+    transition: none;
+  }
+}
+.pool tr.games-row > td {
+  padding: 16px;
+  text-align: left;
+  background: var(--bg-page);
+}
+.pool tr.games-row[hidden] {
+  display: none;
+}
+/* The table has a minimum width and scrolls sideways on a phone; the draft is pinned to what is visible instead of
+   scrolling away with it (16px is the cell's padding). */
+.table-wrap:has(.games-row) {
+  container-type: inline-size;
+}
+.games-row > td > * {
+  position: sticky;
+  left: 16px;
+  box-sizing: border-box;
+  width: min(100%, calc(100cqw - 32px));
+}
+.games {
+  display: grid;
+  gap: 20px;
+}
+.games--loading {
+  height: 260px;
+}
+.game__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.1;
+}
+.game__meta {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+.game__sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.gside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+}
+/* The side that won the game: a green outline and tint, as on the bracket (green means a win; red is the brand colour). */
+.gside--win {
+  border-color: var(--win);
+  box-shadow: inset 0 0 0 1px var(--win);
+  background: color-mix(in srgb, var(--win) 7%, var(--bg-panel));
+}
+.gside__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.gside__team {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.gside__label {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.gside__win {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--win);
+}
+.gside__bans,
+.gside__picks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gside__bans {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.gside__bans .img,
+.gside__bans .icon-box {
+  opacity: 0.55; /* a banned champion never played: dimmed, so a ban never reads as a pick */
+  filter: grayscale(1);
+}
+.gpick {
+  display: grid;
+  grid-template-columns: 1.2ch 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+}
+.gpick__order {
+  font-size: 12px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+.gpick__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.gpick__champ {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.gpick__player {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.gpick__role {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Results column: one bordered panel holding a bar to pick a team and the matches grouped under a heading per day. */
+.matches {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+}
+.matches .table-wrap {
+  border: 0;
+}
+.matches__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-width: 0;
+}
+.matches__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-left: auto;
+}
+.picker {
+  position: relative;
+}
+.picker__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 260px;
+  height: 40px;
+  padding: 0 34px 0 12px;
+  background: var(--bg-panel);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.picker__button:hover,
+.picker__button[aria-expanded='true'] {
+  border-color: var(--text-dim);
+}
+.picker__key {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.picker__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.picker__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.picker__chevron {
+  position: absolute;
+  right: 13px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--text-muted);
+  border-bottom: 1.5px solid var(--text-muted);
+  transform: translateY(-70%) rotate(45deg);
+}
+.picker__button[aria-expanded='true'] .picker__chevron {
+  transform: translateY(-30%) rotate(225deg);
+}
+.picker__list {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 20; /* above the panel under it, below the filter dock (30) */
+  min-width: 100%;
+  width: max-content;
+  max-width: 300px;
+  max-height: 320px;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
+}
+.picker__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 16px 0 12px;
+  border-left: 2px solid transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.picker__option.is-active {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+.picker__option.is-selected {
+  border-left-color: var(--accent);
+  color: var(--text);
+  font-weight: 600;
+}
+.picker__blank {
+  flex: none;
+  width: 22px;
+  height: 22px;
+}
+.matches__clear {
+  padding: 6px 4px;
+  background: none;
+  color: var(--text-muted);
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.matches__clear:hover {
+  color: var(--accent-text);
+}
+.matches__count {
+  margin-left: auto;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.matches__count:empty {
+  display: none;
+}
+.matches__note {
+  margin: 0;
+  padding: 20px 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.matches__group {
+  margin: 0;
+  padding: 12px;
+  background: var(--bg-bar);
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.matches__more {
+  margin: 12px;
+}
+.pool tr.day-row > th {
+  padding: 16px 12px 8px;
+  text-align: left;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+/* Side by side, the standings and the match list are two panels of one height: the standings set it, and the match list
+   scrolls inside its panel. The headings share a row, so the panels start level however the headings wrap. Stacked on a
+   narrow screen both keep their natural height. */
+@media (min-width: 1101px) {
+  .duo--records {
+    align-items: stretch;
+    row-gap: 0;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .duo--records > .section {
+    display: grid;
+    grid-row: span 2;
+    grid-template-rows: subgrid;
+    row-gap: 16px;
+  }
+  .duo--records > .section > :first-child {
+    align-self: center;
+  }
+  .duo--records .ctx__sub {
+    margin: 0;
+  }
+  /* One header height for both tables, so their header rows line up: no wrapping ("Game win rate" used to take two
+     lines in its narrow column), and the same fixed height whatever the labels. */
+  .duo--records thead th {
+    height: 44px;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .matches {
+    contain: size; /* the panel adds nothing to the row height; it fills the height the standings give it */
+  }
+  .matches__list {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}
+
+/* A small icon button beside a team in the standings: it filters the match list to that team. Icon-sized on purpose, as
+   the standings column has no room to spare. */
+.row-action {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: 6px;
+  padding: 0;
+  background: transparent;
+  color: var(--text-dim);
+  border: 0;
+  vertical-align: middle;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.row-action:hover {
+  color: var(--accent-text);
+}
