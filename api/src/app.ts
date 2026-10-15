@@ -90,6 +90,7 @@ export interface AppOptions {
 export function createApp(options: AppOptions = {}) {
   const app = express()
   app.disable('x-powered-by')
+  const responseCache = createResponseCache(pool, options.cache)
   // Render and Cloudflare sit in front of the API; trust the first proxy so each visitor gets their own rate-limit count.
   app.set('trust proxy', 1)
   const origins = (options.corsOrigin ?? process.env.CORS_ORIGIN ?? '').split(',').map((o) => o.trim()).filter(Boolean)
@@ -293,14 +294,13 @@ export function createApp(options: AppOptions = {}) {
   /** Top players, top teams and recent events for the related-info strip. Ignores the stat filters. */
   championRoute('/context', ({ champion }) => loadChampionContext(pool, champion).then((ctx) => ({ champion, ...ctx })))
 
-  // All-time over every game takes about a second on the small production database, and the answer only
+  // All-time over every game takes over a second on the small production database, and the answer only
   // changes when the nightly sync runs, so those responses are kept until the sync stamps new data.
-  const leaderboardCache = createResponseCache(pool, options.cache)
   app.get('/api/leaderboard/players', wrap(async (req, res) => {
     const query = leaderboardSchema.parse(req.query)
     res.json(
       isAllTime(query)
-        ? await leaderboardCache.get(JSON.stringify(query), () => loadLeaderboard(pool, query))
+        ? await responseCache.get(`leaderboard:${JSON.stringify(query)}`, () => loadLeaderboard(pool, query))
         : await loadLeaderboard(pool, query),
     )
   }))
@@ -326,7 +326,7 @@ export function createApp(options: AppOptions = {}) {
   }))
 
   app.get('/api/champions', wrap(async (req, res) => {
-    res.json(await loadChampionsList(pool, championsListSchema.parse(req.query)))
+    res.json(await loadChampionsList(pool, championsListSchema.parse(req.query), responseCache))
   }))
 
   app.get('/api/tournaments', wrap(async (req, res) => {

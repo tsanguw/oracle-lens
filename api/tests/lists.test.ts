@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db.js'
 import { resetDb } from './resetDb.js'
@@ -165,6 +165,73 @@ describe('GET /api/champions', () => {
     const { body } = await api('/api/champions?role=Mid')
     const azir = body.rows.find((r: { name: string }) => r.name === 'Azir')
     expect(azir.banRate).toBeCloseTo(3 / 9)
+  })
+})
+
+describe('GET /api/champions (range=all)', () => {
+  it('ranks every game in the tracked leagues and internationals, and layers domestic and role on top', async () => {
+    const all = await api('/api/champions?range=all')
+    expect(all.body.range).toMatchObject({ label: 'All time', description: 'Tier 1 leagues and internationals only', isDefault: false })
+    const azir = all.body.rows.find((r: { name: string }) => r.name === 'Azir')
+    // The default range has 9 games; all time adds the 2025 Worlds game (10), and the qualifier stays out.
+    expect(azir.games / azir.pickRate).toBeCloseTo(10)
+    const domestic = await api('/api/champions?range=all&domestic=true')
+    expect(domestic.body.range.description).toBe('Tier 1 leagues only, domestic only')
+    const azirDomestic = domestic.body.rows.find((r: { name: string }) => r.name === 'Azir')
+    expect(azirDomestic.games / azirDomestic.pickRate).toBeCloseTo(9)
+    const withQualifiers = await api('/api/champions?range=all&qualifiers=true')
+    const azirQ = withQualifiers.body.rows.find((r: { name: string }) => r.name === 'Azir')
+    expect(azirQ.games / azirQ.pickRate).toBeGreaterThan(10)
+    expect((await api('/api/champions?range=all&year=2025')).body.range).toMatchObject({ label: '2025', isDefault: false })
+  })
+})
+
+describe('champions list response cache', () => {
+  // A separate app that reads the sync stamp on every call, so the test can move it.
+  const cached = request(createApp({ cache: { versionTtlMs: 0 } }))
+  const coverQueries = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls.filter(([sql]) => typeof sql === 'string' && sql.includes('WITH games AS')).length
+
+  it('keeps the all-time queries per filter set, so sorting, searching and paging reuse them', async () => {
+    await pool.query(`INSERT INTO meta (key, value) VALUES ('last_synced_at', 'sync-1') ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
+    const spy = vi.spyOn(pool, 'query')
+    try {
+      const first = await cached.get('/api/champions?range=all')
+      expect(first.body.range.label).toBe('All time')
+      expect(coverQueries(spy)).toBe(1)
+      expect((await cached.get('/api/champions?range=all')).body).toEqual(first.body)
+
+      // Another sort, a search and another page are applied to the same cached rows.
+      const byGames = await cached.get('/api/champions?range=all&sort=games&dir=asc')
+      expect(byGames.body.rows.map((r: { games: number }) => r.games)).toEqual([...byGames.body.rows.map((r: { games: number }) => r.games)].sort((a, b) => a - b))
+      expect((await cached.get('/api/champions?range=all&q=azi')).body.rows.map((r: { name: string }) => r.name)).toEqual(['Azir'])
+      await cached.get('/api/champions?range=all&pageSize=1&page=2')
+      expect(coverQueries(spy)).toBe(1)
+
+      // A different filter set is a different key.
+      await cached.get('/api/champions?range=all&role=Mid')
+      expect(coverQueries(spy)).toBe(2)
+
+      // The nightly sync stamps a new value: the next request recomputes.
+      await pool.query(`UPDATE meta SET value = 'sync-2' WHERE key = 'last_synced_at'`)
+      await cached.get('/api/champions?range=all')
+      expect(coverQueries(spy)).toBe(3)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('does not cache the default range or ranges with a real filter', async () => {
+    const spy = vi.spyOn(pool, 'query')
+    try {
+      await cached.get('/api/champions')
+      await cached.get('/api/champions')
+      await cached.get('/api/champions?range=all&year=2026')
+      await cached.get('/api/champions?range=all&year=2026')
+      expect(coverQueries(spy)).toBe(4)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
 
