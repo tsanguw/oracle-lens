@@ -1,11 +1,11 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { filterSchema, MIN_SAMPLE } from './filters.js'
+import { filterSchema, hasRangeFilter, isAllTime, MIN_SAMPLE } from './filters.js'
 import { IS_EVENT_HEAD } from './homeQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { FROM, FROM_CORE, ka, ok, perMin } from './playerQueries.js'
 
-/** Same filters as the leaderboard (default range = each league's latest split plus internationals). */
+/** Same filters as the leaderboard; the default range is the newest year across every league (see `resolveChampionRange`). */
 export const championSchema = filterSchema.extend({
   qualifiers: z
     .enum(['true', 'false'])
@@ -36,6 +36,39 @@ interface Scope {
   range: LeaderboardRange
 }
 
+/**
+ * Explicit filters and `range=all` resolve as on the leaderboard. With neither, a champion is played in every
+ * league, so its default is the whole newest year: every league's games and every international of that year
+ * (`domestic=true` drops the internationals). The range reports that year as resolved, so the filter bar can
+ * show it (League and Split stay on "All") instead of looking like all time.
+ */
+export async function resolveChampionRange(
+  pool: pg.Pool,
+  q: ChampionQuery,
+  params: unknown[],
+): Promise<{ conditions: string[]; range: LeaderboardRange }> {
+  if (hasRangeFilter(q) || isAllTime(q)) return resolveRange(pool, q, params)
+  const { rows } = await pool.query(
+    `SELECT MAX(t.year)::int AS year FROM tournament t
+     WHERE NOT t.is_international AND t.stage IS DISTINCT FROM 'Qualifier'
+       AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = t.id)`,
+  )
+  const year: number | null = rows[0]?.year ?? null
+  if (year === null) {
+    return { conditions: ['false'], range: { label: 'No games', isDefault: true, resolved: null, leagues: [] } }
+  }
+  const { conditions } = await resolveRange(pool, { ...q, year }, params)
+  return {
+    conditions,
+    range: {
+      label: q.domestic ? `All leagues, ${year}` : `All leagues, ${year} + internationals`,
+      isDefault: true,
+      resolved: { year, split: null },
+      leagues: [],
+    },
+  }
+}
+
 /** Range conditions (aliases pgm, g, t, l, ttl) plus, optionally, `pgm.champion_id = ?`. */
 async function scopeFor(
   pool: pg.Pool,
@@ -45,7 +78,7 @@ async function scopeFor(
 ): Promise<Scope> {
   const params: unknown[] = []
   const filters = { ...q, ...(without.role ? { role: undefined } : {}), ...(without.side ? { side: undefined } : {}) }
-  const { conditions, range } = await resolveRange(pool, filters, params)
+  const { conditions, range } = await resolveChampionRange(pool, filters, params)
   if (championId !== null) conditions.push(`pgm.champion_id = $${params.push(championId)}`)
   return { conditions, params, range }
 }

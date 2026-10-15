@@ -5,15 +5,16 @@ import { pool } from '../src/db.js'
 import { resetDb } from './resetDb.js'
 
 /*
- * LCK 2026 Summer has 10 games, and the default range adds every 2026 international: Worlds 2026 (later) has 2 games
- * and MSI 2026 (it ended before Summer began) has 2 Azir games. A later "Summer Promotion" qualifier has 3 Azir games
- * that must stay out unless asked for. So the default range is 14 games.
+ * The default range is the newest year across every league and international: LCK 2026 Summer has 10 games, LCK 2026
+ * Spring (an earlier split of the same year) has 1 Ahri game, Worlds 2026 (later) has 2 games and MSI 2026 (it ended
+ * before Summer began) has 2 Azir games. A later "Summer Promotion" qualifier has 3 Azir games that must stay out
+ * unless asked for. So the default range is 15 games.
  *  - Azir is picked in Summer games 0-5 by Alpha: "Alpha Mid" in games 0-3 (4 wins), "Sub" in games 4-5 (2 losses),
  *    and in both MSI games (2 wins, patch 26.5).
  *    Every Azir game: 4/2/6, 12000 gold vs the lane opponent's 11000, 1800s, team kills 20. So KDA 5, KP 0.5.
  *    Patches: games 0-2 on 26.9, games 3-5 on 26.10 (numeric order must put 26.10 first).
  *  - The lane opponent plays Zed in games 0-2 (Azir wins all) and Syndra in games 3-5 (Azir wins game 3 only).
- *  - Bravo bans Azir in games 2, 3 and 8, so Azir is banned in 3 of 14 games and present (picked or banned) in 9.
+ *  - Bravo bans Azir in games 2, 3 and 8, so Azir is banned in 3 of 15 games and present (picked or banned) in 9.
  *  - Games 6-9 and the Worlds games: Alpha Mid plays Ahri.
  *  - Outside the default range, for the all-time view: LCK 2025 Summer has 1 Azir game.
  */
@@ -38,6 +39,7 @@ beforeAll(async () => {
        VALUES ($1,$1,$2,$8,$3,$4,$5,$6,$7) RETURNING id`,
       [name, leagueId, split, stage, intl, start, end, year],
     )
+  const spring = await tour('LCK 2026 Spring', 'Spring', 'Regular season', false, lck, '2026-01-10', '2026-02-20')
   const summer = await tour('LCK 2026 Summer', 'Summer', 'Regular season', false, lck, '2026-04-01', '2026-06-01')
   const promo = await tour('LCK 2026 Summer Promotion', 'Summer', 'Qualifier', false, lck, '2026-07-01', '2026-07-10')
   const worlds = await tour('Worlds 2026', null, 'Playoffs', true, null, '2026-10-01', '2026-11-01')
@@ -79,6 +81,7 @@ beforeAll(async () => {
   for (let i = 0; i < 2; i++) {
     await game({ tournament: worlds, at: `2026-10-0${i + 5}T10:00:00Z`, patch: '26.19', opp: charlie, win: false, alphaMid: [mid, ahri], oppMid: zed })
   }
+  await game({ tournament: spring, at: '2026-01-15T10:00:00Z', patch: '26.1', opp: bravo, win: true, alphaMid: [mid, ahri], oppMid: zed })
   for (let i = 0; i < 2; i++) {
     await game({ tournament: msi, at: `2026-03-1${i + 2}T10:00:00Z`, patch: '26.5', opp: charlie, win: true, alphaMid: [mid, azir], oppMid: zed })
   }
@@ -95,7 +98,7 @@ describe('GET /api/champions/:name', () => {
     const { body, status } = await api('/api/champions/Azir')
     expect(status).toBe(200)
     expect(body.champion.name).toBe('Azir')
-    expect(body.range).toMatchObject({ isDefault: true, label: '2026 Summer + internationals' })
+    expect(body.range).toMatchObject({ isDefault: true, label: 'All leagues, 2026 + internationals', resolved: { year: 2026, split: null } })
     // 6 Summer games plus the 2 MSI games, which ended before Summer began but are a 2026 international.
     expect(body.summary.games).toBe(8)
     expect(body.summary.wins).toBe(6)
@@ -105,10 +108,10 @@ describe('GET /api/champions/:name', () => {
 
   it('computes pick, ban and presence rates over every game in the range', async () => {
     const { summary } = (await api('/api/champions/Azir')).body
-    expect(summary.totalGames).toBe(14)
-    expect(summary.pickRate).toBeCloseTo(8 / 14)
-    expect(summary.banRate).toBeCloseTo(3 / 14)
-    expect(summary.presence).toBeCloseTo(9 / 14) // picked in 8 games, banned in one more
+    expect(summary.totalGames).toBe(15)
+    expect(summary.pickRate).toBeCloseTo(8 / 15)
+    expect(summary.banRate).toBeCloseTo(3 / 15)
+    expect(summary.presence).toBeCloseTo(9 / 15) // picked in 8 games, banned in one more
   })
 
   it('computes performance from the raw player rows', async () => {
@@ -155,7 +158,7 @@ describe('range=all (all time)', () => {
     })
     // 6 Summer + 2 MSI + 1 LCK 2025; the default range has only the 2026 games, and the Promotion qualifier stays out.
     expect(body.summary.games).toBe(9)
-    expect(body.summary.totalGames).toBe(15)
+    expect(body.summary.totalGames).toBe(16) // the 15 games of 2026 plus the 2025 game
     expect((await api('/api/champions/Azir')).body.summary.games).toBe(8)
   })
 
@@ -188,13 +191,39 @@ describe('range=all (all time)', () => {
   })
 })
 
-describe('default range internationals', () => {
-  it('includes every international of the newest year, even one that ended before the latest split began', async () => {
-    const withIntl = await api('/api/champions/Azir')
-    expect(withIntl.body.summary.games).toBe(8) // the MSI games ended 2026-03-25, Summer began 2026-04-01
+describe('default range (newest year, all leagues)', () => {
+  it('includes every split of the newest year and every international, even one that ended before the latest split began', async () => {
+    const azir = await api('/api/champions/Azir')
+    expect(azir.body.summary.games).toBe(8) // the MSI games ended 2026-03-25, Summer began 2026-04-01
+    // Ahri: 4 Summer games and 2 Worlds games, plus the earlier Spring game the old latest-split rule left out.
+    const ahri = await api('/api/champions/Ahri')
+    expect(ahri.body.summary.games).toBe(7)
+    expect(ahri.body.summary.totalGames).toBe(15)
+  })
+
+  it('reports the year as resolved so the filter bar can show it, and labels domestic-only', async () => {
+    const { body } = await api('/api/champions/Azir')
+    expect(body.range).toMatchObject({ isDefault: true, resolved: { year: 2026, split: null }, leagues: [] })
     const domestic = await api('/api/champions/Azir?domestic=true')
-    expect(domestic.body.range.label).toBe('2026 Summer')
+    expect(domestic.body.range).toMatchObject({ isDefault: true, label: 'All leagues, 2026' })
     expect(domestic.body.summary.games).toBe(6)
+    expect((await api('/api/champions/Ahri?domestic=true')).body.summary.games).toBe(5) // Worlds drops out
+  })
+
+  it('still lets an explicit filter or range=all replace it', async () => {
+    const split = await api('/api/champions/Ahri?year=2026&split=Spring')
+    expect(split.body.range.isDefault).toBe(false)
+    expect(split.body.summary.games).toBe(1)
+    expect((await api('/api/champions/Azir?range=all')).body.range.label).toBe('All time')
+  })
+
+  it('is shared with the champions list, while the player leaderboard keeps the latest-split default', async () => {
+    const list = await api('/api/champions')
+    expect(list.body.range).toMatchObject({ isDefault: true, label: 'All leagues, 2026 + internationals', resolved: { year: 2026, split: null } })
+    const ahri = list.body.rows.find((r: { name: string }) => r.name === 'Ahri')
+    expect(ahri.games).toBe(7) // the same 7 games as the champion page, Spring included
+    const board = await api('/api/leaderboard/players')
+    expect(board.body.range).toMatchObject({ isDefault: true, label: '2026 Summer + internationals' })
   })
 })
 
