@@ -2,6 +2,7 @@ import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, isAllTime, MIN_SAMPLE } from './filters.js'
 import { likeEscape, STATUS_SQL } from './homeQueries.js'
+import { resolveChampionRange } from './championQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { ka, ok, FROM_CORE, perMin } from './playerQueries.js'
 import type { ResponseCache } from './responseCache.js'
@@ -138,9 +139,9 @@ export interface ChampionListRow {
  */
 export async function loadChampionsList(pool: pg.Pool, q: ChampionsListQuery, cache?: ResponseCache): Promise<ListResult<ChampionListRow>> {
   const mainParams: unknown[] = []
-  const main = await resolveRange(pool, q, mainParams)
+  const main = await resolveChampionRange(pool, q, mainParams)
   const wideParams: unknown[] = []
-  const wide = await resolveRange(pool, { ...q, role: undefined, side: undefined }, wideParams)
+  const wide = await resolveChampionRange(pool, { ...q, role: undefined, side: undefined }, wideParams)
 
   const fetchRows = () => Promise.all([
     pool.query(

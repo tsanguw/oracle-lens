@@ -151,6 +151,20 @@ describe('GET /api/champions', () => {
     expect(body.rows[0].name).toBe('Azir') // highest presence first
   })
 
+  it('defaults to the newest year across every league and international, like the champion page', async () => {
+    const { body } = await api('/api/champions')
+    expect(body.range).toMatchObject({ isDefault: true, label: 'All leagues, 2026 + internationals', resolved: { year: 2026, split: null } })
+    // Worlds 2025 is an older year, so it stays out; the qualifier stays out too.
+    expect(body.rows.find((r: { name: string }) => r.name === 'Azir').games).toBe(9)
+    const domestic = await api('/api/champions?domestic=true')
+    expect(domestic.body.range).toMatchObject({ isDefault: true, label: 'All leagues, 2026' })
+    // The same range drives the rates: role and side only narrow the picks, never the denominator.
+    const mid = await api('/api/champions?role=Mid')
+    expect(mid.body.range.label).toBe('All leagues, 2026 + internationals')
+    // The teams list keeps the latest-split default.
+    expect((await api('/api/teams')).body.range.label).toBe('2026 Summer + internationals')
+  })
+
   it('searches, filters by role, and ranks tiny samples after the rest when sorting by win rate', async () => {
     expect((await api('/api/champions?q=ah')).body.rows.map((r: { name: string }) => r.name)).toEqual(['Ahri'])
     expect((await api('/api/champions?role=Top')).body.empty).toBe(true)
