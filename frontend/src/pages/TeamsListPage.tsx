@@ -36,7 +36,7 @@ export default function TeamsListPage() {
           eyebrow="LCK · LPL · LEC · LCS · CBLOL · LCP + Internationals"
           title="Team leaderboard"
           showing={data?.range.label ?? null}
-          note={`Minimum ${data?.minGames ?? 5} games to be ranked. Qualifiers and promotion series are not considered.`}
+          note={`${data?.range.description ? `${data.range.description}. ` : ''}Minimum ${data?.minGames ?? 5} games to be ranked. Qualifiers and promotion series are not considered.`}
         />
         {data && !data.empty && data.page === 1 && !q && data.rows.length >= 3 && <TeamPodium rows={data.rows.slice(0, 3)} sort={sort} />}
         <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search teams" placeholder="Search teams" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} teams` : undefined} />
@@ -104,7 +104,7 @@ export default function TeamsListPage() {
 
         {data && !data.empty && <Pager page={data.page} pageSize={data.pageSize} total={data.total} noun="ranked teams" onPage={setPage} />}
       </main>
-      <FilterBar params={params} onChange={applyFilters} options={filters.data} range={data?.range ?? null} />
+      <FilterBar params={params} onChange={applyFilters} options={filters.data} range={data?.range ?? null} allTime />
     </>
   )
 }
