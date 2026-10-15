@@ -1,5 +1,5 @@
 import request from 'supertest'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { createApp } from '../src/app.js'
 import { pool } from '../src/db.js'
 import { resetDb } from './resetDb.js'
@@ -181,5 +181,49 @@ describe('GET /api/leaderboard/players (filters, sorting, paging)', () => {
   it('rejects an unknown sort column', async () => {
     const { status } = await api('/api/leaderboard/players?sort=name;drop')
     expect(status).toBe(400)
+  })
+})
+
+describe('all-time response cache', () => {
+  // A separate app that reads the sync stamp on every call, so the test can move it.
+  const cached = request(createApp({ cache: { versionTtlMs: 0 } }))
+  const boardQueries = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls.filter(([sql]) => typeof sql === 'string' && sql.includes('FROM player_game pgm')).length
+
+  it('answers a repeated all-time request from memory and recomputes after the sync stamps new data', async () => {
+    await pool.query(`INSERT INTO meta (key, value) VALUES ('last_synced_at', 'sync-1') ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`)
+    const spy = vi.spyOn(pool, 'query')
+    try {
+      const first = await cached.get('/api/leaderboard/players?range=all')
+      expect(first.status).toBe(200)
+      expect(first.body.range.label).toBe('All time')
+      const second = await cached.get('/api/leaderboard/players?range=all')
+      expect(second.body).toEqual(first.body)
+      expect(boardQueries(spy)).toBe(1)
+
+      // A different page is a different key.
+      await cached.get('/api/leaderboard/players?range=all&page=2&pageSize=2')
+      expect(boardQueries(spy)).toBe(2)
+
+      // The nightly sync stamps a new value: the next request recomputes.
+      await pool.query(`UPDATE meta SET value = 'sync-2' WHERE key = 'last_synced_at'`)
+      await cached.get('/api/leaderboard/players?range=all')
+      expect(boardQueries(spy)).toBe(3)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('does not cache the default range or ranges with a real filter', async () => {
+    const spy = vi.spyOn(pool, 'query')
+    try {
+      await cached.get('/api/leaderboard/players')
+      await cached.get('/api/leaderboard/players')
+      await cached.get('/api/leaderboard/players?range=all&year=2026')
+      await cached.get('/api/leaderboard/players?range=all&year=2026')
+      expect(boardQueries(spy)).toBe(4)
+    } finally {
+      spy.mockRestore()
+    }
   })
 })
