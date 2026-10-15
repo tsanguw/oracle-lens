@@ -1,9 +1,10 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { filterSchema, MIN_SAMPLE } from './filters.js'
+import { filterSchema, isAllTime, MIN_SAMPLE } from './filters.js'
 import { likeEscape, STATUS_SQL } from './homeQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { ka, ok, FROM_CORE, perMin } from './playerQueries.js'
+import type { ResponseCache } from './responseCache.js'
 
 const paging = {
   dir: z.enum(['asc', 'desc']).default('desc'),
@@ -131,14 +132,17 @@ export interface ChampionListRow {
 /**
  * Picks (and the stats that go with them) respect the role and side filters; bans and presence are
  * champion-level and always count every game in the range, as on the champion page.
+ *
+ * Over all history the two queries take over a second, so with a `cache` their rows are kept per filter set
+ * (not per sort, search or page: those are applied below, in memory, on every request).
  */
-export async function loadChampionsList(pool: pg.Pool, q: ChampionsListQuery): Promise<ListResult<ChampionListRow>> {
+export async function loadChampionsList(pool: pg.Pool, q: ChampionsListQuery, cache?: ResponseCache): Promise<ListResult<ChampionListRow>> {
   const mainParams: unknown[] = []
   const main = await resolveRange(pool, q, mainParams)
   const wideParams: unknown[] = []
   const wide = await resolveRange(pool, { ...q, role: undefined, side: undefined }, wideParams)
 
-  const [picks, cover] = await Promise.all([
+  const fetchRows = () => Promise.all([
     pool.query(
       `SELECT c.id, c.name, mode() WITHIN GROUP (ORDER BY pgm.role) AS role,
          COUNT(*)::int AS games, COUNT(*) FILTER (WHERE pgm.win)::int AS wins,
@@ -164,6 +168,11 @@ export async function loadChampionsList(pool: pg.Pool, q: ChampionsListQuery): P
       wideParams,
     ),
   ])
+  const { league, year, split, tournament, patch, range, side, role, domestic, qualifiers } = q
+  const [picks, cover] =
+    cache && isAllTime(q)
+      ? await cache.get(`champions:${JSON.stringify({ league, year, split, tournament, patch, range, side, role, domestic, qualifiers })}`, fetchRows)
+      : await fetchRows()
 
   const byId = new Map<number, { present: number; banned: number; total: number; name: string }>()
   for (const r of cover.rows) byId.set(r.id, r)

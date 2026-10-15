@@ -190,6 +190,7 @@ export default function PlayerPage({ name }: { name: string }) {
         onChange={(next) => setParams(next)}
         options={filters.data}
         range={data?.range ?? null}
+        allTime
       />
     </>
   )

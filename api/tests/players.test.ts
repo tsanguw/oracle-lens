@@ -251,6 +251,46 @@ describe('explicit filters', () => {
   })
 })
 
+describe('range=all (all time)', () => {
+  it('includes every game and labels the range "All time"', async () => {
+    const { body } = await api('/api/players/Pee?range=all')
+    expect(body.range).toMatchObject({ label: 'All time', description: 'Tier 1 leagues and internationals only', isDefault: false, domesticOnly: false, resolved: null })
+    // 2 Spring + 8 Summer + 2 Worlds; the default range leaves Spring out.
+    expect(body.summary.games).toBe(12)
+    expect(body.summary.wins).toBe(7)
+  })
+
+  it('layers domestic=true on top', async () => {
+    const { body } = await api('/api/players/Pee?range=all&domestic=true')
+    expect(body.range).toMatchObject({ label: 'All time', description: 'Tier 1 leagues only, domestic only', domesticOnly: true })
+    expect(body.summary.games).toBe(10)
+  })
+
+  it('layers side on top', async () => {
+    expect((await api('/api/players/Pee?range=all&side=red')).body.summary.games).toBe(4)
+  })
+
+  it('yields to any real range filter', async () => {
+    const { body } = await api('/api/players/Pee?range=all&year=2026&split=Spring')
+    expect(body.range).toMatchObject({ label: '2026 Spring', isDefault: false })
+    expect(body.summary.games).toBe(2)
+    expect((await api('/api/players/Pee?range=all&patch=26.14')).body.summary.games).toBe(4)
+  })
+
+  it('applies to the champion pool, matchups and target bans too', async () => {
+    const pool_ = await api('/api/players/Pee/champions?range=all')
+    expect(pool_.body.range.label).toBe('All time')
+    expect(pool_.body.champions.reduce((a: number, c: { games: number }) => a + c.games, 0)).toBe(12)
+    expect((await api('/api/players/Pee/matchups/players?range=all')).body.range.label).toBe('All time')
+    expect((await api('/api/players/Pee/target-bans?range=all')).body.range.label).toBe('All time')
+  })
+
+  it('leaves URLs without range, and unknown range values, rejected or unchanged', async () => {
+    expect((await api('/api/players/Pee')).body.range.isDefault).toBe(true)
+    expect((await api('/api/players/Pee?range=everything')).status).toBe(400)
+  })
+})
+
 describe('GET /api/players/:id/champions', () => {
   it('lists every champion and flags those under 5 games', async () => {
     const { body } = await api('/api/players/Pee/champions')

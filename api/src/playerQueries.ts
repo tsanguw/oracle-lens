@@ -1,5 +1,5 @@
 import type pg from 'pg'
-import { buildConditions, hasRangeFilter, MIN_SAMPLE, type Filters } from './filters.js'
+import { buildConditions, hasRangeFilter, isAllTime, MIN_SAMPLE, type Filters } from './filters.js'
 
 export interface PlayerRow {
   id: number
@@ -56,7 +56,7 @@ export async function findPlayer(pool: pg.Pool, idOrName: string): Promise<Playe
 }
 
 /**
- * Explicit filters win. With none, use the player's most recent domestic split plus any
+ * Explicit filters win. `range=all` (with no explicit filter) means every game. With neither, use the player's most recent domestic split plus any
  * international events from that split's start onward (unless domestic=true).
  */
 export async function resolveScope(
@@ -78,6 +78,22 @@ export async function resolveScope(
       range: {
         label: parts.length ? parts.join(' ') : 'Selected filters',
         description: filters.domestic ? 'Custom filters, domestic only' : 'Custom filters',
+        isDefault: false,
+        domesticOnly: filters.domestic,
+        from: null,
+        to: null,
+        resolved: null,
+      },
+    }
+  }
+
+  if (isAllTime(filters)) {
+    return {
+      conditions: [...base, ...buildConditions(filters, params)],
+      params,
+      range: {
+        label: 'All time',
+        description: filters.domestic ? 'Tier 1 leagues only, domestic only' : 'Tier 1 leagues and internationals only',
         isDefault: false,
         domesticOnly: filters.domestic,
         from: null,

@@ -145,6 +145,8 @@ export interface LeaderboardRow {
 
 export interface LeaderboardRange {
   label: string
+  /** A line under the label; only the all-time range has one. */
+  description?: string
   isDefault: boolean
   resolved: { year: number; split: string | null } | null
   leagues: { league: string; year: number; split: string | null }[]

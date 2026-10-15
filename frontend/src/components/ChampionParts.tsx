@@ -65,7 +65,9 @@ export function ChampionHeader({ data }: { data: ChampionResponse }) {
             <div className="showing rise" style={rise(7)}>
               <span className="showing__eyebrow">Showing</span>
               <span className="showing__label">{range.label}</span>
-              <span className="showing__desc">Qualifiers and promotion series are not considered</span>
+              <span className="showing__desc">
+                {range.description ? `${range.description}. ` : ''}Qualifiers and promotion series are not considered
+              </span>
             </div>
           </div>
           <ArtCredit stage={stage} />

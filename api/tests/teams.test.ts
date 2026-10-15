@@ -115,6 +115,20 @@ describe('GET /api/teams/:id', () => {
     expect(domestic.body.summary.games).toBe(6)
   })
 
+  it('range=all covers every game, layers domestic=true, and yields to a real filter', async () => {
+    const all = await api('/api/teams/Alpha?range=all')
+    expect(all.body.range).toMatchObject({ label: 'All time', description: 'Tier 1 leagues and internationals only', isDefault: false, resolved: null })
+    expect(all.body.summary.games).toBe(9) // the Spring game and both Worlds games included
+    const domestic = await api('/api/teams/Alpha?range=all&domestic=true')
+    expect(domestic.body.range).toMatchObject({ label: 'All time', description: 'Tier 1 leagues only, domestic only' })
+    expect(domestic.body.summary.games).toBe(7)
+    const spring = await api('/api/teams/Alpha?range=all&year=2026&split=Spring')
+    expect(spring.body.range.label).toBe('2026 Spring')
+    expect(spring.body.summary.games).toBe(1)
+    expect((await api('/api/teams/Alpha/players?range=all')).body.range.label).toBe('All time')
+    expect((await api('/api/teams/Alpha')).body.range.isDefault).toBe(true)
+  })
+
   it('404s for an unknown team', async () => {
     expect((await api('/api/teams/Nobody')).status).toBe(404)
   })

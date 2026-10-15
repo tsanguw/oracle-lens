@@ -3,7 +3,7 @@ import { rateLimit } from 'express-rate-limit'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { z, ZodError } from 'zod'
 import { pool } from './db.js'
-import { filterSchema, listFilterSchema } from './filters.js'
+import { filterSchema, isAllTime, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerAccomplishments } from './playerAccomplishments.js'
 import { loadPlayerContext } from './playerContext.js'
@@ -50,6 +50,7 @@ import {
   teamListFilterSchema,
 } from './teamQueries.js'
 import { leaderboardSchema, loadLeaderboard } from './leaderboardQueries.js'
+import { createResponseCache, type ResponseCacheOptions } from './responseCache.js'
 import {
   findPlayer,
   loadChampionMatchups,
@@ -82,11 +83,14 @@ export interface AppOptions {
   rateLimitPerMinute?: number
   /** Websites allowed to call the API from a browser, comma-separated. Default: CORS_ORIGIN, else every origin. */
   corsOrigin?: string
+  /** Tuning for the response cache (tests use it to read the sync stamp on every call). */
+  cache?: ResponseCacheOptions
 }
 
 export function createApp(options: AppOptions = {}) {
   const app = express()
   app.disable('x-powered-by')
+  const responseCache = createResponseCache(pool, options.cache)
   // Render and Cloudflare sit in front of the API; trust the first proxy so each visitor gets their own rate-limit count.
   app.set('trust proxy', 1)
   const origins = (options.corsOrigin ?? process.env.CORS_ORIGIN ?? '').split(',').map((o) => o.trim()).filter(Boolean)
@@ -290,8 +294,15 @@ export function createApp(options: AppOptions = {}) {
   /** Top players, top teams and recent events for the related-info strip. Ignores the stat filters. */
   championRoute('/context', ({ champion }) => loadChampionContext(pool, champion).then((ctx) => ({ champion, ...ctx })))
 
+  // All-time over every game takes over a second on the small production database, and the answer only
+  // changes when the nightly sync runs, so those responses are kept until the sync stamps new data.
   app.get('/api/leaderboard/players', wrap(async (req, res) => {
-    res.json(await loadLeaderboard(pool, leaderboardSchema.parse(req.query)))
+    const query = leaderboardSchema.parse(req.query)
+    res.json(
+      isAllTime(query)
+        ? await responseCache.get(`leaderboard:${JSON.stringify(query)}`, () => loadLeaderboard(pool, query))
+        : await loadLeaderboard(pool, query),
+    )
   }))
 
   app.get('/api/search', wrap(async (req, res) => {
@@ -315,7 +326,7 @@ export function createApp(options: AppOptions = {}) {
   }))
 
   app.get('/api/champions', wrap(async (req, res) => {
-    res.json(await loadChampionsList(pool, championsListSchema.parse(req.query)))
+    res.json(await loadChampionsList(pool, championsListSchema.parse(req.query), responseCache))
   }))
 
   app.get('/api/tournaments', wrap(async (req, res) => {

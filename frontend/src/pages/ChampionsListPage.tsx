@@ -45,7 +45,7 @@ export default function ChampionsListPage() {
           eyebrow="LCK · LPL · LEC · LCS · CBLOL · LCP + Internationals"
           title="Champions"
           showing={data?.range.label ?? null}
-          note="Presence is the share of games where a champion was picked or banned. Grayed rows have fewer than 5 games. Qualifiers and promotion series are not considered."
+          note={`${data?.range.description ? `${data.range.description}. ` : ''}Presence is the share of games where a champion was picked or banned. Grayed rows have fewer than 5 games. Qualifiers and promotion series are not considered.`}
         />
         {data && !data.empty && data.page === 1 && !q && data.rows.length >= 3 && <ChampionPodium rows={data.rows.slice(0, 3)} sort={sort} />}
         <SearchField value={q} onSearch={(v) => update({ q: v })} label="Search champions" placeholder="Search champions" status={board.loading ? 'Loading results' : board.data ? `${board.data.total.toLocaleString('en-US')} champions` : undefined} />
@@ -106,7 +106,7 @@ export default function ChampionsListPage() {
 
         {data && !data.empty && <Pager page={data.page} pageSize={data.pageSize} total={data.total} noun="champions" onPage={setPage} />}
       </main>
-      <FilterBar params={params} onChange={applyFilters} options={filters.data} range={data?.range ?? null} withRole />
+      <FilterBar params={params} onChange={applyFilters} options={filters.data} range={data?.range ?? null} withRole allTime />
     </>
   )
 }

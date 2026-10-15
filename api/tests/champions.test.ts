@@ -5,14 +5,17 @@ import { pool } from '../src/db.js'
 import { resetDb } from './resetDb.js'
 
 /*
- * LCK 2026 Summer (the default range) has 10 games, Worlds 2026 (international, later) has 2, and a later
- * "Summer Promotion" qualifier has 3 Azir games that must stay out unless asked for. So the default range is 12 games.
- *  - Azir is picked in Summer games 0-5 by Alpha: "Alpha Mid" in games 0-3 (4 wins), "Sub" in games 4-5 (2 losses).
+ * LCK 2026 Summer has 10 games, and the default range adds every 2026 international: Worlds 2026 (later) has 2 games
+ * and MSI 2026 (it ended before Summer began) has 2 Azir games. A later "Summer Promotion" qualifier has 3 Azir games
+ * that must stay out unless asked for. So the default range is 14 games.
+ *  - Azir is picked in Summer games 0-5 by Alpha: "Alpha Mid" in games 0-3 (4 wins), "Sub" in games 4-5 (2 losses),
+ *    and in both MSI games (2 wins, patch 26.5).
  *    Every Azir game: 4/2/6, 12000 gold vs the lane opponent's 11000, 1800s, team kills 20. So KDA 5, KP 0.5.
  *    Patches: games 0-2 on 26.9, games 3-5 on 26.10 (numeric order must put 26.10 first).
  *  - The lane opponent plays Zed in games 0-2 (Azir wins all) and Syndra in games 3-5 (Azir wins game 3 only).
- *  - Bravo bans Azir in games 2, 3 and 8, so Azir is banned in 3 of 12 games and present (picked or banned) in 7.
+ *  - Bravo bans Azir in games 2, 3 and 8, so Azir is banned in 3 of 14 games and present (picked or banned) in 9.
  *  - Games 6-9 and the Worlds games: Alpha Mid plays Ahri.
+ *  - Outside the default range, for the all-time view: LCK 2025 Summer has 1 Azir game.
  */
 
 const app = createApp()
@@ -29,15 +32,17 @@ beforeAll(async () => {
   const [mid, sub, oppMid] = [await player('Alpha Mid'), await player('Sub'), await player('Opp Mid')]
   const champ = (name: string) => one(`INSERT INTO champion (name) VALUES ($1) RETURNING id`, [name])
   const [azir, ahri, zed, syndra] = [await champ('Azir'), await champ('Ahri'), await champ('Zed'), await champ('Syndra')]
-  const tour = (name: string, split: string | null, stage: string, intl: boolean, leagueId: number | null, start: string, end: string) =>
+  const tour = (name: string, split: string | null, stage: string, intl: boolean, leagueId: number | null, start: string, end: string, year = 2026) =>
     one(
       `INSERT INTO tournament (leaguepedia_name, name, league_id, year, split, stage, is_international, start_date, end_date)
-       VALUES ($1,$1,$2,2026,$3,$4,$5,$6,$7) RETURNING id`,
-      [name, leagueId, split, stage, intl, start, end],
+       VALUES ($1,$1,$2,$8,$3,$4,$5,$6,$7) RETURNING id`,
+      [name, leagueId, split, stage, intl, start, end, year],
     )
   const summer = await tour('LCK 2026 Summer', 'Summer', 'Regular season', false, lck, '2026-04-01', '2026-06-01')
   const promo = await tour('LCK 2026 Summer Promotion', 'Summer', 'Qualifier', false, lck, '2026-07-01', '2026-07-10')
   const worlds = await tour('Worlds 2026', null, 'Playoffs', true, null, '2026-10-01', '2026-11-01')
+  const msi = await tour('MSI 2026', null, 'Playoffs', true, null, '2026-03-10', '2026-03-25')
+  const summer25 = await tour('LCK 2025 Summer', 'Summer', 'Regular season', false, lck, '2025-04-01', '2025-06-01', 2025)
 
   const game = async (o: {
     tournament: number; at: string; patch: string; opp: number; win: boolean
@@ -74,6 +79,10 @@ beforeAll(async () => {
   for (let i = 0; i < 2; i++) {
     await game({ tournament: worlds, at: `2026-10-0${i + 5}T10:00:00Z`, patch: '26.19', opp: charlie, win: false, alphaMid: [mid, ahri], oppMid: zed })
   }
+  for (let i = 0; i < 2; i++) {
+    await game({ tournament: msi, at: `2026-03-1${i + 2}T10:00:00Z`, patch: '26.5', opp: charlie, win: true, alphaMid: [mid, azir], oppMid: zed })
+  }
+  await game({ tournament: summer25, at: '2025-04-12T10:00:00Z', patch: '25.8', opp: bravo, win: false, alphaMid: [mid, azir], oppMid: zed })
   for (let i = 0; i < 3; i++) {
     await game({ tournament: promo, at: `2026-07-0${i + 2}T10:00:00Z`, patch: '26.14', opp: charlie, win: true, alphaMid: [mid, azir], oppMid: zed })
   }
@@ -87,18 +96,19 @@ describe('GET /api/champions/:name', () => {
     expect(status).toBe(200)
     expect(body.champion.name).toBe('Azir')
     expect(body.range).toMatchObject({ isDefault: true, label: '2026 Summer + internationals' })
-    expect(body.summary.games).toBe(6)
-    expect(body.summary.wins).toBe(4)
-    expect(body.summary.winRate).toBeCloseTo(4 / 6)
+    // 6 Summer games plus the 2 MSI games, which ended before Summer began but are a 2026 international.
+    expect(body.summary.games).toBe(8)
+    expect(body.summary.wins).toBe(6)
+    expect(body.summary.winRate).toBeCloseTo(6 / 8)
     expect(body.summary.role).toBe('Mid')
   })
 
   it('computes pick, ban and presence rates over every game in the range', async () => {
     const { summary } = (await api('/api/champions/Azir')).body
-    expect(summary.totalGames).toBe(12)
-    expect(summary.pickRate).toBeCloseTo(6 / 12)
-    expect(summary.banRate).toBeCloseTo(3 / 12)
-    expect(summary.presence).toBeCloseTo(7 / 12) // picked in 6 games, banned in one more
+    expect(summary.totalGames).toBe(14)
+    expect(summary.pickRate).toBeCloseTo(8 / 14)
+    expect(summary.banRate).toBeCloseTo(3 / 14)
+    expect(summary.presence).toBeCloseTo(9 / 14) // picked in 8 games, banned in one more
   })
 
   it('computes performance from the raw player rows', async () => {
@@ -109,7 +119,7 @@ describe('GET /api/champions/:name', () => {
     expect(summary.goldPerMin).toBeCloseTo(400)
     expect(summary.csPerMin).toBeCloseTo(9)
     expect(summary.avgGameLengthSec).toBeCloseTo(1800)
-    expect(summary.blueGames).toBe(6)
+    expect(summary.blueGames).toBe(8)
   })
 
   it('includes qualifiers only when asked, and honours explicit filters', async () => {
@@ -134,33 +144,87 @@ describe('GET /api/champions/:name', () => {
   })
 })
 
+describe('range=all (all time)', () => {
+  it('includes games outside the default range, such as an older year', async () => {
+    const { body } = await api('/api/champions/Azir?range=all')
+    expect(body.range).toMatchObject({
+      label: 'All time',
+      description: 'Tier 1 leagues and internationals only',
+      isDefault: false,
+      resolved: null,
+    })
+    // 6 Summer + 2 MSI + 1 LCK 2025; the default range has only the 2026 games, and the Promotion qualifier stays out.
+    expect(body.summary.games).toBe(9)
+    expect(body.summary.totalGames).toBe(15)
+    expect((await api('/api/champions/Azir')).body.summary.games).toBe(8)
+  })
+
+  it('adds qualifiers only when asked, and layers domestic and role on top', async () => {
+    expect((await api('/api/champions/Azir?range=all&qualifiers=true')).body.summary.games).toBe(12)
+    const domestic = await api('/api/champions/Azir?range=all&domestic=true')
+    expect(domestic.body.range.description).toBe('Tier 1 leagues only, domestic only')
+    expect(domestic.body.summary.games).toBe(7) // the MSI games drop out
+    expect((await api('/api/champions/Azir?range=all&role=Top')).body.empty).toBe(true)
+  })
+
+  it('yields to any real range filter', async () => {
+    const { body } = await api('/api/champions/Azir?range=all&year=2025')
+    expect(body.range).toMatchObject({ label: '2025', isDefault: false })
+    expect(body.summary.games).toBe(1)
+  })
+
+  it('applies to every champion sub-endpoint', async () => {
+    for (const path of ['roles', 'players', 'teams', 'matchups', 'patches']) {
+      const { body, status } = await api(`/api/champions/Azir/${path}?range=all`)
+      expect(status).toBe(200)
+      expect(body.range?.label ?? 'All time').toBe('All time')
+    }
+    const patches = (await api('/api/champions/Azir/patches?range=all')).body.patches
+    expect(patches.map((p: { patch: string }) => p.patch)).toContain('25.8')
+  })
+
+  it('leaves URLs without range on the default range', async () => {
+    expect((await api('/api/champions/Azir')).body.range.isDefault).toBe(true)
+  })
+})
+
+describe('default range internationals', () => {
+  it('includes every international of the newest year, even one that ended before the latest split began', async () => {
+    const withIntl = await api('/api/champions/Azir')
+    expect(withIntl.body.summary.games).toBe(8) // the MSI games ended 2026-03-25, Summer began 2026-04-01
+    const domestic = await api('/api/champions/Azir?domestic=true')
+    expect(domestic.body.range.label).toBe('2026 Summer')
+    expect(domestic.body.summary.games).toBe(6)
+  })
+})
+
 describe('GET /api/champions/:name/... lists', () => {
   it('lists the players with the most games on the champion', async () => {
     const { body } = await api('/api/champions/Azir/players')
     expect(body.players.map((p: { name: string }) => p.name)).toEqual(['Alpha Mid', 'Sub'])
-    expect(body.players[0]).toMatchObject({ team: 'Alpha', games: 4, wins: 4, underMinSample: true })
+    expect(body.players[0]).toMatchObject({ team: 'Alpha', games: 6, wins: 6, underMinSample: false })
     expect(body.players[0].kda).toBeCloseTo(5)
   })
 
   it('lists teams, and the lane opponent champions with records and gold difference', async () => {
     const teams = (await api('/api/champions/Azir/teams')).body.teams
-    expect(teams).toEqual([expect.objectContaining({ name: 'Alpha', games: 6, wins: 4 })])
+    expect(teams).toEqual([expect.objectContaining({ name: 'Alpha', games: 8, wins: 6 })])
     const { matchups } = (await api('/api/champions/Azir/matchups')).body
-    expect(matchups.map((m: { champion: string }) => m.champion)).toEqual(['Syndra', 'Zed'])
-    expect(matchups[0]).toMatchObject({ games: 3, wins: 1, losses: 2 })
-    expect(matchups[1]).toMatchObject({ games: 3, wins: 3 })
+    expect(matchups.map((m: { champion: string }) => m.champion)).toEqual(['Zed', 'Syndra'])
+    expect(matchups[0]).toMatchObject({ games: 5, wins: 5 }) // 3 Summer games plus the 2 MSI games
+    expect(matchups[1]).toMatchObject({ games: 3, wins: 1, losses: 2 })
     expect(matchups[0].goldDiff).toBeCloseTo(1000)
     expect((await api('/api/champions/Azir/matchups?limit=1')).body.matchups).toHaveLength(1)
   })
 
   it('breaks results down by role, ignoring the role filter', async () => {
     const { body } = await api('/api/champions/Azir/roles?role=Top')
-    expect(body.roles).toEqual([{ role: 'Mid', games: 6, wins: 4, winRate: 4 / 6 }])
+    expect(body.roles).toEqual([{ role: 'Mid', games: 8, wins: 6, winRate: 6 / 8 }])
   })
 
   it('breaks results down by patch in numeric order with pick rate per patch', async () => {
     const { patches } = (await api('/api/champions/Azir/patches')).body
-    expect(patches.map((p: { patch: string }) => p.patch)).toEqual(['26.10', '26.9'])
+    expect(patches.map((p: { patch: string }) => p.patch)).toEqual(['26.10', '26.9', '26.5'])
     expect(patches[0]).toMatchObject({ games: 3, wins: 1 })
     expect(patches[0].pickRate).toBeCloseTo(3 / 7) // 26.10 covers Summer games 3-9 (7 games); Azir is picked in 3 of them
   })

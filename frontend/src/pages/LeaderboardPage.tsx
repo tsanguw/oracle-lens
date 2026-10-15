@@ -57,7 +57,8 @@ export default function LeaderboardPage() {
   /**
    * Choosing a league/year/split/patch replaces the default range, so while the default is showing
    * the resolved year and split are pinned into the URL first. The change then narrows the view
-   * instead of silently widening it to all time.
+   * instead of silently widening it to all time. Clearing the last of them sets `range=all` (all
+   * history); choosing any of them drops it again.
    */
   const update = (changes: Record<string, string>, resetPage = true) => {
     const next = new URLSearchParams(params)
@@ -77,7 +78,14 @@ export default function LeaderboardPage() {
       else next.delete(k)
     }
     if (resetPage) next.delete('page')
-    setParams(rangeKeys.some((k) => k in changes) ? dropInvalid(next, filters.data) : next)
+    if (!rangeKeys.some((k) => k in changes)) {
+      setParams(next)
+      return
+    }
+    dropInvalid(next, filters.data)
+    if (['league', 'year', 'split', 'tournament', 'patch'].some((k) => next.get(k))) next.delete('range')
+    else next.set('range', 'all')
+    setParams(next)
   }
 
   const shown = (key: 'league' | 'year' | 'split'): string => {
@@ -117,6 +125,7 @@ export default function LeaderboardPage() {
         <div className="showing">
           <span className="showing__eyebrow">Showing</span>
           <span className="showing__label">{range?.label ?? ' '}</span>
+          {range?.description && <span className="showing__desc">{range.description}</span>}
         </div>
       </section>
       {data && !data.empty && data.page === 1 && !params.get('q') && data.players.length >= 3 && (
@@ -235,7 +244,7 @@ export default function LeaderboardPage() {
         </nav>
       )}
     </main>
-      <FilterDock showing={range?.label ?? null}>
+      <FilterDock showing={range?.label ?? null} note={range?.label === 'All time' ? range.description : undefined}>
         {selects.map(({ key, label, blank, values }) => {
           const value = key === 'league' || key === 'year' || key === 'split' ? shown(key) : (params.get(key) ?? '')
           const all = value && !values.includes(value) ? [value, ...values] : values
