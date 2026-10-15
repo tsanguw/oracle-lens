@@ -157,6 +157,7 @@ export default function ChampionPage({ name }: { name: string }) {
         options={filters.data}
         range={data?.range ?? null}
         withRole
+        allTime
       />
     </>
   )
