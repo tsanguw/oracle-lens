@@ -113,6 +113,27 @@ describe('GET /api/teams', () => {
     expect(intl.body.rows).toEqual([]) // one game each: under the minimum
     expect((await api('/api/teams?sort=name')).status).toBe(400)
   })
+
+  it('range=all ranks every game, layers domestic on top and yields to a real filter', async () => {
+    const all = await api('/api/teams?range=all')
+    expect(all.body.range).toMatchObject({
+      label: 'All time',
+      description: 'Tier 1 leagues and internationals only',
+      isDefault: false,
+    })
+    // The 2025 Worlds game counts now (Bravo wins it); the qualifier still stays out.
+    expect(all.body.rows.map((r: { name: string }) => r.name)).toEqual(['Alpha', 'Bravo'])
+    expect(all.body.rows[0]).toMatchObject({ name: 'Alpha', games: 10, wins: 8 })
+    expect(all.body.rows[1]).toMatchObject({ name: 'Bravo', games: 8, wins: 2 })
+    const domestic = await api('/api/teams?range=all&domestic=true')
+    expect(domestic.body.range.description).toBe('Tier 1 leagues only, domestic only')
+    expect(domestic.body.rows[0]).toMatchObject({ name: 'Alpha', games: 9 })
+    const withQualifiers = await api('/api/teams?range=all&qualifiers=true')
+    expect(withQualifiers.body.rows.find((r: { name: string }) => r.name === 'Alpha').games).toBeGreaterThan(10)
+    const year = await api('/api/teams?range=all&year=2025')
+    expect(year.body.range).toMatchObject({ label: '2025', isDefault: false })
+    expect(year.body.rows).toEqual([])
+  })
 })
 
 describe('GET /api/champions', () => {
