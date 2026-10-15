@@ -8,6 +8,8 @@ export const filterSchema = z.object({
   split: z.string().min(1).optional(),
   tournament: z.string().min(1).optional(),
   patch: z.string().min(1).optional(),
+  /** `all` asks for every game instead of the default range; any real range filter overrides it. */
+  range: z.enum(['all']).optional(),
   side: z.enum(['blue', 'red']).optional(),
   role: z.enum(['Top', 'Jungle', 'Mid', 'Bot', 'Support']).optional(),
   domestic: z
@@ -26,6 +28,9 @@ export type Filters = z.infer<typeof filterSchema>
 /** True when the visitor chose a league/year/split/tournament/patch, which replaces the default range. */
 export const hasRangeFilter = (f: Filters): boolean =>
   Boolean(f.league || f.year || f.split || f.tournament || f.patch)
+
+/** True when the visitor asked for all history and chose no range filter that would narrow it. */
+export const isAllTime = (f: Filters): boolean => f.range === 'all' && !hasRangeFilter(f)
 
 /**
  * Builds WHERE fragments over the standard aliases:

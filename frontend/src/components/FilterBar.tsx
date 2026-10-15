@@ -10,13 +10,18 @@ type Key = 'league' | 'year' | 'split' | 'patch' | 'side' | 'role'
 /** Choosing one of these replaces the default range; side and role only narrow the games within it. */
 const RANGE_KEYS: Key[] = ['league', 'year', 'split', 'patch']
 
+/** Everything that replaces the default range in the API, `tournament` included (it only arrives by URL). */
+const RANGE_PARAMS = ['league', 'year', 'split', 'tournament', 'patch']
+
 interface Props {
   params: URLSearchParams
   onChange: (next: URLSearchParams) => void
   options: FiltersResponse | null
-  range: (FilterRange & { label: string }) | null
+  range: (FilterRange & { label: string; description?: string }) | null
   /** Offer a role filter (champion pages). Player and team pages have no role select. */
   withRole?: boolean
+  /** The page's API understands `range=all`: clearing the last range filter then shows all history. */
+  allTime?: boolean
 }
 
 /**
@@ -24,9 +29,10 @@ interface Props {
  * default range (no params), the selects display what that range resolved to; changing a range
  * filter pins those resolved values into the URL first so the change narrows the view instead of
  * silently widening it to all time. Picking a league on a default range that spans several
- * leagues keeps that league's own latest split.
+ * leagues keeps that league's own latest split. Clearing the last range filter sets `range=all`
+ * (all history); choosing any range filter drops it again.
  */
-export default function FilterBar({ params, onChange, options, range, withRole = false }: Props) {
+export default function FilterBar({ params, onChange, options, range, withRole = false, allTime = false }: Props) {
   const pinned = (key: Key, value: string): URLSearchParams => {
     const next = new URLSearchParams(params)
     if (range?.isDefault && RANGE_KEYS.includes(key)) {
@@ -57,7 +63,16 @@ export default function FilterBar({ params, onChange, options, range, withRole =
     const next = pinned(key, value)
     if (value) next.set(key, value)
     else next.delete(key)
-    onChange(RANGE_KEYS.includes(key) ? dropInvalid(next, options) : next)
+    if (!RANGE_KEYS.includes(key)) {
+      onChange(next)
+      return
+    }
+    dropInvalid(next, options)
+    if (allTime) {
+      if (RANGE_PARAMS.some((k) => next.get(k))) next.delete('range')
+      else next.set('range', 'all')
+    }
+    onChange(next)
   }
 
   const league = shown('league')
@@ -72,7 +87,7 @@ export default function FilterBar({ params, onChange, options, range, withRole =
   ]
 
   return (
-    <FilterDock showing={range?.label ?? null}>
+    <FilterDock showing={range?.label ?? null} note={allTime && range?.label === 'All time' ? range.description : undefined}>
       {selects.map(({ key, label, blank, values }) => {
         const value = shown(key)
         // Keep a resolved value selectable even if the options list has not loaded yet.

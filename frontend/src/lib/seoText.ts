@@ -9,6 +9,9 @@ export interface Seo {
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`
 
+/** "in LCK 2026 Summer", or "across all of history" for the all-time range. */
+const inRange = (label: string) => (label === 'All time' ? 'across all of history' : `in ${label}`)
+
 export function playerSeo(name: string, data: PlayerResponse | null | undefined): Seo {
   const title = `${data?.player.displayName ?? name} stats: win rate, KDA and champion pool`
   const p = data?.player
@@ -17,7 +20,7 @@ export function playerSeo(name: string, data: PlayerResponse | null | undefined)
   const who = [p.team, p.role].filter(Boolean).join(', ')
   return {
     title,
-    description: `${p.displayName}${who ? ` (${who})` : ''}: ${percent(s.winRate)} win rate and ${decimal(s.kda)} KDA over ${plural(s.games, 'game')} in ${data.range.label}. Champion pool, lane matchups and target bans.`,
+    description: `${p.displayName}${who ? ` (${who})` : ''}: ${percent(s.winRate)} win rate and ${decimal(s.kda)} KDA over ${plural(s.games, 'game')} ${inRange(data.range.label)}. Champion pool, lane matchups and target bans.`,
   }
 }
 
@@ -28,7 +31,7 @@ export function teamSeo(name: string, data: TeamResponse | null | undefined): Se
   const league = data.team.league ? ` (${data.team.league})` : ''
   return {
     title,
-    description: `${name}${league}: ${percent(s.winRate)} win rate over ${plural(s.games, 'game')} in ${data.range.label}. Roster, draft tendencies and records against every opponent.`,
+    description: `${name}${league}: ${percent(s.winRate)} win rate over ${plural(s.games, 'game')} ${inRange(data.range.label)}. Roster, draft tendencies and records against every opponent.`,
   }
 }
 
