@@ -10,6 +10,7 @@ const TABS = [
   { to: '/teams', label: 'Teams' },
   { to: '/champions', label: 'Champions' },
   { to: '/tournaments', label: 'Tournaments' },
+  { to: '/compare', label: 'Versus' },
 ]
 
 /** Puts keyboard and screen-reader focus on the page content. */

@@ -1,5 +1,5 @@
 import { lazy } from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
 import { detailPages, listPages } from './lib/routeChunks'
@@ -14,6 +14,8 @@ const PlayerRoute = lazy(() => detailPages().then((m) => ({ default: m.PlayerRou
 const TeamRoute = lazy(() => detailPages().then((m) => ({ default: m.TeamRoute })))
 const ChampionRoute = lazy(() => detailPages().then((m) => ({ default: m.ChampionRoute })))
 const TournamentRoute = lazy(() => detailPages().then((m) => ({ default: m.TournamentRoute })))
+const ComparePlayersRoute = lazy(() => detailPages().then((m) => ({ default: m.ComparePlayersRoute })))
+const CompareTeamsRoute = lazy(() => detailPages().then((m) => ({ default: m.CompareTeamsRoute })))
 
 export default function App() {
   return (
@@ -28,6 +30,9 @@ export default function App() {
         <Route path="/teams/:name" element={<TeamRoute />} />
         <Route path="/champions/:name" element={<ChampionRoute />} />
         <Route path="/tournaments/:id" element={<TournamentRoute />} />
+        <Route path="/compare" element={<Navigate to="/compare/players" replace />} />
+        <Route path="/compare/players/:a?/:b?" element={<ComparePlayersRoute />} />
+        <Route path="/compare/teams/:a?/:b?" element={<CompareTeamsRoute />} />
         <Route path="*" element={<ComingSoon title="Page not found" />} />
       </Route>
     </Routes>

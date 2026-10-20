@@ -317,10 +317,18 @@
     border-bottom: 0;
   }
 }
-@media (max-width: 360px) {
+/* Five tabs (Compare is the fifth) have to fit one row on a phone. */
+@media (max-width: 520px) {
   .tabs__link {
     font-size: 14px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.03em;
+    padding: 10px 4px;
+  }
+}
+@media (max-width: 360px) {
+  .tabs__link {
+    font-size: 13px;
+    letter-spacing: 0.02em;
     padding: 10px 3px;
   }
 }

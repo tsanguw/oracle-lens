@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import type { ChampionRow, ContextMatch, PlayerResponse } from '../api/types'
 import { decimal, NA, percent, rate } from '../lib/format'
 import { ChampionPicker, StageBackdrop, StageMotion, stageClass, useChampionStage } from './ChampionStage'
@@ -11,6 +11,7 @@ const rise = (n: number) => ({ ['--i' as string]: n }) as CSSProperties
 
 export default function PlayerHeader({ data, champions, results }: { data: PlayerResponse; champions?: ChampionRow[]; results?: ContextMatch[] }) {
   const { player, range, summary } = data
+  const { search } = useLocation()
   const stage = useChampionStage(champions)
   const run = stage.entered
 
@@ -66,6 +67,9 @@ export default function PlayerHeader({ data, champions, results }: { data: Playe
                     <SeriesStrip results={results} />
                   </>
                 )}
+                <Link to={`/compare/players/${encodeURIComponent(player.name)}${search}`} className="hero__compare rise" style={rise(6)}>
+                  Compare<span className="sr-only"> {player.displayName} with another player</span>
+                </Link>
               </div>
             </div>
             <div className="showing rise" style={rise(7)}>
