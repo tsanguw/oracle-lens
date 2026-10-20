@@ -3,6 +3,7 @@ import { rateLimit } from 'express-rate-limit'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { z, ZodError } from 'zod'
 import { pool } from './db.js'
+import { comparePlayersSchema, compareTeamsSchema, loadComparePlayers, loadCompareTeams } from './compareQueries.js'
 import { filterSchema, isAllTime, listFilterSchema } from './filters.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerAccomplishments } from './playerAccomplishments.js'
@@ -250,6 +251,36 @@ export function createApp(options: AppOptions = {}) {
       return
     }
     res.json({ team, ...(await loadTeamContext(pool, team.id)) })
+  }))
+
+  /** Two players on one shared range, with their head-to-head. 404 names the side that is unknown; the same player twice is a 400. */
+  app.get('/api/compare/players/:a/:b', wrap(async (req, res) => {
+    const filters = comparePlayersSchema.parse(req.query)
+    const [a, b] = await Promise.all([findPlayer(pool, String(req.params.a)), findPlayer(pool, String(req.params.b))])
+    if (!a || !b) {
+      res.status(404).json({ error: `Player not found: ${!a ? 'a' : 'b'}` })
+      return
+    }
+    if (a.id === b.id) {
+      res.status(400).json({ error: 'Pick two different players' })
+      return
+    }
+    res.json(await loadComparePlayers(pool, a, b, filters))
+  }))
+
+  /** Two teams on one shared range, with their head-to-head. Same error rules as the player comparison. */
+  app.get('/api/compare/teams/:a/:b', wrap(async (req, res) => {
+    const filters = compareTeamsSchema.parse(req.query)
+    const [a, b] = await Promise.all([findTeam(pool, String(req.params.a)), findTeam(pool, String(req.params.b))])
+    if (!a || !b) {
+      res.status(404).json({ error: `Team not found: ${!a ? 'a' : 'b'}` })
+      return
+    }
+    if (a.id === b.id) {
+      res.status(400).json({ error: 'Pick two different teams' })
+      return
+    }
+    res.json(await loadCompareTeams(pool, a, b, filters))
   }))
 
   /** Resolves :name to a champion and hands its parsed filters to `load`, or sends 404. */
