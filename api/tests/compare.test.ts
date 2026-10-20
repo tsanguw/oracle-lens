@@ -208,8 +208,33 @@ describe('GET /api/compare/teams/:a/:b', () => {
     expect(body.a.team).toMatchObject({ name: 'Alpha', league: 'LCK' })
     expect(body.a.summary).toMatchObject({ games: 4, wins: 2 })
     expect(body.b.summary).toMatchObject({ games: 3, wins: 1 })
-    expect(body.a.players.map((p: { name: string }) => p.name)).toEqual(['Alpha Top', 'Alpha Mid'])
+    // Alpha's last game in the range is at Worlds, where only Alpha Mid played, so Alpha Top is a former player.
+    expect(body.a.players.map((p: { name: string }) => p.name)).toEqual(['Alpha Mid', 'Alpha Top'])
     expect(body.b.players.map((p: { name: string }) => p.name)).toEqual(['Bravo Mid'])
+  })
+
+  it('splits the lineup into the roster and former players, and the roster follows the range', async () => {
+    const now = (await api('/api/compare/teams/Alpha/Bravo')).body.a
+    expect(now.rosterEvent).toEqual({ name: 'Worlds 2026', isLatest: true })
+    expect(now.players.map((p: { name: string; current: boolean }) => [p.name, p.current])).toEqual([
+      ['Alpha Mid', true],
+      ['Alpha Top', false],
+    ])
+    expect(now.players[0]).toMatchObject({ games: 4, role: 'Mid' })
+
+    // Narrowed to the league split, the last event is the LCK one: both played in it, so both are the roster, and it is not the latest.
+    const then = (await api('/api/compare/teams/Alpha/Bravo?league=LCK&year=2026')).body.a
+    expect(then.rosterEvent).toEqual({ name: 'LCK 2026 Summer', isLatest: false })
+    expect(then.players.map((p: { name: string; current: boolean }) => [p.name, p.current])).toEqual([
+      ['Alpha Top', true],
+      ['Alpha Mid', true],
+    ])
+  })
+
+  it('has no roster event when the range holds no games', async () => {
+    const { body } = await api('/api/compare/teams/Alpha/Bravo?year=1999')
+    expect(body.a.players).toEqual([])
+    expect(body.a.rosterEvent).toBeNull()
   })
 
   it('lists each team’s most picked champions for the page header slideshow', async () => {

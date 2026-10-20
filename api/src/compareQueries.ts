@@ -1,7 +1,11 @@
 import type pg from 'pg'
 import { filterSchema, hasRangeFilter, isAllTime, MIN_SAMPLE, type Filters } from './filters.js'
 import {
+  FROM,
   FROM_CORE,
+  ka,
+  ok,
+  perMin,
   loadChampionPool,
   loadIdentity,
   loadSummary,
@@ -16,8 +20,8 @@ import {
 import {
   base,
   loadTeamLeague,
-  loadTeamPlayers,
   loadTeamSummary,
+  ROLE_ORDER,
   teamFilterSchema,
   type TeamPick,
   type TeamPlayerRow,
@@ -160,9 +164,16 @@ export async function loadComparePlayers(pool: pg.Pool, a: PlayerRow, b: PlayerR
 export interface CompareTeamSide {
   team: TeamRow & { league: string | null }
   summary: TeamSummary | null
-  players: TeamPlayerRow[]
+  players: LineupPlayer[]
+  /** The event whose lineup counts as the roster, and whether it is the team's latest event overall; null with no games. */
+  rosterEvent: { name: string; isLatest: boolean } | null
   /** The team's most picked champions, for the slideshow in the page header. */
   picks: TeamPick[]
+}
+
+export interface LineupPlayer extends TeamPlayerRow {
+  /** On the roster: played in the event of the team's last game in the range. Everyone else in the range is a former player. */
+  current: boolean
 }
 
 export interface TeamMeeting {
@@ -238,16 +249,65 @@ async function loadTeamPicks(pool: pg.Pool, scope: PlayerScope): Promise<TeamPic
   return rows.map((r) => ({ ...r, winRate: r.wins / r.games, underMinSample: r.games < MIN_SAMPLE }))
 }
 
+/**
+ * Everyone who played for the team in the range, split into the roster and former players. The roster is the same rule as the
+ * team page ("who played in the event of its most recent game"), applied inside the range, so narrowing the range to an
+ * earlier year gives the roster the team had then. Roster first, each group in role order.
+ */
+export async function loadTeamLineup(
+  pool: pg.Pool,
+  scope: PlayerScope,
+): Promise<{ players: LineupPlayer[]; rosterEvent: CompareTeamSide['rosterEvent'] }> {
+  const where = scope.conditions.join(' AND ')
+  const { rows } = await pool.query(
+    `WITH last_event AS (
+       SELECT g.tournament_id ${FROM} WHERE ${where} ORDER BY g.played_at DESC NULLS LAST LIMIT 1)
+     SELECT p.name AS page, COALESCE(p.display_name, p.name) AS name,
+       mode() WITHIN GROUP (ORDER BY pgm.role) AS role,
+       COUNT(*)::int AS games,
+       COUNT(*) FILTER (WHERE pgm.win)::int AS wins,
+       CASE WHEN SUM(pgm.deaths) FILTER (WHERE ${ok}) = 0
+            THEN SUM(${ka}) FILTER (WHERE ${ok})::float8
+            ELSE SUM(${ka}) FILTER (WHERE ${ok})::float8 / NULLIF(SUM(pgm.deaths) FILTER (WHERE ${ok}), 0)
+       END AS kda,
+       SUM(${ka}) FILTER (WHERE ${ok} AND tg.kills IS NOT NULL)::float8
+         / NULLIF(SUM(tg.kills) FILTER (WHERE ${ok} AND tg.kills IS NOT NULL), 0) AS "killParticipation",
+       ${perMin('pgm.damage')} AS "damagePerMin",
+       ${perMin('pgm.cs')} AS "csPerMin",
+       bool_or(g.tournament_id = (SELECT tournament_id FROM last_event)) AS current
+     ${FROM}
+     JOIN player p ON p.id = pgm.player_id
+     WHERE ${where}
+     GROUP BY p.id
+     ORDER BY bool_or(g.tournament_id = (SELECT tournament_id FROM last_event)) DESC, ${ROLE_ORDER}, COUNT(*) DESC, p.name`,
+    scope.params,
+  )
+  const players: LineupPlayer[] = rows.map((r) => ({ ...r, winRate: r.wins / r.games, underMinSample: r.games < MIN_SAMPLE }))
+  if (players.length === 0) return { players, rosterEvent: null }
+  // $1 is the team in every team scope.
+  const event = await pool.query(
+    `WITH scoped AS (
+       SELECT g.tournament_id ${FROM} WHERE ${where} ORDER BY g.played_at DESC NULLS LAST LIMIT 1),
+     overall AS (
+       SELECT g.tournament_id FROM team_game tg JOIN game g ON g.id = tg.game_id
+       WHERE tg.team_id = $1 ORDER BY g.played_at DESC NULLS LAST LIMIT 1)
+     SELECT t.name, t.id = (SELECT tournament_id FROM overall) AS "isLatest"
+     FROM tournament t WHERE t.id = (SELECT tournament_id FROM scoped)`,
+    scope.params,
+  )
+  return { players, rosterEvent: event.rows[0] ?? null }
+}
+
 export async function loadCompareTeams(pool: pg.Pool, a: TeamRow, b: TeamRow, filters: Filters) {
   const scopes = await resolveCompareScopes(pool, a.id, b.id, filters, 'team_id')
   const side = async (team: TeamRow, scope: PlayerScope): Promise<CompareTeamSide> => {
-    const [summary, league, players, picks] = await Promise.all([
+    const [summary, league, lineup, picks] = await Promise.all([
       loadTeamSummary(pool, scope),
       loadTeamLeague(pool, scope),
-      loadTeamPlayers(pool, scope),
+      loadTeamLineup(pool, scope),
       loadTeamPicks(pool, scope),
     ])
-    return { team: { ...team, league }, summary, players, picks }
+    return { team: { ...team, league }, summary, ...lineup, picks }
   }
   const [sa, sb, headToHead] = await Promise.all([
     side(a, scopes.a),

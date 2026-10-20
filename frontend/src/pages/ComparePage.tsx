@@ -2,11 +2,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type {
   CompareRange,
   ComparePlayersResponse,
+  CompareTeamSide,
   CompareTeamsResponse,
   FiltersResponse,
   PlayerHeadToHead,
   TeamHeadToHead,
-  TeamPlayer,
   ChampionRow,
 } from '../api/types'
 import { useApi } from '../api/useApi'
@@ -249,37 +249,67 @@ function ChampionPools({ data, names }: { data: ComparePlayersResponse; names: [
   )
 }
 
-function Lineups({ data }: { data: CompareTeamsResponse }) {
-  const side = (name: string, players: TeamPlayer[]) => (
-    <div className="panel">
-      <div className="panel__head">
-        <h3 className="panel__title">{name}</h3>
-        <span className="panel__note">{players.length} players used</span>
-      </div>
-      {players.length === 0 ? (
-        <p className="cmp-none">No games in this range.</p>
-      ) : (
-        <ul className="cmp-list">
-          {players.map((p) => (
-            <li key={p.page} className={`cmp-list__row${p.underMinSample ? ' is-dim' : ''}`}>
-              <PlayerPhoto page={p.page} name={p.name} role={p.role} size={28} />
-              <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
-                {p.name}
-              </Link>
-              {p.role ? <span className="pool__role">{p.role}</span> : null}
-              <span className="cmp-list__stat">
-                {p.games} {p.games === 1 ? 'game' : 'games'} · {percent(p.winRate)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+function LineupRows({ players }: { players: CompareTeamSide['players'] }) {
+  return (
+    <ul className="cmp-list">
+      {players.map((p) => (
+        <li key={p.page} className={`cmp-list__row${p.underMinSample ? ' is-dim' : ''}`}>
+          <PlayerPhoto page={p.page} name={p.name} role={p.role} size={28} />
+          <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
+            {p.name}
+          </Link>
+          {p.role ? <span className="pool__role">{p.role}</span> : null}
+          <span className="cmp-list__stat">
+            {p.games} {p.games === 1 ? 'game' : 'games'} · {percent(p.winRate)}
+          </span>
+        </li>
+      ))}
+    </ul>
   )
+}
+
+/** The roster the team used at the end of the range, then the others who played for it in the range. */
+function Lineups({ data }: { data: CompareTeamsResponse }) {
+  const side = (s: CompareTeamSide, key: string) => {
+    const roster = s.players.filter((p) => p.current)
+    const former = s.players.filter((p) => !p.current)
+    // "Current" only when the range reaches the team's latest event; narrowed to an earlier range it is the roster of that time.
+    const rosterTitle = s.rosterEvent && !s.rosterEvent.isLatest ? `Roster at ${s.rosterEvent.name}` : 'Current roster'
+    return (
+      <div className="panel">
+        <div className="panel__head">
+          <h3 className="panel__title">{s.team.name}</h3>
+          <span className="panel__note">{s.players.length} players used</span>
+        </div>
+        {s.players.length === 0 ? (
+          <p className="cmp-none">No games in this range.</p>
+        ) : (
+          <>
+            <h4 className="cmp-group" id={`${key}-roster`}>
+              {rosterTitle}
+            </h4>
+            <div role="group" aria-labelledby={`${key}-roster`}>
+              <LineupRows players={roster} />
+            </div>
+            {former.length > 0 && (
+              <>
+                <h4 className="cmp-group" id={`${key}-former`}>
+                  Former players
+                </h4>
+                <div role="group" aria-labelledby={`${key}-former`}>
+                  <LineupRows players={former} />
+                </div>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="panels">
-      {side(data.a.team.name, data.a.players)}
-      {side(data.b.team.name, data.b.players)}
+      {side(data.a, 'cmp-a')}
+      {side(data.b, 'cmp-b')}
     </div>
   )
 }

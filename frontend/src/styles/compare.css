@@ -452,6 +452,21 @@
   overflow-wrap: anywhere;
   color: var(--text-soft);
 }
+.cmp-group {
+  margin: 0;
+  padding: 12px 20px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cmp-list + .cmp-group,
+[role='group'] + .cmp-group {
+  border-top: 1px solid var(--border);
+}
 .cmp-none {
   margin: 0;
   padding: 16px 20px;

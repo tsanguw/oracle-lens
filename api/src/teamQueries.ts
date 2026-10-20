@@ -114,7 +114,7 @@ export interface TeamPlayerRow {
   underMinSample: boolean
 }
 
-const ROLE_ORDER = `CASE mode() WITHIN GROUP (ORDER BY pgm.role)
+export const ROLE_ORDER = `CASE mode() WITHIN GROUP (ORDER BY pgm.role)
   WHEN 'Top' THEN 1 WHEN 'Jungle' THEN 2 WHEN 'Mid' THEN 3 WHEN 'Bot' THEN 4 WHEN 'Support' THEN 5 ELSE 6 END`
 
 /** Everyone who played for the team in the scope, with their stats for this team only. */

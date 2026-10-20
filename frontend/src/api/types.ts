@@ -746,7 +746,10 @@ export interface ComparePlayersResponse {
 export interface CompareTeamSide {
   team: TeamResponse['team']
   summary: TeamSummary | null
-  players: TeamPlayer[]
+  /** The roster first (current: true), then former players; each group in role order. */
+  players: (TeamPlayer & { current: boolean })[]
+  /** The event whose lineup counts as the roster, and whether it is the team's latest event overall. */
+  rosterEvent: { name: string; isLatest: boolean } | null
   picks: TeamPick[]
 }
 
