@@ -1,7 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, isAllTime, MIN_SAMPLE } from './filters.js'
-import { likeEscape, STATUS_SQL } from './homeQueries.js'
+import { crownsChampion, IS_LISTED, likeEscape, STATUS_SQL, type EventStatus } from './homeQueries.js'
 import { resolveChampionRange } from './championQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { ka, ok, FROM_CORE, perMin } from './playerQueries.js'
@@ -239,7 +239,7 @@ export const tournamentsListSchema = z.object({
   year: z.coerce.number().int().optional(),
   /** Blank leaves qualifiers out; "Qualifier" lists only those. */
   stage: z.enum(['Regular season', 'Playoffs', 'Qualifier']).optional(),
-  status: z.enum(['In progress', 'Completed']).optional(),
+  status: z.enum(['Upcoming', 'In progress', 'Completed']).optional(),
   ...paging,
   sort: z.enum(TOURNAMENT_SORTS).default('date'),
 })
@@ -252,7 +252,7 @@ export interface TournamentListRow {
   league: string
   stage: string | null
   year: number
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   games: number
@@ -266,8 +266,9 @@ export async function loadTournamentsList(
 ): Promise<{ total: number; page: number; pageSize: number; empty: boolean; rows: TournamentListRow[] }> {
   const params: unknown[] = []
   const p = (v: unknown) => `$${params.push(v)}`
-  // one row per event (a play-in is part of its competition), counted over every tournament in it
-  const conds = [`EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))`]
+  // one row per event (a play-in is part of its competition), counted over every tournament in it; an event with no
+  // games yet is listed until it ends
+  const conds = [IS_LISTED('t')]
   conds.push(q.stage ? `t.stage = ${p(q.stage)}` : `t.stage IS DISTINCT FROM 'Qualifier'`)
   if (q.league === 'INTL') conds.push('t.is_international')
   else if (q.league) {
@@ -285,7 +286,7 @@ export async function loadTournamentsList(
   const { rows } = await pool.query(
     `SELECT t.id, t.slug, t.name, t.league, t.stage, t.year, t.status, t."startDate", t."endDate", t.games, t.total,
        CASE WHEN t.status = 'In progress' THEN 'Leading'
-            WHEN t.stage = 'Playoffs' OR t.is_international THEN 'Champion' ELSE 'Top record' END AS "standingLabel",
+            WHEN ${crownsChampion('t')} THEN 'Champion' ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
        SELECT t.id, es.slug, t.name, t.stage, t.year, t.is_international, t.start_date,
@@ -306,7 +307,7 @@ export async function loadTournamentsList(
              WHERE s.tournament_id = t.id AND s.winner_id IS NOT NULL GROUP BY s.id, s.winner_id) x
        JOIN team w ON w.id = x.winner_id
        GROUP BY w.id, w.name
-       ORDER BY (CASE WHEN t.status = 'Completed' AND (t.stage = 'Playoffs' OR t.is_international)
+       ORDER BY (CASE WHEN t.status = 'Completed' AND ${crownsChampion('t')}
                       THEN MAX(x.last_game) END) DESC NULLS LAST, COUNT(*) DESC, w.name
        LIMIT 1) st ON true
      ORDER BY ${order}`,

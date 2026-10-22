@@ -1,5 +1,5 @@
 import type pg from 'pg'
-import { IS_EVENT_HEAD, STATUS_SQL } from './homeQueries.js'
+import { IS_EVENT_HEAD, STATUS_SQL, type EventStatus } from './homeQueries.js'
 
 export interface RosterPlayer {
   page: string
@@ -17,7 +17,7 @@ export interface ContextEvent {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   /** The team's final placement, once the event is over and Leaguepedia has it. */

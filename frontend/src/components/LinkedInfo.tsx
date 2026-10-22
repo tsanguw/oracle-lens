@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ContextEvent, ContextMatch, RosterPlayer } from '../api/types'
-import { dateRange, matchTime, placeLabel } from '../lib/format'
+import { dateRange, matchTime, placeLabel, statusBadge } from '../lib/format'
 import { tournamentPath } from '../lib/tournamentPath'
 import { PlayerPhoto } from './Images'
 
@@ -143,7 +143,7 @@ export function EventList({ events }: { events: ContextEvent[] }) {
                   {placeLabel(e.placement.place)}
                 </span>
               ) : (
-                <span className={`badge${e.status === 'In progress' ? ' badge--live' : ''}`}>{e.status}</span>
+                <span className={statusBadge(e.status)}>{e.status}</span>
               )}
             </span>
             <span className="ctx__name">{e.name}</span>

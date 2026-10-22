@@ -622,6 +622,10 @@
   font-size: 14px;
   color: var(--text-muted);
 }
+/* An upcoming event's schedule: two columns (time, match) that fit any width, so no stat-table minimum width. */
+.schedule .pool {
+  min-width: 0;
+}
 .matches__group {
   margin: 0;
   padding: 12px;

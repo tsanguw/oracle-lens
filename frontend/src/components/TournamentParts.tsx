@@ -8,7 +8,7 @@ import type {
   TournamentPlayer,
   TournamentResponse,
 } from '../api/types'
-import { dateRange, decimal, duration, matchClock, matchTime, NA, percent, whole } from '../lib/format'
+import { dateRange, decimal, duration, matchClock, matchTime, NA, percent, statusBadge, whole } from '../lib/format'
 import { dayLabel, groupByDay } from '../lib/matchFilter'
 import { ChampionPicker, StageBackdrop, StageMotion, stageClass, usePresenceStage } from './ChampionStage'
 import { ContextPanel, ContextSkeleton, ContextStrip, EventList } from './LinkedInfo'
@@ -35,7 +35,7 @@ export function TournamentHeader({ data, champions }: { data: TournamentResponse
               <div className="tags rise" style={rise(1)}>
                 {leagueTag && <span className="tag tag--accent">{leagueTag}</span>}
                 {t.stage && <span className="tag">{t.stage}</span>}
-                <span className={`badge${t.status === 'In progress' ? ' badge--live' : ''}`}>{t.status}</span>
+                <span className={statusBadge(t.status)}>{t.status}</span>
               </div>
               <h1 className="hero__name hero__name--team">
                 <Letters text={t.name} />

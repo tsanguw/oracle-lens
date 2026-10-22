@@ -1,7 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, hasRangeFilter, isAllTime, MIN_SAMPLE } from './filters.js'
-import { IS_EVENT_HEAD } from './homeQueries.js'
+import { IS_EVENT_HEAD, STATUS_SQL, type EventStatus } from './homeQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { FROM, FROM_CORE, ka, ok, perMin } from './playerQueries.js'
 
@@ -346,7 +346,7 @@ export interface ChampionContext {
     slug: string
     name: string
     league: string
-    status: 'In progress' | 'Completed'
+    status: EventStatus
     startDate: string | null
     endDate: string | null
     games: number
@@ -361,7 +361,7 @@ export async function loadChampionContext(pool: pg.Pool, champion: ChampionRow):
     loadChampionTeams(pool, defaults, champion, 5),
     pool.query(
       `SELECT t.id, ts.slug, t.name, COALESCE(l.name, 'INTL') AS league,
-              (CASE WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN 'In progress' ELSE 'Completed' END) AS status,
+              ${STATUS_SQL} AS status,
               to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
               COUNT(*)::int AS games
        FROM player_game pgm JOIN game g ON g.id = pgm.game_id JOIN tournament t ON t.id = g.tournament_id

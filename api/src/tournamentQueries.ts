@@ -1,6 +1,6 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { STATUS_SQL } from './homeQueries.js'
+import { crownsChampionRow, IS_LISTED, STATUS_SQL, statusSql, type EventStatus } from './homeQueries.js'
 import { MIN_SAMPLE } from './filters.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
@@ -22,7 +22,7 @@ export interface TournamentRow {
   split: string | null
   stage: string | null
   isInternational: boolean
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
 }
@@ -59,7 +59,7 @@ export interface TournamentSummary {
   /** Average kills by both teams combined, per game. */
   killsPerGame: number | null
   patches: string[]
-  /** "Leading" while running, "Champion" for finished playoffs and internationals, else "Top record". */
+  /** "Leading" while running, "Champion" for finished playoffs and internationals (not a play-in), else "Top record". */
   standingLabel: string
   standingTeam: string | null
 }
@@ -87,7 +87,7 @@ export async function loadTournamentSummary(pool: pg.Pool, t: TournamentRow): Pr
        GROUP BY w.id, w.name
        ORDER BY (CASE WHEN $2::boolean THEN MAX(x.last_game) END) DESC NULLS LAST, COUNT(*) DESC, w.name
        LIMIT 1`,
-      [t.id, t.status === 'Completed' && (t.stage === 'Playoffs' || t.isInternational)],
+      [t.id, t.status === 'Completed' && crownsChampionRow(t)],
     ),
   ])
   const a = agg.rows[0]
@@ -97,8 +97,7 @@ export async function loadTournamentSummary(pool: pg.Pool, t: TournamentRow): Pr
     patches: patches.rows
       .map((r) => r.patch as string)
       .sort((x, y) => patchKey(y) - patchKey(x)),
-    standingLabel:
-      t.status === 'In progress' ? 'Leading' : t.stage === 'Playoffs' || t.isInternational ? 'Champion' : 'Top record',
+    standingLabel: t.status === 'In progress' ? 'Leading' : crownsChampionRow(t) ? 'Champion' : 'Top record',
     standingTeam: standing.rows[0]?.name ?? null,
   }
 }
@@ -268,7 +267,7 @@ export interface RelatedEvent {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
 }
@@ -276,13 +275,13 @@ export interface RelatedEvent {
 /** Other events of the same league and year (or the other internationals of the year), in date order. */
 export async function loadRelatedEvents(pool: pg.Pool, t: TournamentRow, limit = 6): Promise<RelatedEvent[]> {
   const { rows } = await pool.query(
-    `SELECT x.id, es.slug, x.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL.replace(/\bt\./g, 'x.')} AS status,
+    `SELECT x.id, es.slug, x.name, COALESCE(l.name, 'INTL') AS league, ${statusSql('x')} AS status,
             to_char(x.start_date, 'YYYY-MM-DD') AS "startDate", to_char(x.end_date, 'YYYY-MM-DD') AS "endDate"
      FROM event x LEFT JOIN league l ON l.id = x.league_id JOIN event_slug es ON es.id = x.id
      WHERE x.id <> $1 AND x.year = $2
        AND (CASE WHEN $3::boolean THEN x.is_international ELSE x.league_id IS NOT DISTINCT FROM $4::int AND NOT x.is_international END)
        AND x.stage IS DISTINCT FROM 'Qualifier'
-       AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
+       AND ${IS_LISTED('x')}
      ORDER BY x.start_date, x.id LIMIT $5`,
     [t.id, t.year, t.isInternational, (await leagueId(pool, t.id)) ?? null, limit],
   )
