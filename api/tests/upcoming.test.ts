@@ -171,3 +171,18 @@ describe('Recent tournaments for a competition whose main event has no result ye
     expect(worlds).toEqual([expect.objectContaining({ name: 'Worlds 2026', status: 'In progress', standingLabel: null, standingTeam: null })])
   })
 })
+
+describe('the address a play-in had before its main event was loaded', () => {
+  it('opens the competition, whose slug the page then redirects to', async () => {
+    const { body, status } = await api('/api/tournaments/worlds-2026-play-in')
+    expect(status).toBe(200)
+    expect(body.tournament).toMatchObject({ id: ids.worlds, name: 'Worlds 2026', slug: 'worlds-2026' })
+    // the play-in's sub-pages follow it too
+    expect((await api('/api/tournaments/WORLDS-2026-PLAY-IN/matches')).status).toBe(200)
+  })
+
+  it('still opens a play-in that stands on its own at its own address, and 404s for a slug nothing has', async () => {
+    expect((await api('/api/tournaments/msi-2026-play-in')).body.tournament).toMatchObject({ id: ids.msiPlayIn, slug: 'msi-2026-play-in' })
+    expect((await api('/api/tournaments/worlds-2027-play-in')).status).toBe(404)
+  })
+})
