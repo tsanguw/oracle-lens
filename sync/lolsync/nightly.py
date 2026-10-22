@@ -22,6 +22,7 @@ from .rosters import refresh_rosters
 RESULTS_DAYS = 45  # placements appear when an event ends; events older than this are only checked if they have none
 ROSTER_DAYS = 30  # players with a roster change this recent get their team history rebuilt; the full pull is `main.py rosters`
 RESCHEDULE_DAYS = 14  # match times can move until the day; older ones are settled
+UPCOMING_DAYS = 14  # an event starting this soon is stored before its first game, so the site can show its schedule
 
 
 def pending_tournaments(conn: psycopg.Connection, tournaments: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -34,7 +35,7 @@ def nightly(
     connect: Callable[[], psycopg.Connection], lp: Leaguepedia, resolver: LeagueResolver, log: Log = print
 ) -> dict[str, int]:
     """Returns the backfill summary plus `schedules` (series dates changed). `failed` > 0 means a rerun is needed."""
-    tournaments = list_scope_tournaments(lp, resolver)
+    tournaments = list_scope_tournaments(lp, resolver, upcoming_days=UPCOMING_DAYS)
     with connect() as conn:
         todo = pending_tournaments(conn, tournaments)
     log(f"{len(tournaments)} in-scope tournaments, {len(todo)} to load or finish")
