@@ -115,9 +115,15 @@ describe('opening an event by its address', () => {
   })
 
   it('answers 404 for an unknown or malformed address', async () => {
-    for (const ref of ['no-such-event', 'worlds-2026-play-in', '99999999', 'a%20b', '..%2Fetc']) {
+    for (const ref of ['no-such-event', 'worlds-2027-play-in', '99999999', 'a%20b', '..%2Fetc']) {
       expect((await api(`/api/tournaments/${ref}`)).status).toBe(404)
     }
+  })
+
+  it('opens the competition at the address its play-in had while it stood on its own', async () => {
+    // home, search and the sitemap link a play-in by its own slug until its main event is loaded (kanban #88)
+    const { body } = await api('/api/tournaments/worlds-2026-play-in')
+    expect(body.tournament).toMatchObject({ id: ids.main, slug: 'worlds-2026' })
   })
 })
 
