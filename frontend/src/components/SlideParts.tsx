@@ -81,12 +81,15 @@ export function SlideControls({
   interval,
   iconSize = 44,
   arrows = false,
+  showPause = true,
 }: {
   slides: Slide[]
   show: Slideshow
   interval: number
   iconSize?: number
   arrows?: boolean
+  /** False when the page has one pause button for several slideshows (the Versus hero). */
+  showPause?: boolean
 }) {
   return (
     <div className="stage__controls">
@@ -118,17 +121,19 @@ export function SlideControls({
           ›
         </button>
       )}
-      <button
-        type="button"
-        className="stage__pause"
-        aria-pressed={show.userPaused}
-        aria-label={show.userPaused ? 'Play slideshow' : 'Pause slideshow'}
-        onClick={show.togglePause}
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-          {show.userPaused ? <path d="M4 2.5v11l9-5.5z" fill="currentColor" /> : <path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z" fill="currentColor" />}
-        </svg>
-      </button>
+      {showPause && (
+        <button
+          type="button"
+          className="stage__pause"
+          aria-pressed={show.userPaused}
+          aria-label={show.userPaused ? 'Play slideshow' : 'Pause slideshow'}
+          onClick={show.togglePause}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+            {show.userPaused ? <path d="M4 2.5v11l9-5.5z" fill="currentColor" /> : <path d="M3.5 2h3v12h-3zM9.5 2h3v12h-3z" fill="currentColor" />}
+          </svg>
+        </button>
+      )}
     </div>
   )
 }

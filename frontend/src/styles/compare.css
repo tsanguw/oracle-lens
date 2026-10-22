@@ -1,0 +1,627 @@
+/* The Versus page (pages/ComparePage.tsx) and the "Compare" link in the player and team headers. */
+
+.hero__compare {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-soft);
+  background: transparent;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.hero__compare:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* The page is the title row, the full-width hero, then a container of sections. */
+.cmp-main {
+  padding-top: 24px;
+  gap: 24px;
+}
+.cmp-body {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+.cmp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cmp-head__title {
+  font-size: 40px;
+  letter-spacing: 0.04em;
+}
+.cmp-head a.btn-reset {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  text-decoration: none;
+}
+
+/* Players | Teams switch, beside the page title. */
+.cmp-kinds {
+  display: flex;
+  gap: 8px;
+  margin-right: auto;
+}
+.cmp-kinds__link {
+  display: inline-flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.cmp-kinds__link:hover {
+  color: var(--text);
+}
+.cmp-kinds__link[aria-current='page'] {
+  color: var(--text);
+  border-color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* A small square button, the same family as .btn-reset but sized for sitting on art. */
+.cmp-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--border-strong);
+  background: rgba(11, 14, 20, 0.8);
+  color: var(--text-soft);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cmp-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+/* ---- The hero: two halves with a diagonal seam ---- */
+.vs {
+  position: relative;
+  z-index: 2; /* above the sections below, so a picker's results can hang over them */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: clamp(520px, 70vh, 640px);
+  background: var(--bg-hero);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.vhalf {
+  --rc: var(--accent);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: inherit;
+}
+.vhalf--a {
+  margin-right: -4%;
+  z-index: 1;
+}
+.vhalf--b {
+  margin-left: -4%;
+}
+/* The art is clipped to the slanted half here, not on the half itself, which would cut off a picker's results. The stage layers
+   use negative z-indexes, so the clip is their stacking context. */
+.vhalf__clip {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+.vhalf--a .vhalf__clip {
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+}
+.vhalf--b .vhalf__clip {
+  clip-path: polygon(8% 0, 100% 0, 100% 100%, 0 100%);
+}
+.vhalf .pstage__scrim {
+  background: linear-gradient(0deg, rgba(11, 14, 20, 0.96) 0%, rgba(11, 14, 20, 0.6) 40%, rgba(11, 14, 20, 0) 74%);
+}
+.vhalf__cap {
+  position: relative;
+  width: 100%;
+  padding: 72px clamp(32px, 6vw, 96px) 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-self: flex-end;
+}
+.vhalf--b .vhalf__cap {
+  align-items: flex-end;
+  text-align: right;
+}
+.vhalf__who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.vhalf--b .vhalf__who {
+  flex-direction: row-reverse;
+}
+.vhalf__detail {
+  color: var(--text-soft);
+  font-size: 16px;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.85);
+}
+.vhalf__name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(56px, 7.4vw, 104px);
+  line-height: 0.92;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.vhalf__name:hover {
+  color: var(--rc);
+}
+.vhalf__show {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vhalf--b .vhalf__show {
+  align-items: flex-end;
+}
+.vhalf__pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 78px;
+}
+.vhalf__pick > * {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.vhalf--b .vhalf__pick > * {
+  align-items: flex-end;
+}
+.vhalf__pick .stage__champ {
+  font-size: 40px;
+}
+.vhalf__pick .stage__note {
+  max-width: 40ch;
+}
+.vhalf--b .stage__controls {
+  flex-direction: row-reverse;
+}
+.vhalf__change {
+  position: absolute;
+  top: 16px;
+  height: 40px;
+  background: rgba(11, 14, 20, 0.8);
+}
+.vhalf--a .vhalf__change {
+  left: clamp(32px, 6vw, 96px);
+}
+.vhalf--b .vhalf__change {
+  right: clamp(32px, 6vw, 96px);
+}
+.vhalf__picker {
+  width: min(420px, 100%);
+  margin-bottom: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.vhalf__picker .search {
+  width: 100%;
+}
+.vhalf .search__panel {
+  left: 0;
+  right: 0;
+  width: auto;
+  grid-template-columns: minmax(0, 1fr);
+}
+.vhalf .search__group,
+.vhalf .search__group:nth-child(odd) {
+  border-right: 0;
+}
+.vhalf--b .vhalf__picker {
+  align-self: flex-end;
+}
+/* Nothing chosen yet: the picker sits in the middle of its half under a plain prompt. */
+.vhalf--empty {
+  background: radial-gradient(520px 320px at 50% 55%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+}
+.vhalf--empty .vhalf__cap {
+  align-self: center;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+.vhalf--empty .vhalf__picker {
+  width: min(420px, 100%);
+  margin: 0 auto;
+  align-self: auto;
+  align-items: stretch;
+}
+.vhalf__prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(36px, 4.4vw, 56px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+.vs__seam {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  pointer-events: none;
+}
+.vs__seam::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
+  transform: skewX(-4.4deg);
+}
+.vs__vs {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 40px;
+  letter-spacing: 0.1em;
+  background: var(--bg-page);
+  border: 1px solid var(--accent);
+  padding: 8px 16px 6px;
+}
+.vs__rec {
+  position: relative;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  background: rgba(11, 14, 20, 0.86);
+  border: 1px solid var(--border-strong);
+  padding: 10px 18px;
+  font-family: var(--font-display);
+}
+.vs__rec b {
+  font-size: 44px;
+  line-height: 1;
+}
+.vs__rec span {
+  font-family: var(--font-body);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.vs__pause {
+  position: absolute;
+  z-index: 4;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 40px;
+  background: rgba(11, 14, 20, 0.8);
+}
+
+/* ---- The tale of the tape ---- */
+.tape__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 0 10px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.tape__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.tape__row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 168px minmax(0, 1fr) 76px;
+  grid-template-areas: 'va ba label bb vb';
+  align-items: center;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.tape__row:last-child {
+  border-bottom: 0;
+}
+.tape__label {
+  grid-area: label;
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.tape__val {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-soft);
+  font-variant-numeric: tabular-nums;
+}
+.tape__val--a {
+  grid-area: va;
+}
+.tape__val--b {
+  grid-area: vb;
+  text-align: right;
+}
+.tape__val.is-better {
+  color: var(--win);
+  font-weight: 700;
+}
+.tape__bar {
+  height: 14px;
+  display: flex;
+}
+.tape__bar--a {
+  grid-area: ba;
+  justify-content: flex-end;
+}
+.tape__bar--b {
+  grid-area: bb;
+}
+.tape__bar i {
+  display: block;
+  height: 100%;
+  background: var(--border-strong);
+  transform-origin: right;
+}
+.tape__bar--b i {
+  transform-origin: left;
+}
+.tape__bar i.is-better {
+  background: var(--win);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tape__bar i {
+    animation: tape-grow 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+@keyframes tape-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* ---- Range line, lists, head to head ---- */
+.cmp-range {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+.cmp-range__label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: 0.06em;
+}
+
+.cmp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cmp-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.cmp-list__row:last-child {
+  border-bottom: 0;
+}
+.cmp-list__row.is-dim {
+  opacity: 0.6;
+}
+.cmp-list__stat {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.cmp-list__row--meeting {
+  gap: 4px 16px;
+}
+.cmp-list__event {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-soft);
+}
+.cmp-group {
+  margin: 0;
+  padding: 12px 20px 8px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.cmp-list + .cmp-group,
+[role='group'] + .cmp-group {
+  border-top: 1px solid var(--border);
+}
+.cmp-none {
+  margin: 0;
+  padding: 16px 20px;
+  color: var(--text-muted);
+}
+
+.cmp-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+}
+.cmp-tiles--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cmp-never {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cmp-never .btn-reset {
+  margin: 0;
+}
+.cmp-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .tape__row {
+    grid-template-columns: 60px minmax(0, 1fr) 132px minmax(0, 1fr) 60px;
+  }
+}
+
+/* A phone: A on top, B below, the seam badge between them; the tape rows become label, values, then bars. */
+@media (max-width: 820px) {
+  .cmp-head__title {
+    font-size: 32px;
+  }
+  .vs {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .vhalf {
+    min-height: 320px;
+    margin: 0;
+  }
+  .vhalf--a .vhalf__clip,
+  .vhalf--b .vhalf__clip {
+    clip-path: none;
+  }
+  .vhalf__cap,
+  .vhalf--b .vhalf__cap {
+    padding: 64px 16px 16px;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .vhalf--a .vhalf__cap {
+    padding-bottom: 40px;
+  }
+  .vhalf--b .vhalf__cap {
+    padding-top: 80px;
+  }
+  .vhalf--b .vhalf__who {
+    flex-direction: row;
+  }
+  .vhalf--b .vhalf__show,
+  .vhalf--b .vhalf__pick > * {
+    align-items: flex-start;
+  }
+  .vhalf--b .stage__controls {
+    flex-direction: row;
+  }
+  .vhalf__name {
+    font-size: 56px;
+  }
+  .vhalf--a .vhalf__change {
+    left: 16px;
+  }
+  .vhalf--b .vhalf__change {
+    right: auto;
+    left: 16px;
+    top: 36px;
+  }
+  .vhalf--b .vhalf__picker {
+    align-self: flex-start;
+  }
+  .vs__seam {
+    top: 50%;
+    bottom: auto;
+    transform: translate(-50%, -50%);
+    flex-direction: row;
+    gap: 8px;
+  }
+  .vs__seam::before {
+    display: none;
+  }
+  .vs__vs {
+    font-size: 28px;
+    padding: 4px 12px 2px;
+  }
+  .vs__rec {
+    padding: 4px 10px;
+    gap: 8px;
+  }
+  .vs__rec b {
+    font-size: 28px;
+  }
+  .vs__rec span {
+    display: none;
+  }
+  .vs__pause {
+    top: 8px;
+    left: auto;
+    right: 16px;
+    transform: none;
+  }
+  .cmp-tiles,
+  .cmp-tiles--two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tape__row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'label label' 'va vb' 'ba bb';
+    row-gap: 6px;
+  }
+  .tape__label {
+    text-align: left;
+  }
+}

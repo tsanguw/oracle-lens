@@ -28,10 +28,10 @@ export async function findTeam(pool: pg.Pool, idOrName: string): Promise<TeamRow
 }
 
 /** The team's own rows (one per game) in the scope, with the opponent's row alongside. Aliases: pgm = team_game. */
-const FROM_TEAM = FROM_CORE.replace('player_game pgm', 'team_game pgm')
+export const FROM_TEAM = FROM_CORE.replace('player_game pgm', 'team_game pgm')
 
 /** `base` CTE: one row per team game in scope, with the opponent's kills and gold. */
-const base = (scope: PlayerScope) => `
+export const base = (scope: PlayerScope) => `
   base AS (
     SELECT pgm.game_id, pgm.team_id, pgm.win, pgm.side, pgm.kills, pgm.gold, g.length_sec,
            pgm.towers, pgm.dragons, pgm.barons, pgm.heralds, pgm.void_grubs,
@@ -114,7 +114,7 @@ export interface TeamPlayerRow {
   underMinSample: boolean
 }
 
-const ROLE_ORDER = `CASE mode() WITHIN GROUP (ORDER BY pgm.role)
+export const ROLE_ORDER = `CASE mode() WITHIN GROUP (ORDER BY pgm.role)
   WHEN 'Top' THEN 1 WHEN 'Jungle' THEN 2 WHEN 'Mid' THEN 3 WHEN 'Bot' THEN 4 WHEN 'Support' THEN 5 ELSE 6 END`
 
 /** Everyone who played for the team in the scope, with their stats for this team only. */

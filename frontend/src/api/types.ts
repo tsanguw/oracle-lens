@@ -713,3 +713,66 @@ export interface StagesResponse {
   empty: boolean
   stages: TournamentStage[]
 }
+
+/** The one range a comparison applies to both subjects; `resolved.league` is absent when it spans leagues. */
+export interface CompareRange extends Omit<Range, 'resolved'> {
+  resolved: { league?: string; year: number; split: string | null } | null
+}
+
+export interface ComparePlayerSide {
+  player: PlayerResponse['player']
+  summary: Summary | null
+  champions: ChampionRow[]
+}
+
+export interface PlayerHeadToHead {
+  games: number
+  wins: number
+  losses: number
+  laneGames: number
+  laneWins: number
+  togetherGames: number
+  togetherWins: number
+}
+
+export interface ComparePlayersResponse {
+  range: CompareRange
+  empty: boolean
+  a: ComparePlayerSide
+  b: ComparePlayerSide
+  headToHead: PlayerHeadToHead
+}
+
+export interface CompareTeamSide {
+  team: TeamResponse['team']
+  summary: TeamSummary | null
+  /** The roster first (current: true), then former players; each group in role order. */
+  players: (TeamPlayer & { current: boolean })[]
+  /** The event whose lineup counts as the roster, and whether it is the team's latest event overall. */
+  rosterEvent: { name: string; isLatest: boolean } | null
+  picks: TeamPick[]
+}
+
+export interface TeamMeeting {
+  playedAt: string | null
+  tournament: string
+  winner: string | null
+}
+
+export interface TeamHeadToHead {
+  games: number
+  wins: number
+  losses: number
+  seriesPlayed: number
+  seriesWins: number
+  seriesLosses: number
+  recent: TeamMeeting[]
+}
+
+export interface CompareTeamsResponse {
+  range: CompareRange
+  empty: boolean
+  a: CompareTeamSide
+  b: CompareTeamSide
+  headToHead: TeamHeadToHead
+}

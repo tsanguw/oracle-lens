@@ -7,6 +7,8 @@ import { tournamentPath } from '../lib/tournamentPath'
 interface Item {
   group: 'Players' | 'Teams' | 'Champions' | 'Tournaments'
   key: string
+  /** What a picker hands back: the player's page name or the team's name. */
+  value: string
   label: string
   meta: string
   to: string
@@ -16,6 +18,7 @@ const toItems = (r: SearchResponse): Item[] => [
   ...r.players.map((p) => ({
     group: 'Players' as const,
     key: `p:${p.page}`,
+    value: p.page,
     label: p.name,
     meta: [p.role, p.team].filter(Boolean).join(' · '),
     to: `/players/${encodeURIComponent(p.page)}`,
@@ -23,6 +26,7 @@ const toItems = (r: SearchResponse): Item[] => [
   ...r.teams.map((t) => ({
     group: 'Teams' as const,
     key: `t:${t.name}`,
+    value: t.name,
     label: t.name,
     meta: t.league ?? '',
     to: `/teams/${encodeURIComponent(t.name)}`,
@@ -30,6 +34,7 @@ const toItems = (r: SearchResponse): Item[] => [
   ...r.champions.map((c) => ({
     group: 'Champions' as const,
     key: `c:${c.name}`,
+    value: c.name,
     label: c.name,
     meta: c.role ?? '',
     to: `/champions/${encodeURIComponent(c.name)}`,
@@ -37,6 +42,7 @@ const toItems = (r: SearchResponse): Item[] => [
   ...r.tournaments.map((t) => ({
     group: 'Tournaments' as const,
     key: `o:${t.id}`,
+    value: String(t.id),
     label: t.name,
     meta: t.status,
     to: tournamentPath(t),
@@ -63,9 +69,14 @@ interface SearchBoxProps {
   onEscape?: () => void
   /** A result was chosen, so the header bar does not stay open over a page it did not change. */
   onNavigate?: () => void
+  /**
+   * Picker mode: only this kind of result is listed, and choosing one calls `onSelect` with its page name (a player) or
+   * name (a team) instead of navigating. The compare page uses it to pick a subject.
+   */
+  pick?: { kind: 'Players' | 'Teams'; label?: string; onSelect: (value: string) => void; exclude?: string; placeholder?: string }
 }
 
-export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavigate }: SearchBoxProps) {
+export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavigate, pick }: SearchBoxProps) {
   const [query, setQuery] = useState('')
   const [items, setItems] = useState<Item[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -90,7 +101,7 @@ export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavi
       fetch(apiUrl(`/api/search?q=${encodeURIComponent(q)}`), { signal: controller.signal })
         .then((res) => (res.ok ? (res.json() as Promise<SearchResponse>) : Promise.reject(new Error('search failed'))))
         .then((data) => {
-          setItems(toItems(data))
+          setItems(pick ? toItems(data).filter((i) => i.group === pick.kind && i.value !== pick.exclude) : toItems(data))
           setFailed(false)
           setActive(-1)
         })
@@ -137,6 +148,10 @@ export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavi
 
   const go = (item: Item) => {
     reset()
+    if (pick) {
+      pick.onSelect(item.value)
+      return
+    }
     navigate(item.to)
     onNavigate?.()
   }
@@ -163,7 +178,7 @@ export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavi
   return (
     <div className={`search${bar ? ' search--bar' : ''}`} ref={boxRef}>
       <label className={bar ? 'sr-only' : 'search__label'} htmlFor={inputId}>
-        Search players, teams, champions, tournaments
+        {pick ? (pick.label ?? `Search ${pick.kind.toLowerCase()}`) : 'Search players, teams, champions, tournaments'}
       </label>
       <div className={`search__box${showPanel ? ' is-open' : ''}`}>
         <SearchIcon />
@@ -175,7 +190,7 @@ export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavi
           name="q"
           spellCheck={false}
           autoComplete="off"
-          placeholder={bar ? 'Search players, teams…' : 'Try “Faker”, “T1” or “Azir”'}
+          placeholder={pick?.placeholder ?? (bar ? 'Search players, teams…' : 'Try “Faker”, “T1” or “Azir”')}
           value={query}
           role="combobox"
           enterKeyHint="search"
@@ -218,7 +233,12 @@ export default function SearchBox({ variant = 'hero', inputRef, onEscape, onNavi
                       role="option"
                       aria-selected={index === active}
                       className={`search__row${index === active ? ' is-active' : ''}`}
-                      onClick={() => {
+                      onClick={(e) => {
+                        if (pick) {
+                          e.preventDefault()
+                          go(item)
+                          return
+                        }
                         reset()
                         onNavigate?.()
                       }}
