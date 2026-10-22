@@ -90,26 +90,35 @@ export interface RecentTournament {
   status: 'In progress' | 'Completed'
   startDate: string | null
   endDate: string | null
-  /** "Leading" while running, "Champion" for finished playoffs, "Top record" for other finished events. */
+  /** "Leading" while running, "Champion" for finished playoffs and internationals, "Top record" for other finished events (a play-in too). */
   standingLabel: string | null
   standingTeam: string | null
 }
 
 /**
- * Most recent official events with games (qualifiers excluded), newest start first. The standing is
- * the winner of the last series for finished playoffs, otherwise the team with the most series wins.
+ * Finished events whose standing is the winner of the last series: playoffs and internationals. A play-in is stored as
+ * a qualifier and has no champion (several teams go through), so it falls back to the team with the most series wins.
+ */
+const CROWNS_CHAMPION = `(t.stage = 'Playoffs' OR (t.is_international AND t.stage IS DISTINCT FROM 'Qualifier'))`
+
+/**
+ * Most recent official events with games, newest start first. Qualifiers are left out, except an international
+ * play-in (Worlds, MSI): it is listed on its own until its main event is loaded, then as part of that event (the
+ * `event` view folds it in, so it never shows twice). The standing is the winner of the last series for finished
+ * playoffs and internationals, otherwise the team with the most series wins.
  */
 export async function recentTournaments(pool: pg.Pool, limit: number): Promise<RecentTournament[]> {
   const { rows } = await pool.query(
     `SELECT t.id, es.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
        to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
        CASE WHEN ${STATUS_SQL} = 'In progress' THEN 'Leading'
-            WHEN t.stage = 'Playoffs' OR t.is_international THEN 'Champion'
+            WHEN ${CROWNS_CHAMPION} THEN 'Champion'
             ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
        SELECT * FROM event x
-       WHERE x.stage IS DISTINCT FROM 'Qualifier' AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
+       WHERE (x.stage IS DISTINCT FROM 'Qualifier' OR (x.is_international AND x.leaguepedia_name LIKE '%/Play-In'))
+         AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
        ORDER BY x.start_date DESC NULLS LAST, x.id DESC LIMIT $1) t
      LEFT JOIN league l ON l.id = t.league_id
      JOIN event_slug es ON es.id = t.id
@@ -121,7 +130,7 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
              GROUP BY s.id, s.winner_id) x
        JOIN team w ON w.id = x.winner_id
        GROUP BY w.id, w.name
-       ORDER BY (CASE WHEN ${STATUS_SQL} = 'Completed' AND (t.stage = 'Playoffs' OR t.is_international)
+       ORDER BY (CASE WHEN ${STATUS_SQL} = 'Completed' AND ${CROWNS_CHAMPION}
                       THEN MAX(x.last_game) END) DESC NULLS LAST,
                 COUNT(*) DESC, w.name
        LIMIT 1) st ON true
