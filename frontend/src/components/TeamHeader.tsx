@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import type { ContextMatch, TeamPick, TeamResponse } from '../api/types'
 import { NA, percent } from '../lib/format'
 import { ChampionPicker, StageBackdrop, StageMotion, stageClass, useChampionStage } from './ChampionStage'
@@ -10,6 +11,7 @@ const rise = (n: number) => ({ ['--i' as string]: n }) as CSSProperties
 
 export default function TeamHeader({ data, picks, results }: { data: TeamResponse; picks?: TeamPick[]; results?: ContextMatch[] }) {
   const { team, range } = data
+  const { search } = useLocation()
   const stage = useChampionStage(picks)
   const run = stage.entered
 
@@ -52,6 +54,9 @@ export default function TeamHeader({ data, picks, results }: { data: TeamRespons
                     <SeriesStrip results={results} />
                   </>
                 )}
+                <Link to={`/compare/teams/${encodeURIComponent(team.name)}${search}`} className="hero__compare rise" style={rise(6)}>
+                  Compare<span className="sr-only"> {team.name} with another team</span>
+                </Link>
               </div>
             </div>
             <div className="showing rise" style={rise(7)}>

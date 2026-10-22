@@ -12,6 +12,7 @@ export const detailPages = () => import('../pages/DetailRoutes')
 
 /** Starts fetching the chunk for a nav path (a no-op for paths with none, or if it is already loaded). */
 export function preloadRoute(path: string): void {
-  const load = listPages[path as keyof typeof listPages]
+  // The Versus pages live in the detail chunk, shared with the player and team pages.
+  const load = path === '/compare' ? detailPages : listPages[path as keyof typeof listPages]
   if (load) void load()
 }
