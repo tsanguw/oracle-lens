@@ -1,6 +1,6 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { STATUS_SQL, statusSql, type EventStatus } from './homeQueries.js'
+import { IS_LISTED, STATUS_SQL, statusSql, type EventStatus } from './homeQueries.js'
 import { MIN_SAMPLE } from './filters.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
@@ -282,7 +282,7 @@ export async function loadRelatedEvents(pool: pg.Pool, t: TournamentRow, limit =
      WHERE x.id <> $1 AND x.year = $2
        AND (CASE WHEN $3::boolean THEN x.is_international ELSE x.league_id IS NOT DISTINCT FROM $4::int AND NOT x.is_international END)
        AND x.stage IS DISTINCT FROM 'Qualifier'
-       AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(x.member_ids))
+       AND ${IS_LISTED('x')}
      ORDER BY x.start_date, x.id LIMIT $5`,
     [t.id, t.year, t.isInternational, (await leagueId(pool, t.id)) ?? null, limit],
   )

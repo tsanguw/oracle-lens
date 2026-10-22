@@ -113,3 +113,36 @@ describe('a competition whose main event has no result yet', () => {
     expect(body.summary).toMatchObject({ games: 1, standingLabel: 'Leading', standingTeam: null })
   })
 })
+
+describe('where an event with no games is listed', () => {
+  type Row = { name: string; status: string; games?: number; standingTeam?: string | null }
+  const names = (rows: Row[]) => rows.map((r) => r.name)
+
+  it('lists it in the tournaments list until it ends, newest start first, and filters by Upcoming', async () => {
+    const { body } = await api('/api/tournaments')
+    expect(names(body.rows)).toEqual(['LCK 2026 Winter Playoffs', 'Worlds 2026', 'LCK 2026 Winter'])
+    expect(body.rows[0]).toMatchObject({ status: 'Upcoming', games: 0, standingTeam: null })
+    const upcoming = (await api('/api/tournaments?status=Upcoming')).body
+    expect(names(upcoming.rows)).toEqual(['LCK 2026 Winter Playoffs'])
+  })
+
+  it('finds it in search with its status, but not a past event that never had a game', async () => {
+    const { body } = await api('/api/search?q=winter')
+    expect(body.tournaments.map((t: Row) => [t.name, t.status])).toEqual([
+      ['LCK 2026 Winter Playoffs', 'Upcoming'],
+      ['LCK 2026 Winter', 'In progress'],
+    ])
+  })
+
+  it('shows it among the related events of the same league and year, without the past event that had no games', async () => {
+    const { body } = await api(`/api/tournaments/${ids.running}/context`)
+    expect(names(body.related)).toEqual(['LCK 2026 Winter Playoffs'])
+  })
+
+  it('keeps it out of Recent tournaments and out of the stat filter options', async () => {
+    const recent = (await api('/api/tournaments/recent?limit=20')).body
+    expect(names(recent.tournaments)).not.toContain('LCK 2026 Winter Playoffs')
+    const filters = (await api('/api/filters')).body
+    expect(filters.combos.map((c: { split: string | null }) => c.split)).not.toContain('Finals')
+  })
+})

@@ -40,6 +40,14 @@ export const statusSql = (alias: string) =>
 
 export const STATUS_SQL = statusSql('t')
 
+/**
+ * True for an event that belongs in search, the tournaments list and related events: one with games, or one that has not
+ * ended yet (scheduled, or started without a game loaded). A past event with no games (cancelled, a showmatch) stays out.
+ * `alias` is an `event` row.
+ */
+export const IS_LISTED = (alias: string) =>
+  `(EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(${alias}.member_ids)) OR ${alias}.end_date >= CURRENT_DATE)`
+
 export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchSchema>): Promise<SearchResults> {
   const empty: SearchResults = { players: [], teams: [], champions: [], tournaments: [] }
   if (q.length < 2) return empty
@@ -82,7 +90,7 @@ export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchS
     pool.query(
       `SELECT t.id, es.slug, t.name, ${STATUS_SQL} AS status
        FROM event t JOIN event_slug es ON es.id = t.id
-       WHERE t.name ILIKE $1 AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))
+       WHERE t.name ILIKE $1 AND ${IS_LISTED('t')}
        ORDER BY ${rank('t.name')}, t.start_date DESC NULLS LAST, t.name LIMIT $3`,
       args,
     ),

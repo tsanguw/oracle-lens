@@ -1,7 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, isAllTime, MIN_SAMPLE } from './filters.js'
-import { likeEscape, STATUS_SQL, type EventStatus } from './homeQueries.js'
+import { IS_LISTED, likeEscape, STATUS_SQL, type EventStatus } from './homeQueries.js'
 import { resolveChampionRange } from './championQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { ka, ok, FROM_CORE, perMin } from './playerQueries.js'
@@ -266,8 +266,9 @@ export async function loadTournamentsList(
 ): Promise<{ total: number; page: number; pageSize: number; empty: boolean; rows: TournamentListRow[] }> {
   const params: unknown[] = []
   const p = (v: unknown) => `$${params.push(v)}`
-  // one row per event (a play-in is part of its competition), counted over every tournament in it
-  const conds = [`EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))`]
+  // one row per event (a play-in is part of its competition), counted over every tournament in it; an event with no
+  // games yet is listed until it ends
+  const conds = [IS_LISTED('t')]
   conds.push(q.stage ? `t.stage = ${p(q.stage)}` : `t.stage IS DISTINCT FROM 'Qualifier'`)
   if (q.league === 'INTL') conds.push('t.is_international')
   else if (q.league) {
