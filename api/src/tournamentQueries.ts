@@ -1,6 +1,6 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { STATUS_SQL } from './homeQueries.js'
+import { STATUS_SQL, statusSql, type EventStatus } from './homeQueries.js'
 import { MIN_SAMPLE } from './filters.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
@@ -22,7 +22,7 @@ export interface TournamentRow {
   split: string | null
   stage: string | null
   isInternational: boolean
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
 }
@@ -268,7 +268,7 @@ export interface RelatedEvent {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
 }
@@ -276,7 +276,7 @@ export interface RelatedEvent {
 /** Other events of the same league and year (or the other internationals of the year), in date order. */
 export async function loadRelatedEvents(pool: pg.Pool, t: TournamentRow, limit = 6): Promise<RelatedEvent[]> {
   const { rows } = await pool.query(
-    `SELECT x.id, es.slug, x.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL.replace(/\bt\./g, 'x.')} AS status,
+    `SELECT x.id, es.slug, x.name, COALESCE(l.name, 'INTL') AS league, ${statusSql('x')} AS status,
             to_char(x.start_date, 'YYYY-MM-DD') AS "startDate", to_char(x.end_date, 'YYYY-MM-DD') AS "endDate"
      FROM event x LEFT JOIN league l ON l.id = x.league_id JOIN event_slug es ON es.id = x.id
      WHERE x.id <> $1 AND x.year = $2

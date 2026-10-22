@@ -20,8 +20,10 @@ export interface SearchResults {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]
   champions: { name: string; role: string | null }[]
-  tournaments: { id: number; slug: string; name: string; status: 'In progress' | 'Completed' }[]
+  tournaments: { id: number; slug: string; name: string; status: EventStatus }[]
 }
+
+export type EventStatus = 'Upcoming' | 'In progress' | 'Completed'
 
 /**
  * True for a tournament that is an event of its own: everything except a play-in whose main event is loaded (those are
@@ -30,7 +32,13 @@ export interface SearchResults {
 export const IS_EVENT_HEAD = (alias: string) =>
   `NOT EXISTS (SELECT 1 FROM tournament_group tg WHERE tg.id = ${alias}.id AND tg.group_id <> ${alias}.id)`
 
-export const STATUS_SQL = `(CASE WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN 'In progress' ELSE 'Completed' END)`
+/** An event's status from its dates alone. Without dates it counts as finished, as it always has. */
+export const statusSql = (alias: string) =>
+  `(CASE WHEN ${alias}.start_date > CURRENT_DATE THEN 'Upcoming'
+         WHEN ${alias}.start_date <= CURRENT_DATE AND ${alias}.end_date >= CURRENT_DATE THEN 'In progress'
+         ELSE 'Completed' END)`
+
+export const STATUS_SQL = statusSql('t')
 
 export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchSchema>): Promise<SearchResults> {
   const empty: SearchResults = { players: [], teams: [], champions: [], tournaments: [] }
@@ -87,7 +95,7 @@ export interface RecentTournament {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   /** "Leading" while running, "Champion" for finished playoffs and internationals, "Top record" for other finished events (a play-in too). */

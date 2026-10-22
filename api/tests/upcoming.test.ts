@@ -1,0 +1,115 @@
+import request from 'supertest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { createApp } from '../src/app.js'
+import { pool } from '../src/db.js'
+import { resetDb } from './resetDb.js'
+
+/*
+ * LCK 2026, teams Alpha, Bravo and Charlie:
+ *  "LCK 2026 Winter" is running (one game, Alpha beat Bravo).
+ *  "LCK 2026 Winter Playoffs" starts in 5 days and has no games: Alpha v Bravo and Bravo v Charlie are scheduled as
+ *  semifinals, and the final is TBD (no teams, no date). Its split is "Finals", which no event with games has.
+ *  "LCK 2026 Winter Showmatch" ended long ago without a game, so it is never listed.
+ * Internationals:
+ *  "Worlds 2026 Play-In" finished with one game (Alpha beat Charlie); its "Worlds 2026" Main Event starts in 3 days and
+ *  has only a scheduled series, so the two make one running event whose main event has no result yet.
+ *  "MSI 2026 Play-In" finished on its own (no main event loaded): Alpha won two series, then Bravo won the last one.
+ */
+
+const app = createApp()
+const api = (path: string) => request(app).get(path)
+const one = async (sql: string, params: unknown[] = []) => (await pool.query(sql, params)).rows[0].id as number
+const day = (offset: number) => new Date(Date.now() + offset * 86400000)
+const dateOnly = (d: Date) => d.toISOString().slice(0, 10)
+let n = 0
+const ids: Record<string, number> = {}
+
+beforeAll(async () => {
+  await resetDb()
+  const lck = await one(`INSERT INTO league (name, region) VALUES ('LCK','Korea') RETURNING id`)
+  const team = (name: string) => one(`INSERT INTO team (name) VALUES ($1) RETURNING id`, [name])
+  const [A, B, C] = [await team('Alpha'), await team('Bravo'), await team('Charlie')]
+  const tour = (lpName: string, name: string, stage: string, intl: boolean, split: string | null, start: number, end: number) =>
+    one(
+      `INSERT INTO tournament (leaguepedia_name, name, league_id, year, split, stage, is_international, start_date, end_date)
+       VALUES ($1,$2,$3,2026,$4,$5,$6,$7,$8) RETURNING id`,
+      [lpName, name, intl ? null : lck, split, stage, intl, dateOnly(day(start)), dateOnly(day(end))],
+    )
+  ids.running = await tour('LCK/2026 Season/Winter', 'LCK 2026 Winter', 'Regular season', false, 'Winter', -10, 10)
+  ids.upcoming = await tour('LCK/2026 Season/Winter Playoffs', 'LCK 2026 Winter Playoffs', 'Playoffs', false, 'Finals', 5, 20)
+  ids.showmatch = await tour('LCK/2026 Season/Winter Showmatch', 'LCK 2026 Winter Showmatch', 'Regular season', false, 'Winter', -40, -38)
+  ids.worldsPlayIn = await tour('2026 Season World Championship/Play-In', 'Worlds 2026 Play-In', 'Qualifier', true, null, -7, -4)
+  ids.worlds = await tour('2026 Season World Championship/Main Event', 'Worlds 2026', 'Regular season', true, null, 3, 25)
+  ids.msiPlayIn = await tour('2026 Mid-Season Invitational/Play-In', 'MSI 2026 Play-In', 'Qualifier', true, null, -60, -55)
+
+  const series = (
+    tournament: number,
+    t1: number | null,
+    t2: number | null,
+    winner: number | null,
+    at: Date | null,
+    stage?: [string, number, number],
+  ) =>
+    one(
+      `INSERT INTO series (tournament_id, team1_id, team2_id, winner_id, score, best_of, leaguepedia_id, scheduled_at, stage_tab, stage_order, stage_match)
+       VALUES ($1,$2,$3,$4,$5,5,$6,$7,$8,$9,$10) RETURNING id`,
+      [tournament, t1, t2, winner, winner ? '1-0' : null, `S${++n}`, at?.toISOString() ?? null, ...(stage ?? [null, null, null])],
+    )
+  const played = async (tournament: number, winner: number, loser: number, daysAgo: number) => {
+    const s = await series(tournament, winner, loser, winner, day(-daysAgo))
+    const g = await one(
+      `INSERT INTO game (leaguepedia_id, series_id, tournament_id, played_at, length_sec) VALUES ($1,$2,$3,$4,1800) RETURNING id`,
+      [`G${++n}`, s, tournament, day(-daysAgo).toISOString()],
+    )
+    await pool.query(`INSERT INTO team_game (game_id, team_id, side, win) VALUES ($1,$2,'blue',true), ($1,$3,'red',false)`, [g, winner, loser])
+  }
+
+  await played(ids.running, A, B, 5)
+  await series(ids.upcoming, A, B, null, day(6), ['Semifinals', 1, 1])
+  await series(ids.upcoming, B, C, null, day(7), ['Semifinals', 1, 2])
+  await series(ids.upcoming, null, null, null, null, ['Finals', 2, 1])
+  await played(ids.worldsPlayIn, A, C, 6)
+  await series(ids.worlds, A, B, null, day(4))
+  await played(ids.msiPlayIn, A, B, 59)
+  await played(ids.msiPlayIn, A, C, 58)
+  await played(ids.msiPlayIn, B, A, 56)
+})
+
+afterAll(() => pool.end())
+
+describe('an event that has not started', () => {
+  it('has status Upcoming, and an empty summary because it has no games', async () => {
+    const { body, status } = await api(`/api/tournaments/${ids.upcoming}`)
+    expect(status).toBe(200)
+    expect(body.tournament).toMatchObject({ name: 'LCK 2026 Winter Playoffs', status: 'Upcoming', startDate: dateOnly(day(5)) })
+    expect(body.empty).toBe(true)
+    expect(body.summary).toBeNull()
+  })
+
+  it('serves its schedule: dated series as upcoming matches, and every series in the bracket', async () => {
+    const matches = (await api(`/api/tournaments/${ids.upcoming}/matches`)).body
+    expect(matches.results).toEqual([])
+    expect(matches.upcoming.map((s: { team1: string; team2: string }) => `${s.team1} v ${s.team2}`)).toEqual(['Alpha v Bravo', 'Bravo v Charlie'])
+    const stages = (await api(`/api/tournaments/${ids.upcoming}/stages`)).body
+    expect(stages.empty).toBe(false)
+    // the bracket names rounds by its own rules; what matters is that unplayed series, the TBD final too, are in it
+    const rounds: { series: unknown[] }[] = stages.stages.flatMap((s: { rounds: { series: unknown[] }[] }) => s.rounds)
+    expect(rounds.reduce((sum, r) => sum + r.series.length, 0)).toBe(3)
+    const context = (await api(`/api/tournaments/${ids.upcoming}/context`)).body
+    expect(context.teams).toEqual([])
+    expect(context.upcoming).toHaveLength(2)
+  })
+
+  it('keeps the earlier statuses for running and finished events', async () => {
+    expect((await api(`/api/tournaments/${ids.running}`)).body.tournament.status).toBe('In progress')
+    expect((await api(`/api/tournaments/${ids.msiPlayIn}`)).body.tournament.status).toBe('Completed')
+  })
+})
+
+describe('a competition whose main event has no result yet', () => {
+  it('is running, counts its play-in games, and names no leader until the main event has a result', async () => {
+    const { body } = await api(`/api/tournaments/${ids.worlds}`)
+    expect(body.tournament).toMatchObject({ name: 'Worlds 2026', status: 'In progress', startDate: dateOnly(day(-7)) })
+    expect(body.summary).toMatchObject({ games: 1, standingLabel: 'Leading', standingTeam: null })
+  })
+})

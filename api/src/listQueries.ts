@@ -1,7 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, isAllTime, MIN_SAMPLE } from './filters.js'
-import { likeEscape, STATUS_SQL } from './homeQueries.js'
+import { likeEscape, STATUS_SQL, type EventStatus } from './homeQueries.js'
 import { resolveChampionRange } from './championQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { ka, ok, FROM_CORE, perMin } from './playerQueries.js'
@@ -239,7 +239,7 @@ export const tournamentsListSchema = z.object({
   year: z.coerce.number().int().optional(),
   /** Blank leaves qualifiers out; "Qualifier" lists only those. */
   stage: z.enum(['Regular season', 'Playoffs', 'Qualifier']).optional(),
-  status: z.enum(['In progress', 'Completed']).optional(),
+  status: z.enum(['Upcoming', 'In progress', 'Completed']).optional(),
   ...paging,
   sort: z.enum(TOURNAMENT_SORTS).default('date'),
 })
@@ -252,7 +252,7 @@ export interface TournamentListRow {
   league: string
   stage: string | null
   year: number
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   games: number
