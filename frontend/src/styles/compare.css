@@ -249,6 +249,31 @@
 .vhalf--b .vhalf__picker {
   align-self: flex-end;
 }
+/* Nothing chosen yet: the picker sits in the middle of its half under a plain prompt. */
+.vhalf--empty {
+  background: radial-gradient(520px 320px at 50% 55%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+}
+.vhalf--empty .vhalf__cap {
+  align-self: center;
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+.vhalf--empty .vhalf__picker {
+  width: min(420px, 100%);
+  margin: 0 auto;
+  align-self: auto;
+  align-items: stretch;
+}
+.vhalf__prompt {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(36px, 4.4vw, 56px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
 .vs__seam {
   position: absolute;
   left: 50%;

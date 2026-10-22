@@ -105,7 +105,7 @@ function Half({
   }, [picking])
 
   return (
-    <div className={`vhalf vhalf--${side}`} ref={stage.headerRef} style={{ '--rc': stage.accent } as CSSProperties}>
+    <div className={`vhalf vhalf--${side}${subject ? '' : ' vhalf--empty'}`} ref={stage.headerRef} style={{ '--rc': stage.accent } as CSSProperties}>
       <div className="vhalf__clip" aria-hidden="true">
         <StageBackdrop stage={stage} />
       </div>
@@ -148,6 +148,7 @@ function Half({
         )}
         {open && (
           <div className="vhalf__picker">
+            {subject ? null : <p className="vhalf__prompt">Choose a {singular}</p>}
             <SearchBox
               variant="bar"
               inputRef={inputRef}
