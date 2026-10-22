@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable
 
 import psycopg
@@ -52,6 +52,12 @@ def stage_of(row: dict[str, Any]) -> tuple[str | None, int | None, int | None]:
     return (tab or None, to_int(row.get("N_TabInPage")), to_int(row.get("N_MatchInTab"))) if tab else (None, None, None)
 
 
+def awaits_games(t: dict[str, Any], today: date) -> bool:
+    """True for an event with no games that has not ended: its row and schedule are stored so the site can show it
+    before it starts. One with no end date is not (a stub or a cancelled event would stay pending for ever)."""
+    return bool(t["Date"]) and t["Date"] >= today.isoformat()
+
+
 class OutOfScope(Exception):
     """The tournament's league is not one we track."""
 
@@ -62,9 +68,15 @@ def list_scope_tournaments(
     today: date | None = None,
     year_from: int | None = None,
     year_to: int | None = None,
+    upcoming_days: int = 0,
 ) -> list[dict[str, Any]]:
-    """Official tournaments in scope (domestic tier-1, regional finals, internationals), oldest first."""
+    """Official tournaments in scope (domestic tier-1, regional finals, internationals), oldest first.
+
+    One that starts more than `upcoming_days` from today is left out. The nightly looks a little ahead so an event is
+    stored, and shown, before its first game; a manual backfill keeps 0 and loads only what has started.
+    """
     today = today or date.today()
+    latest_start = (today + timedelta(days=upcoming_days)).isoformat()
     names = ",".join(cargo_quote(n) for n in resolver.domestic_long_names)
     regions = ",".join(cargo_quote(r) for r in resolver.regional_finals)
     where = (
@@ -80,8 +92,8 @@ def list_scope_tournaments(
             continue
         if year_from and year < year_from or year_to and year > year_to:
             continue
-        if r["DateStart"] and r["DateStart"] > today.isoformat():
-            continue  # not started yet
+        if r["DateStart"] and r["DateStart"] > latest_start:
+            continue  # starts too far ahead
         try:
             resolver.resolve(r["League"], year, r["Region"])
         except KeyError:
@@ -265,9 +277,10 @@ def backfill_tournament(
     if state and state[0] == "done" and not force:
         return {}
 
+    today = today or date.today()
     _set_state(conn, page, "in_progress")
     try:
-        counts = _load(conn, lp, tournament, cache, resolver)
+        counts = _load(conn, lp, tournament, cache, resolver, today)
     except OutOfScope:
         conn.rollback()
         _set_state(conn, page, "done", "out of scope")
@@ -282,7 +295,6 @@ def backfill_tournament(
     )
     conn.commit()
     # A tournament that has not ended yet is only partially loaded; keep it pending for the nightly sync.
-    today = today or date.today()
     ended = bool(tournament["Date"]) and tournament["Date"] < today.isoformat()
     _set_state(conn, page, "done" if ended else "pending")
     return counts
@@ -294,6 +306,7 @@ def _load(
     t: dict[str, Any],
     cache: ResolveCache,
     resolver: LeagueResolver,
+    today: date,
 ) -> dict[str, int]:
     page = t["OverviewPage"]
     year = int(t["Year"])
@@ -306,11 +319,14 @@ def _load(
     games = list(lp.cargo("ScoreboardGames", GAME_FIELDS, where=where))
     counts: dict[str, int] = defaultdict(int)
     if not games:
-        return {"games": 0}  # showmatches, cancelled events: nothing to store
+        if not awaits_games(t, today):
+            return {"games": 0}  # showmatches, cancelled events: nothing to store
+        counts["upcoming"] = 1  # not started: only its row and schedule are stored, and the nightly reloads it
 
-    teams = list(lp.cargo("ScoreboardTeams", TEAM_FIELDS, where=where))
-    players = list(lp.cargo("ScoreboardPlayers", PLAYER_FIELDS, where=where))
-    pickbans = list(lp.cargo("PicksAndBansS7", PICKBAN_FIELDS, where=where))
+    # Before the first game the scoreboard, player and draft tables are empty; asking would only cost rate limit.
+    teams = list(lp.cargo("ScoreboardTeams", TEAM_FIELDS, where=where)) if games else []
+    players = list(lp.cargo("ScoreboardPlayers", PLAYER_FIELDS, where=where)) if games else []
+    pickbans = list(lp.cargo("PicksAndBansS7", PICKBAN_FIELDS, where=where)) if games else []
     matches = list(lp.cargo("MatchSchedule", MATCH_FIELDS, where=where))
 
     all_team_names = (
@@ -332,7 +348,7 @@ def _load(
     pb_by_game = {r["GameId"]: r for r in pickbans}
 
     team_conference: dict[str, str] = {}
-    if res.multi_league:
+    if res.multi_league and games:  # only teams that played get a conference row
         team_conference = conference_team_leagues(lp, cache, resolver.conference_leagues(t["League"]), year)
 
     with conn.cursor() as cur:
@@ -588,11 +604,12 @@ def backfill_all(
             summary["already_done"] += 1
             continue
         summary["synced"] += 1
-        for key in ("games", "player_games", "bans"):
+        for key in ("games", "player_games", "bans", "upcoming"):
             summary[key] += counts.get(key, 0)
         extras = {k: v for k, v in counts.items() if k.startswith(("skipped", "games_without", "games_draft", "unmapped"))}
+        upcoming = f", not started: {counts.get('series', 0)} series scheduled" if counts.get("upcoming") else ""
         log(
-            f"{label}: {counts.get('games', 0)} games in {time.monotonic() - t0:.0f}s"
+            f"{label}: {counts.get('games', 0)} games{upcoming} in {time.monotonic() - t0:.0f}s"
             + (f"  {extras}" if extras else "")
         )
         time.sleep(pause_sec)
