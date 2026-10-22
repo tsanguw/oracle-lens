@@ -146,3 +146,20 @@ describe('where an event with no games is listed', () => {
     expect(filters.combos.map((c: { split: string | null }) => c.split)).not.toContain('Finals')
   })
 })
+
+describe('a finished play-in', () => {
+  // Bravo won the last series, so a "Champion" rule would name Bravo; a play-in has no champion.
+  it('credits the team with the most series wins as top record on the tournaments list', async () => {
+    const { body } = await api('/api/tournaments?stage=Qualifier')
+    expect(body.rows.find((r: { name: string }) => r.name === 'MSI 2026 Play-In')).toMatchObject({
+      status: 'Completed',
+      standingLabel: 'Top record',
+      standingTeam: 'Alpha',
+    })
+  })
+
+  it('credits the same team as top record on its tournament page', async () => {
+    const { body } = await api(`/api/tournaments/${ids.msiPlayIn}`)
+    expect(body.summary).toMatchObject({ standingLabel: 'Top record', standingTeam: 'Alpha' })
+  })
+})

@@ -1,7 +1,7 @@
 import type pg from 'pg'
 import { z } from 'zod'
 import { filterSchema, isAllTime, MIN_SAMPLE } from './filters.js'
-import { IS_LISTED, likeEscape, STATUS_SQL, type EventStatus } from './homeQueries.js'
+import { crownsChampion, IS_LISTED, likeEscape, STATUS_SQL, type EventStatus } from './homeQueries.js'
 import { resolveChampionRange } from './championQueries.js'
 import { resolveRange, type LeaderboardRange } from './leaderboardQueries.js'
 import { ka, ok, FROM_CORE, perMin } from './playerQueries.js'
@@ -286,7 +286,7 @@ export async function loadTournamentsList(
   const { rows } = await pool.query(
     `SELECT t.id, t.slug, t.name, t.league, t.stage, t.year, t.status, t."startDate", t."endDate", t.games, t.total,
        CASE WHEN t.status = 'In progress' THEN 'Leading'
-            WHEN t.stage = 'Playoffs' OR t.is_international THEN 'Champion' ELSE 'Top record' END AS "standingLabel",
+            WHEN ${crownsChampion('t')} THEN 'Champion' ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
        SELECT t.id, es.slug, t.name, t.stage, t.year, t.is_international, t.start_date,
@@ -307,7 +307,7 @@ export async function loadTournamentsList(
              WHERE s.tournament_id = t.id AND s.winner_id IS NOT NULL GROUP BY s.id, s.winner_id) x
        JOIN team w ON w.id = x.winner_id
        GROUP BY w.id, w.name
-       ORDER BY (CASE WHEN t.status = 'Completed' AND (t.stage = 'Playoffs' OR t.is_international)
+       ORDER BY (CASE WHEN t.status = 'Completed' AND ${crownsChampion('t')}
                       THEN MAX(x.last_game) END) DESC NULLS LAST, COUNT(*) DESC, w.name
        LIMIT 1) st ON true
      ORDER BY ${order}`,

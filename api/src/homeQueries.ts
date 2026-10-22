@@ -114,8 +114,14 @@ export interface RecentTournament {
 /**
  * Finished events whose standing is the winner of the last series: playoffs and internationals. A play-in is stored as
  * a qualifier and has no champion (several teams go through), so it falls back to the team with the most series wins.
+ * `alias` is a tournament or `event` row.
  */
-const CROWNS_CHAMPION = `(t.stage = 'Playoffs' OR (t.is_international AND t.stage IS DISTINCT FROM 'Qualifier'))`
+export const crownsChampion = (alias: string) =>
+  `(${alias}.stage = 'Playoffs' OR (${alias}.is_international AND ${alias}.stage IS DISTINCT FROM 'Qualifier'))`
+
+/** `crownsChampion` for a row already loaded. */
+export const crownsChampionRow = (t: { stage: string | null; isInternational: boolean }) =>
+  t.stage === 'Playoffs' || (t.isInternational && t.stage !== 'Qualifier')
 
 /**
  * Most recent official events with games, newest start first. Qualifiers are left out, except an international
@@ -128,7 +134,7 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
     `SELECT t.id, es.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
        to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
        CASE WHEN ${STATUS_SQL} = 'In progress' THEN 'Leading'
-            WHEN ${CROWNS_CHAMPION} THEN 'Champion'
+            WHEN ${crownsChampion('t')} THEN 'Champion'
             ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
@@ -146,7 +152,7 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
              GROUP BY s.id, s.winner_id) x
        JOIN team w ON w.id = x.winner_id
        GROUP BY w.id, w.name
-       ORDER BY (CASE WHEN ${STATUS_SQL} = 'Completed' AND ${CROWNS_CHAMPION}
+       ORDER BY (CASE WHEN ${STATUS_SQL} = 'Completed' AND ${crownsChampion('t')}
                       THEN MAX(x.last_game) END) DESC NULLS LAST,
                 COUNT(*) DESC, w.name
        LIMIT 1) st ON true

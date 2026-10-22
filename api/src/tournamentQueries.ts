@@ -1,6 +1,6 @@
 import type pg from 'pg'
 import { z } from 'zod'
-import { IS_LISTED, STATUS_SQL, statusSql, type EventStatus } from './homeQueries.js'
+import { crownsChampionRow, IS_LISTED, STATUS_SQL, statusSql, type EventStatus } from './homeQueries.js'
 import { MIN_SAMPLE } from './filters.js'
 import { FROM, ka, ok, perMin } from './playerQueries.js'
 
@@ -59,7 +59,7 @@ export interface TournamentSummary {
   /** Average kills by both teams combined, per game. */
   killsPerGame: number | null
   patches: string[]
-  /** "Leading" while running, "Champion" for finished playoffs and internationals, else "Top record". */
+  /** "Leading" while running, "Champion" for finished playoffs and internationals (not a play-in), else "Top record". */
   standingLabel: string
   standingTeam: string | null
 }
@@ -87,7 +87,7 @@ export async function loadTournamentSummary(pool: pg.Pool, t: TournamentRow): Pr
        GROUP BY w.id, w.name
        ORDER BY (CASE WHEN $2::boolean THEN MAX(x.last_game) END) DESC NULLS LAST, COUNT(*) DESC, w.name
        LIMIT 1`,
-      [t.id, t.status === 'Completed' && (t.stage === 'Playoffs' || t.isInternational)],
+      [t.id, t.status === 'Completed' && crownsChampionRow(t)],
     ),
   ])
   const a = agg.rows[0]
@@ -97,8 +97,7 @@ export async function loadTournamentSummary(pool: pg.Pool, t: TournamentRow): Pr
     patches: patches.rows
       .map((r) => r.patch as string)
       .sort((x, y) => patchKey(y) - patchKey(x)),
-    standingLabel:
-      t.status === 'In progress' ? 'Leading' : t.stage === 'Playoffs' || t.isInternational ? 'Champion' : 'Top record',
+    standingLabel: t.status === 'In progress' ? 'Leading' : crownsChampionRow(t) ? 'Champion' : 'Top record',
     standingTeam: standing.rows[0]?.name ?? null,
   }
 }
