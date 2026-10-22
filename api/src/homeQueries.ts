@@ -106,7 +106,10 @@ export interface RecentTournament {
   status: EventStatus
   startDate: string | null
   endDate: string | null
-  /** "Leading" while running, "Champion" for finished playoffs and internationals, "Top record" for other finished events (a play-in too). */
+  /**
+   * "Leading" while running, "Champion" for finished playoffs and internationals, "Top record" for other finished events
+   * (a play-in too). Null with no standing team, e.g. a competition whose main event has no result yet.
+   */
   standingLabel: string | null
   standingTeam: string | null
 }
@@ -133,7 +136,8 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
   const { rows } = await pool.query(
     `SELECT t.id, es.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
        to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
-       CASE WHEN ${STATUS_SQL} = 'In progress' THEN 'Leading'
+       CASE WHEN st.name IS NULL THEN NULL
+            WHEN ${STATUS_SQL} = 'In progress' THEN 'Leading'
             WHEN ${crownsChampion('t')} THEN 'Champion'
             ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"

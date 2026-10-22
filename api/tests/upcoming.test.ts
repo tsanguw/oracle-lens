@@ -163,3 +163,11 @@ describe('a finished play-in', () => {
     expect(body.summary).toMatchObject({ standingLabel: 'Top record', standingTeam: 'Alpha' })
   })
 })
+
+describe('Recent tournaments for a competition whose main event has no result yet', () => {
+  it('lists it once under its own name, from its play-in games, with no standing label and no team', async () => {
+    const { body } = await api('/api/tournaments/recent')
+    const worlds = body.tournaments.filter((t: { name: string }) => t.name.startsWith('Worlds 2026'))
+    expect(worlds).toEqual([expect.objectContaining({ name: 'Worlds 2026', status: 'In progress', standingLabel: null, standingTeam: null })])
+  })
+})
