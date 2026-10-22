@@ -1,4 +1,5 @@
 import type pg from 'pg'
+import { loadStandings, type StandingRow } from './tournamentQueries.js'
 
 /*
  * An event's series grouped into stages (play-in, swiss, groups, knockout) from the round each one belongs to on
@@ -219,8 +220,32 @@ function bracketRounds(list: StageSeriesRow[]): StageRound[] {
   return rounds
 }
 
+/** A stage as the page gets it: with each team's series and game record in that stage alone. */
+export type EventStage = Stage & { records: StandingRow[] }
+
+/**
+ * The stage a tournament page opens on, or null when the page shows no stages (one stage that is not a knockout is just
+ * the standings): the last stage with a result, which is the one running or the last of a finished event; before any
+ * result, the knockout, else the last stage.
+ */
+export function defaultStageKey(stages: Stage[]): StageKind | null {
+  if (stages.length === 0 || (stages.length === 1 && stages[0].key !== 'knockout')) return null
+  const played = stages.filter((s) => s.rounds.some((r) => r.series.some((x) => x.played)))
+  return (played.at(-1) ?? stages.find((s) => s.key === 'knockout') ?? stages[stages.length - 1]).key
+}
+
 /** `event.id` is the main event; `event.memberIds` adds the play-in tournament(s) of the same competition. */
-export async function loadStages(pool: pg.Pool, event: { id: number; memberIds: number[]; name: string }): Promise<Stage[]> {
+export async function loadStages(pool: pg.Pool, event: { id: number; memberIds: number[]; name: string }): Promise<EventStage[]> {
+  const stages = await loadStageSeries(pool, event)
+  return Promise.all(
+    stages.map(async (s) => ({
+      ...s,
+      records: await loadStandings(pool, { series: s.rounds.flatMap((r) => r.series.map((x) => x.seriesId)) }),
+    })),
+  )
+}
+
+async function loadStageSeries(pool: pg.Pool, event: { id: number; memberIds: number[]; name: string }): Promise<Stage[]> {
   const { rows } = await pool.query<StageSeriesRow & { tournamentId: number }>(
     `SELECT s.id AS "seriesId", s.tournament_id AS "tournamentId", s.stage_tab AS tab, s.stage_order AS "tabOrder", s.stage_match AS n,
             t1.name AS team1, t2.name AS team2, t1.region AS region1, t2.region AS region2,

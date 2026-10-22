@@ -132,18 +132,25 @@ export interface StandingRow {
   gameWinRate: number
 }
 
+/** Whose records to count: one tournament's games, or only the games of some series (one stage of an event). */
+export type StandingsScope = { tournament: number } | { series: number[] }
+
 /** Series and game records per team, best series record first. */
-export async function loadStandings(pool: pg.Pool, tournamentId: number, limit?: number): Promise<StandingRow[]> {
+export async function loadStandings(pool: pg.Pool, scope: StandingsScope, limit?: number): Promise<StandingRow[]> {
+  const [gameIn, seriesIn, key] =
+    'tournament' in scope
+      ? ['g.tournament_id = $1', 's.tournament_id = $1', scope.tournament]
+      : ['g.series_id = ANY($1::int[])', 's.id = ANY($1::int[])', scope.series]
   const { rows } = await pool.query(
     `WITH games AS (
        SELECT tg.team_id, COUNT(*)::int AS played, COUNT(*) FILTER (WHERE tg.win)::int AS won
-       FROM team_game tg JOIN game g ON g.id = tg.game_id WHERE g.tournament_id = $1 GROUP BY tg.team_id),
+       FROM team_game tg JOIN game g ON g.id = tg.game_id WHERE ${gameIn} GROUP BY tg.team_id),
      decided AS (
        SELECT s.team1_id AS team_id, (s.winner_id = s.team1_id) AS won FROM series s
-       WHERE s.tournament_id = $1 AND s.winner_id IS NOT NULL AND EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)
+       WHERE ${seriesIn} AND s.winner_id IS NOT NULL AND EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)
        UNION ALL
        SELECT s.team2_id, (s.winner_id = s.team2_id) FROM series s
-       WHERE s.tournament_id = $1 AND s.winner_id IS NOT NULL AND EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)),
+       WHERE ${seriesIn} AND s.winner_id IS NOT NULL AND EXISTS (SELECT 1 FROM game g WHERE g.series_id = s.id)),
      sers AS (
        SELECT team_id, COUNT(*) FILTER (WHERE won)::int AS sw, COUNT(*) FILTER (WHERE NOT won)::int AS sl
        FROM decided GROUP BY team_id)
@@ -152,7 +159,7 @@ export async function loadStandings(pool: pg.Pool, tournamentId: number, limit?:
      FROM games g JOIN team t ON t.id = g.team_id LEFT JOIN sers s ON s.team_id = g.team_id
      ORDER BY COALESCE(s.sw, 0) DESC, (g.won - (g.played - g.won)) DESC, t.name
      ${limit ? 'LIMIT $2' : ''}`,
-    limit ? [tournamentId, limit] : [tournamentId],
+    limit ? [key, limit] : [key],
   )
   return rows.map((r) => ({ ...r, gameWinRate: r.gameWins / (r.gameWins + r.gameLosses) }))
 }

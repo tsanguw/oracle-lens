@@ -13,7 +13,7 @@ import { loadImageManifest } from './assets.js'
 import { loadSitemap } from './sitemap.js'
 import { championsListSchema, loadChampionsList, loadTeamsList, loadTournamentsList, teamsListSchema, tournamentsListSchema } from './listQueries.js'
 import { loadTeamContext } from './teamContext.js'
-import { loadStages } from './stages.js'
+import { defaultStageKey, loadStages } from './stages.js'
 import {
   findTournament,
   loadRelatedEvents,
@@ -401,7 +401,7 @@ export function createApp(options: AppOptions = {}) {
     return { tournament: info, empty: summary === null, summary }
   })
   tournamentRoute('/standings', async ({ tournament }) => {
-    const standings = await loadStandings(pool, tournament.id)
+    const standings = await loadStandings(pool, { tournament: tournament.id })
     return { empty: standings.length === 0, standings }
   })
   /** `limit` caps both lists, so a page that filters by team or day can ask for every scheduled and played series. */
@@ -430,15 +430,28 @@ export function createApp(options: AppOptions = {}) {
     const champions = await loadTournamentChampions(pool, tournament.memberIds, limit)
     return { empty: champions.length === 0, champions }
   })
-  /** The event's series grouped into stages (play-in, swiss, groups, knockout), with the links a bracket is drawn from. */
+  /**
+   * The event's series grouped into stages (play-in, swiss, groups, knockout), with the links a bracket is drawn from and
+   * each team's record in each stage. `defaultKey` is the stage the page opens on (null: the page shows no stages).
+   */
   tournamentRoute('/stages', async ({ tournament }) => {
     const stages = await loadStages(pool, tournament)
-    return { empty: stages.length === 0, stages }
+    return { empty: stages.length === 0, defaultKey: defaultStageKey(stages), stages }
   })
+  /**
+   * The top of the stage the page opens on, so a competition whose main event has not played yet shows its play-in
+   * leaders; an event without stages counts all of its own games.
+   */
+  const leadingTeams = async (tournament: TournamentRow) => {
+    const stages = await loadStages(pool, tournament)
+    const key = defaultStageKey(stages)
+    const stage = stages.find((s) => s.key === key)
+    return stage ? stage.records.slice(0, 5) : loadStandings(pool, { tournament: tournament.id }, 5)
+  }
   /** Leading teams, schedule and results, and related events for the related-info strip. */
   tournamentRoute('/context', async ({ tournament }) => {
     const [teams, upcoming, results, related] = await Promise.all([
-      loadStandings(pool, tournament.id, 5),
+      leadingTeams(tournament),
       loadUpcoming(pool, tournament.memberIds),
       loadResults(pool, tournament.memberIds, 3),
       loadRelatedEvents(pool, tournament),

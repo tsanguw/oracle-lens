@@ -243,9 +243,22 @@ describe('GET /api/tournaments/:id/stages', () => {
     ])
   })
 
+  it("gives each stage its teams' records from that stage's series only, and opens on the knockout once it has a result", async () => {
+    const { body } = await api(`/api/tournaments/${ids.playoffs}/stages`)
+    expect(body.defaultKey).toBe('knockout')
+    // Alpha's 2-0 over Charlie has no round, so it is in no stage: Alpha is 1-0 here, not 2-0 as in the whole event
+    const records = body.stages[0].records.map((r: { team: string; seriesWins: number; seriesLosses: number; gameWins: number; gameLosses: number }) =>
+      [r.team, `${r.seriesWins}-${r.seriesLosses}`, `${r.gameWins}-${r.gameLosses}`])
+    expect(records).toEqual([
+      ['Alpha', '1-0', '2-1'],
+      ['Bravo', '1-1', '3-2'],
+      ['Charlie', '0-1', '0-2'],
+    ])
+  })
+
   it('is empty for an event with no round data, and 404s for an unknown one', async () => {
     const empty = await api(`/api/tournaments/${ids.regular}/stages`)
-    expect(empty.body).toEqual({ empty: true, stages: [] })
+    expect(empty.body).toEqual({ empty: true, defaultKey: null, stages: [] })
     expect((await api('/api/tournaments/999999/stages')).status).toBe(404)
   })
 })
