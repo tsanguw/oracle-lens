@@ -20,8 +20,10 @@ export interface SearchResults {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]
   champions: { name: string; role: string | null }[]
-  tournaments: { id: number; slug: string; name: string; status: 'In progress' | 'Completed' }[]
+  tournaments: { id: number; slug: string; name: string; status: EventStatus }[]
 }
+
+export type EventStatus = 'Upcoming' | 'In progress' | 'Completed'
 
 /**
  * True for a tournament that is an event of its own: everything except a play-in whose main event is loaded (those are
@@ -30,7 +32,21 @@ export interface SearchResults {
 export const IS_EVENT_HEAD = (alias: string) =>
   `NOT EXISTS (SELECT 1 FROM tournament_group tg WHERE tg.id = ${alias}.id AND tg.group_id <> ${alias}.id)`
 
-export const STATUS_SQL = `(CASE WHEN t.start_date <= CURRENT_DATE AND t.end_date >= CURRENT_DATE THEN 'In progress' ELSE 'Completed' END)`
+/** An event's status from its dates alone. Without dates it counts as finished, as it always has. */
+export const statusSql = (alias: string) =>
+  `(CASE WHEN ${alias}.start_date > CURRENT_DATE THEN 'Upcoming'
+         WHEN ${alias}.start_date <= CURRENT_DATE AND ${alias}.end_date >= CURRENT_DATE THEN 'In progress'
+         ELSE 'Completed' END)`
+
+export const STATUS_SQL = statusSql('t')
+
+/**
+ * True for an event that belongs in search, the tournaments list and related events: one with games, or one that has not
+ * ended yet (scheduled, or started without a game loaded). A past event with no games (cancelled, a showmatch) stays out.
+ * `alias` is an `event` row.
+ */
+export const IS_LISTED = (alias: string) =>
+  `(EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(${alias}.member_ids)) OR ${alias}.end_date >= CURRENT_DATE)`
 
 export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchSchema>): Promise<SearchResults> {
   const empty: SearchResults = { players: [], teams: [], champions: [], tournaments: [] }
@@ -74,7 +90,7 @@ export async function search(pool: pg.Pool, { q, limit }: z.infer<typeof searchS
     pool.query(
       `SELECT t.id, es.slug, t.name, ${STATUS_SQL} AS status
        FROM event t JOIN event_slug es ON es.id = t.id
-       WHERE t.name ILIKE $1 AND EXISTS (SELECT 1 FROM game g WHERE g.tournament_id = ANY(t.member_ids))
+       WHERE t.name ILIKE $1 AND ${IS_LISTED('t')}
        ORDER BY ${rank('t.name')}, t.start_date DESC NULLS LAST, t.name LIMIT $3`,
       args,
     ),
@@ -87,7 +103,7 @@ export interface RecentTournament {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   /** "Leading" while running, "Champion" for finished playoffs and internationals, "Top record" for other finished events (a play-in too). */
@@ -98,8 +114,14 @@ export interface RecentTournament {
 /**
  * Finished events whose standing is the winner of the last series: playoffs and internationals. A play-in is stored as
  * a qualifier and has no champion (several teams go through), so it falls back to the team with the most series wins.
+ * `alias` is a tournament or `event` row.
  */
-const CROWNS_CHAMPION = `(t.stage = 'Playoffs' OR (t.is_international AND t.stage IS DISTINCT FROM 'Qualifier'))`
+export const crownsChampion = (alias: string) =>
+  `(${alias}.stage = 'Playoffs' OR (${alias}.is_international AND ${alias}.stage IS DISTINCT FROM 'Qualifier'))`
+
+/** `crownsChampion` for a row already loaded. */
+export const crownsChampionRow = (t: { stage: string | null; isInternational: boolean }) =>
+  t.stage === 'Playoffs' || (t.isInternational && t.stage !== 'Qualifier')
 
 /**
  * Most recent official events with games, newest start first. Qualifiers are left out, except an international
@@ -112,7 +134,7 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
     `SELECT t.id, es.slug, t.name, COALESCE(l.name, 'INTL') AS league, ${STATUS_SQL} AS status,
        to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
        CASE WHEN ${STATUS_SQL} = 'In progress' THEN 'Leading'
-            WHEN ${CROWNS_CHAMPION} THEN 'Champion'
+            WHEN ${crownsChampion('t')} THEN 'Champion'
             ELSE 'Top record' END AS "standingLabel",
        st.name AS "standingTeam"
      FROM (
@@ -130,7 +152,7 @@ export async function recentTournaments(pool: pg.Pool, limit: number): Promise<R
              GROUP BY s.id, s.winner_id) x
        JOIN team w ON w.id = x.winner_id
        GROUP BY w.id, w.name
-       ORDER BY (CASE WHEN ${STATUS_SQL} = 'Completed' AND ${CROWNS_CHAMPION}
+       ORDER BY (CASE WHEN ${STATUS_SQL} = 'Completed' AND ${crownsChampion('t')}
                       THEN MAX(x.last_game) END) DESC NULLS LAST,
                 COUNT(*) DESC, w.name
        LIMIT 1) st ON true

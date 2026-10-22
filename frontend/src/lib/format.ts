@@ -1,3 +1,5 @@
+import type { EventStatus } from '../api/types'
+
 /** Stats that are not tracked (NULL in the database) always display as N/A, never 0. */
 export const NA = 'N/A'
 
@@ -113,3 +115,7 @@ export function placeLabel(place: string): string {
   if (text === 'NQ') return 'Not qualified'
   return text
 }
+
+/** Classes for an event's status badge: filled while running, dashed before it starts, plain once it is over. */
+export const statusBadge = (status: EventStatus): string =>
+  status === 'In progress' ? 'badge badge--live' : status === 'Upcoming' ? 'badge badge--soon' : 'badge'

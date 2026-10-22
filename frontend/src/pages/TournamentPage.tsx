@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import { Navigate, useLocation, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import type {
   MatchesResponse,
   RostersResponse,
@@ -28,6 +28,7 @@ import { notFoundSeo, tournamentLd, tournamentSeo } from '../lib/seoText'
 import { tournamentPath } from '../lib/tournamentPath'
 import { filterMatches, teamOptions } from '../lib/matchFilter'
 import ErrorState from '../components/ErrorState'
+import { TeamLogo } from '../components/Images'
 import ResultsFilters from '../components/ResultsFilters'
 import TournamentRosters, { TournamentRostersSkeleton } from '../components/TournamentRosters'
 import TournamentStages from '../components/TournamentStages'
@@ -88,6 +89,14 @@ export default function TournamentPage({ id }: { id: string }) {
   const data = tournament.data
   const results = matches.data?.results ?? []
   const upcoming = matches.data?.upcoming ?? []
+  // A single group stage is already the standings table; the bracket view earns its place with more stages or a knockout.
+  const stageList =
+    stages.data && !stages.data.empty && (stages.data.stages.length > 1 || stages.data.stages[0].key === 'knockout')
+      ? stages.data.stages
+      : null
+  // An event with no games that has not ended yet (scheduled, or started without a game loaded): its schedule, bracket
+  // and teams take the place of the stats. A past event with no games keeps the "No games recorded" note.
+  const notStarted = data?.empty === true && data.tournament.status !== 'Completed'
 
   // The team filter lives in the URL (?team=) and works on the lists already fetched: an event has at most a few hundred
   // series. A name that is not in the lists (an old link) is ignored.
@@ -128,16 +137,63 @@ export default function TournamentPage({ id }: { id: string }) {
       {data ? <TournamentHeader data={data} champions={champions.data?.champions} /> : <TournamentHeaderSkeleton />}
       <TournamentContext data={context.data} />
       <main className="main container">
-        {data?.empty ? (
+        {notStarted ? (
+          <>
+            {stageList && <TournamentStages stages={stageList} />}
+
+            <section aria-labelledby="schedule" className="section schedule">
+              <div className="matches__head">
+                <h2 id="schedule" className="section__title">
+                  Schedule
+                </h2>
+                {upcoming.length > 0 && (
+                  <ResultsFilters teams={teams} team={team} onChange={setTeam} shown={matchedUpcoming.length} total={upcoming.length} />
+                )}
+              </div>
+              {matches.data ? (
+                upcoming.length === 0 ? (
+                  <p className="matches__note">No matches have been scheduled yet.</p>
+                ) : matchedUpcoming.length === 0 ? (
+                  <p className="matches__note">No matches for this team.</p>
+                ) : (
+                  <UpcomingTable upcoming={matchedUpcoming} />
+                )
+              ) : (
+                <Skeleton />
+              )}
+            </section>
+
+            {teams.length > 0 && (
+              <section aria-labelledby="teams" className="section">
+                <div className="section__head">
+                  <h2 id="teams" className="section__title">
+                    Teams taking part
+                  </h2>
+                  <span className="section__note">From the matches scheduled so far</span>
+                </div>
+                <ul className="rosters">
+                  {teams.map((name) => (
+                    <li key={name} className="roster">
+                      <h3 className="roster__team">
+                        <Link to={`/teams/${encodeURIComponent(name)}`} className="roster__name with-img">
+                          <TeamLogo name={name} size={32} />
+                          {name}
+                        </Link>
+                      </h3>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        ) : data?.empty ? (
           <div className="empty" role="status">
             <h2 className="empty__title">No games recorded</h2>
             <p className="empty__text">This event has no games in our data yet.</p>
           </div>
         ) : (
           <>
-            {stages.data && !stages.data.empty && (stages.data.stages.length > 1 || stages.data.stages[0].key === 'knockout') && (
-              <TournamentStages stages={stages.data.stages} />
-            )}
+            {stageList && <TournamentStages stages={stageList} />}
 
             <section aria-labelledby="records" className="section">
               <h2 id="records" className="section__title">

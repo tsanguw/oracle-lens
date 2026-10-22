@@ -379,6 +379,12 @@
   border-color: var(--accent);
   color: var(--on-accent);
 }
+/* Not started yet: dashed, so it reads apart from a running event and from a first-place badge. */
+.badge--soon {
+  color: var(--accent-text);
+  border-color: var(--accent);
+  border-style: dashed;
+}
 /* A final placement replaces "Completed"; first place is outlined in the accent colour. */
 .badge--place {
   color: var(--text);

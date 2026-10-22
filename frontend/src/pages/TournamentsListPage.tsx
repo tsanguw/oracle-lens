@@ -3,7 +3,7 @@ import type { FiltersResponse, TournamentListResponse } from '../api/types'
 import { useApi } from '../api/useApi'
 import FilterDock from '../components/FilterDock'
 import { ListHead, listState, Pager, SearchField } from '../components/ListParts'
-import { dateRange, shortTeam } from '../lib/format'
+import { dateRange, shortTeam, statusBadge } from '../lib/format'
 import { tournamentPath } from '../lib/tournamentPath'
 import { TeamLogo } from '../components/Images'
 import { LiveNow } from '../components/ListPodiums'
@@ -11,7 +11,7 @@ import { usePageMeta } from '../lib/usePageMeta'
 import ErrorState from '../components/ErrorState'
 
 const STAGES = ['Regular season', 'Playoffs', 'Qualifier']
-const STATUSES = ['In progress', 'Completed']
+const STATUSES = ['Upcoming', 'In progress', 'Completed']
 
 export default function TournamentsListPage() {
   const [params, setParams] = useSearchParams()
@@ -85,7 +85,7 @@ export default function TournamentsListPage() {
                   <tr key={t.id}>
                     <td className="lb__left lb__player">
                       <Link to={tournamentPath(t)}>{t.name}</Link>
-                      {t.status === 'In progress' && <span className="badge badge--live lb__live">In progress</span>}
+                      {t.status !== 'Completed' && <span className={`${statusBadge(t.status)} lb__live`}>{t.status}</span>}
                     </td>
                     <td className="lb__left">
                       <span className="tag tag--small">{t.league}</span>

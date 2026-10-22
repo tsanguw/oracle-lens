@@ -1,3 +1,6 @@
+/** An event's status from its dates: not started, running, or over. */
+export type EventStatus = 'Upcoming' | 'In progress' | 'Completed'
+
 export interface Summary {
   games: number
   wins: number
@@ -172,7 +175,7 @@ export interface ContextEvent {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
 }
@@ -360,7 +363,7 @@ export interface TournamentInfo {
   split: string | null
   stage: string | null
   isInternational: boolean
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
 }
@@ -485,7 +488,7 @@ export interface TournamentContextResponse {
   teams: StandingRow[]
   upcoming: SeriesRow[]
   results: SeriesRow[]
-  related: { id: number; slug: string; name: string; league: string; status: 'In progress' | 'Completed'; startDate: string | null; endDate: string | null }[]
+  related: { id: number; slug: string; name: string; league: string; status: EventStatus; startDate: string | null; endDate: string | null }[]
 }
 
 export interface TeamSummary {
@@ -587,7 +590,7 @@ export interface SearchResponse {
   players: { page: string; name: string; role: string | null; team: string | null }[]
   teams: { name: string; league: string | null }[]
   champions: { name: string; role: string | null }[]
-  tournaments: { id: number; slug: string; name: string; status: 'In progress' | 'Completed' }[]
+  tournaments: { id: number; slug: string; name: string; status: EventStatus }[]
 }
 
 export interface RecentTournament {
@@ -595,7 +598,7 @@ export interface RecentTournament {
   slug: string
   name: string
   league: string
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   standingLabel: string | null
@@ -651,7 +654,7 @@ export interface TournamentListRow {
   league: string
   stage: string | null
   year: number
-  status: 'In progress' | 'Completed'
+  status: EventStatus
   startDate: string | null
   endDate: string | null
   games: number
