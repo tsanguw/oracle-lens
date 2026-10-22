@@ -1,5 +1,5 @@
 import type { ChampionResponse, PlayerResponse, TeamResponse, TournamentResponse } from '../api/types'
-import { decimal, percent } from './format'
+import { dateRange, decimal, percent } from './format'
 
 /** Page titles and descriptions as search results show them. Numbers come from the data on screen; no data, no numbers. */
 export interface Seo {
@@ -50,6 +50,13 @@ export function tournamentSeo(data: TournamentResponse | null | undefined): Seo 
   if (!data) return { title: 'Tournament: bracket, standings and stats', description: 'Pro League of Legends tournament: bracket, standings, results, top players and champions.' }
   const t = data.tournament
   const s = data.summary
+  // before the first game there are no numbers to quote, only the dates and what the page shows
+  if (t.status === 'Upcoming') {
+    return {
+      title: `${t.name}: schedule and bracket`,
+      description: `${t.name} (upcoming, ${dateRange(t.startDate, t.endDate)}): schedule, bracket and the teams taking part.`,
+    }
+  }
   const detail = s ? `${plural(s.series, 'series', 'series')}, ${plural(s.games, 'game')} and ${plural(s.teams, 'team')}` : t.status.toLowerCase()
   return {
     title: `${t.name}: bracket, standings and stats`,
