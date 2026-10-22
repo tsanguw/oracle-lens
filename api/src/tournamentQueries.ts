@@ -27,27 +27,42 @@ export interface TournamentRow {
   endDate: string | null
 }
 
+/** The slug a tournament's name gives, by the `event_slug` view's rule (013_tournament_slug.sql); keep the two alike. */
+const nameSlug = (col: string) => `trim(both '-' from regexp_replace(lower(${col}), '[^a-z0-9]+', '-', 'g'))`
+
 /**
  * The event an address names: a slug (`worlds-2025`, any case) or an old numeric id. A play-in's id gives its
- * competition (the main event's row, dates stretched over both). The response's `slug` tells the page the address it
- * should be shown at, so numeric ids and play-in ids redirect to the readable one.
+ * competition (the main event's row, dates stretched over both), and so does the slug the play-in had while it stood on
+ * its own (`worlds-2026-play-in`, linked before its main event was loaded). The response's `slug` tells the page the
+ * address it should be shown at, so numeric ids and play-in addresses redirect to the readable one.
  */
 export async function findTournament(pool: pg.Pool, ref: string): Promise<TournamentRow | null> {
   const byId = /^\d+$/.test(ref)
   if (!byId && !/^[a-z0-9-]{1,100}$/i.test(ref)) return null
-  const { rows } = await pool.query(
-    `SELECT t.id, es.slug, t.member_ids AS "memberIds", t.name, t.leaguepedia_name AS "leaguepediaName", l.name AS league, t.year, t.split, t.stage,
-            t.is_international AS "isInternational", ${STATUS_SQL} AS status,
-            to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
-            COALESCE((SELECT array_agg(DISTINCT x.name ORDER BY x.name)
-                      FROM tournament_team_league ttl JOIN league x ON x.id = ttl.league_id
-                      WHERE ttl.tournament_id = ANY(t.member_ids)), '{}') AS leagues
-     FROM event t LEFT JOIN league l ON l.id = t.league_id
-     JOIN event_slug es ON es.id = t.id
-     WHERE ${byId ? 't.id = (SELECT group_id FROM tournament_group WHERE id = $1::int)' : 'es.slug = lower($1)'}`,
-    [ref],
+  const load = async (where: string) =>
+    (
+      await pool.query(
+        `SELECT t.id, es.slug, t.member_ids AS "memberIds", t.name, t.leaguepedia_name AS "leaguepediaName", l.name AS league, t.year, t.split, t.stage,
+                t.is_international AS "isInternational", ${STATUS_SQL} AS status,
+                to_char(t.start_date, 'YYYY-MM-DD') AS "startDate", to_char(t.end_date, 'YYYY-MM-DD') AS "endDate",
+                COALESCE((SELECT array_agg(DISTINCT x.name ORDER BY x.name)
+                          FROM tournament_team_league ttl JOIN league x ON x.id = ttl.league_id
+                          WHERE ttl.tournament_id = ANY(t.member_ids)), '{}') AS leagues
+         FROM event t LEFT JOIN league l ON l.id = t.league_id
+         JOIN event_slug es ON es.id = t.id
+         WHERE ${where}`,
+        [ref],
+      )
+    ).rows[0] ?? null
+  if (byId) return load('t.id = (SELECT group_id FROM tournament_group WHERE id = $1::int)')
+  return (
+    (await load('es.slug = lower($1)')) ??
+    // no event has this slug now: it may be a play-in's own, from before the play-in was folded into its competition
+    load(
+      `t.id = (SELECT g.group_id FROM tournament x JOIN tournament_group g ON g.id = x.id
+               WHERE g.group_id <> x.id AND ${nameSlug('x.name')} = lower($1) ORDER BY x.id LIMIT 1)`,
+    )
   )
-  return rows[0] ?? null
 }
 
 export interface TournamentSummary {
