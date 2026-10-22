@@ -76,7 +76,9 @@ export async function resolveCompareScopes(
   const ra = a.range.resolved
   const rb = b.range.resolved
   if (ra && rb && ra.league === rb.league && ra.year === rb.year && ra.split === rb.split) {
-    return { a, b, range: a.range }
+    // A's own label names the internationals only A played in; the shared one names just the split both defaulted to.
+    const split = [ra.league, ra.year, ra.split].filter(Boolean).join(' ')
+    return { a, b, range: { ...a.range, label: filters.domestic ? split : `${split} + internationals` } }
   }
 
   const [yearsA, yearsB] = await Promise.all([yearsPlayed(pool, aId, column), yearsPlayed(pool, bId, column)])
@@ -259,10 +261,23 @@ export async function loadTeamLineup(
   scope: PlayerScope,
 ): Promise<{ players: LineupPlayer[]; rosterEvent: CompareTeamSide['rosterEvent'] }> {
   const where = scope.conditions.join(' AND ')
+  // The roster event: where the team's last game in the range was played, and whether that is its latest event overall
+  // ($1 is the team in every team scope). Found once, then handed to the lineup query.
+  const event = await pool.query(
+    `WITH scoped AS (
+       SELECT g.tournament_id ${FROM_CORE} WHERE ${where} ORDER BY g.played_at DESC NULLS LAST LIMIT 1),
+     overall AS (
+       SELECT g.tournament_id FROM team_game tg JOIN game g ON g.id = tg.game_id
+       WHERE tg.team_id = $1 ORDER BY g.played_at DESC NULLS LAST LIMIT 1)
+     SELECT t.id, t.name, t.id = (SELECT tournament_id FROM overall) AS "isLatest"
+     FROM tournament t WHERE t.id = (SELECT tournament_id FROM scoped)`,
+    scope.params,
+  )
+  const found = event.rows[0]
+  if (!found) return { players: [], rosterEvent: null }
+  const eventParam = `$${scope.params.length + 1}`
   const { rows } = await pool.query(
-    `WITH last_event AS (
-       SELECT g.tournament_id ${FROM} WHERE ${where} ORDER BY g.played_at DESC NULLS LAST LIMIT 1)
-     SELECT p.name AS page, COALESCE(p.display_name, p.name) AS name,
+    `SELECT p.name AS page, COALESCE(p.display_name, p.name) AS name,
        mode() WITHIN GROUP (ORDER BY pgm.role) AS role,
        COUNT(*)::int AS games,
        COUNT(*) FILTER (WHERE pgm.win)::int AS wins,
@@ -274,28 +289,16 @@ export async function loadTeamLineup(
          / NULLIF(SUM(tg.kills) FILTER (WHERE ${ok} AND tg.kills IS NOT NULL), 0) AS "killParticipation",
        ${perMin('pgm.damage')} AS "damagePerMin",
        ${perMin('pgm.cs')} AS "csPerMin",
-       bool_or(g.tournament_id = (SELECT tournament_id FROM last_event)) AS current
+       bool_or(g.tournament_id = ${eventParam}) AS current
      ${FROM}
      JOIN player p ON p.id = pgm.player_id
      WHERE ${where}
      GROUP BY p.id
-     ORDER BY bool_or(g.tournament_id = (SELECT tournament_id FROM last_event)) DESC, ${ROLE_ORDER}, COUNT(*) DESC, p.name`,
-    scope.params,
+     ORDER BY bool_or(g.tournament_id = ${eventParam}) DESC, ${ROLE_ORDER}, COUNT(*) DESC, p.name`,
+    [...scope.params, found.id],
   )
   const players: LineupPlayer[] = rows.map((r) => ({ ...r, winRate: r.wins / r.games, underMinSample: r.games < MIN_SAMPLE }))
-  if (players.length === 0) return { players, rosterEvent: null }
-  // $1 is the team in every team scope.
-  const event = await pool.query(
-    `WITH scoped AS (
-       SELECT g.tournament_id ${FROM} WHERE ${where} ORDER BY g.played_at DESC NULLS LAST LIMIT 1),
-     overall AS (
-       SELECT g.tournament_id FROM team_game tg JOIN game g ON g.id = tg.game_id
-       WHERE tg.team_id = $1 ORDER BY g.played_at DESC NULLS LAST LIMIT 1)
-     SELECT t.name, t.id = (SELECT tournament_id FROM overall) AS "isLatest"
-     FROM tournament t WHERE t.id = (SELECT tournament_id FROM scoped)`,
-    scope.params,
-  )
-  return { players, rosterEvent: event.rows[0] ?? null }
+  return { players, rosterEvent: { name: found.name, isLatest: found.isLatest } }
 }
 
 export async function loadCompareTeams(pool: pg.Pool, a: TeamRow, b: TeamRow, filters: Filters) {

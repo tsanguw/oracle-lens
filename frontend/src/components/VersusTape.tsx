@@ -35,7 +35,8 @@ export default function VersusTape<S extends { games: number }>({
             const av = a ? row.value(a) : null
             const bv = b ? row.value(b) : null
             const win = winner(row, av, bv)
-            const [wa, wb] = widths(av, bv)
+            // Rows with no better direction (games played, game length) are numbers only: a longer bar would read as better.
+            const [wa, wb] = row.better ? widths(av, bv) : [0, 0]
             return (
               <li key={row.label} className="tape__row">
                 <span className="tape__label">{row.label}</span>
