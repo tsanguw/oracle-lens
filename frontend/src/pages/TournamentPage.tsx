@@ -3,12 +3,14 @@ import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom'
 import type {
   MatchesResponse,
   RostersResponse,
+  SeriesRow,
   StagesResponse,
   StandingRow,
   TournamentChampion,
   TournamentContextResponse,
   TournamentPlayer,
   TournamentResponse,
+  TournamentStage,
 } from '../api/types'
 import { useApi } from '../api/useApi'
 import {
@@ -87,19 +89,34 @@ export default function TournamentPage({ id }: { id: string }) {
   }
 
   const data = tournament.data
-  const results = matches.data?.results ?? []
-  const upcoming = matches.data?.upcoming ?? []
-  // A single group stage is already the standings table; the bracket view earns its place with more stages or a knockout.
-  const stageList =
-    stages.data && !stages.data.empty && (stages.data.stages.length > 1 || stages.data.stages[0].key === 'knockout')
-      ? stages.data.stages
-      : null
   // An event with no games that has not ended yet (scheduled, or started without a game loaded): its schedule, bracket
   // and teams take the place of the stats. A past event with no games keeps the "No games recorded" note.
   const notStarted = data?.empty === true && data.tournament.status !== 'Completed'
 
+  // The server says which stage the page opens on (the last one with a result), or null when it shows no stages: a
+  // single group stage is already the standings table. The chosen stage lives in the URL (?stage=); an unknown one (an
+  // old link) falls back to the default.
+  const defaultKey = stages.data?.defaultKey ?? null
+  const stageList = stages.data && defaultKey ? stages.data.stages : null
+  const selected = stageList?.find((s) => s.key === params.get('stage')) ?? stageList?.find((s) => s.key === defaultKey) ?? null
+  const setStage = (key: TournamentStage['key']) => {
+    const next = new URLSearchParams(params)
+    if (key === defaultKey) next.delete('stage')
+    else next.set('stage', key)
+    setParams(next, { replace: true })
+  }
+  // With stages, "Standings and results" is about the chosen one: its own records and only its series. An event that has
+  // not started lists its whole schedule instead.
+  const stage = notStarted ? null : selected
+  const stageSeries = new Set(stage?.rounds.flatMap((r) => r.series.map((s) => s.seriesId)) ?? [])
+  const inStage = (rows: SeriesRow[]) => (stage ? rows.filter((s) => stageSeries.has(s.seriesId)) : rows)
+  const results = inStage(matches.data?.results ?? [])
+  const upcoming = inStage(matches.data?.upcoming ?? [])
+  // Until the stages are known the page cannot tell whose records to show, so the table waits for them.
+  const records = stage ? stage.records : stages.data || stages.error ? standings.data?.standings : undefined
+
   // The team filter lives in the URL (?team=) and works on the lists already fetched: an event has at most a few hundred
-  // series. A name that is not in the lists (an old link) is ignored.
+  // series. A name that is not in the lists (an old link, or a team not in the chosen stage) is ignored.
   const teams = teamOptions(upcoming, results)
   const team = teams.includes(params.get('team') ?? '') ? (params.get('team') ?? '') : ''
   const filtering = team !== ''
@@ -125,6 +142,9 @@ export default function TournamentPage({ id }: { id: string }) {
   // flicker, and stays the same element (it keeps keyboard focus). A filter shows every match it finds.
   const visibleResults = filtering || showAll ? matchedResults : results.slice(0, RESULTS_PREVIEW)
   const canToggleResults = !filtering && results.length > RESULTS_PREVIEW
+  // A team filter or a stage puts the unplayed series in the list too, above the played ones; a stage that has not
+  // started has nothing else to show.
+  const showUpcoming = (filtering || stage !== null) && matchedUpcoming.length > 0
   const toggleResults = () => {
     const collapsing = showAll
     setShowAll(!showAll)
@@ -139,7 +159,7 @@ export default function TournamentPage({ id }: { id: string }) {
       <main className="main container">
         {notStarted ? (
           <>
-            {stageList && <TournamentStages stages={stageList} />}
+            {stageList && selected && <TournamentStages stages={stageList} activeKey={selected.key} onSelect={setStage} />}
 
             <section aria-labelledby="schedule" className="section schedule">
               <div className="matches__head">
@@ -193,7 +213,7 @@ export default function TournamentPage({ id }: { id: string }) {
           </div>
         ) : (
           <>
-            {stageList && <TournamentStages stages={stageList} />}
+            {stageList && selected && <TournamentStages stages={stageList} activeKey={selected.key} onSelect={setStage} />}
 
             <section aria-labelledby="records" className="section">
               <h2 id="records" className="section__title">
@@ -201,12 +221,20 @@ export default function TournamentPage({ id }: { id: string }) {
               </h2>
               <div className="duo duo--flip duo--records">
                 <div className="section">
-                  <h3 className="ctx__sub">Team records (series record first, then game difference)</h3>
-                  {standings.data ? <StandingsTable standings={standings.data.standings} onTeam={showTeamMatches} /> : <Skeleton />}
+                  <h3 className="ctx__sub">
+                    Team records{stage ? `: ${stage.label}` : ''} (series record first, then game difference)
+                  </h3>
+                  {records === undefined ? (
+                    <Skeleton />
+                  ) : records.length === 0 ? (
+                    <p className="matches__note">{stage ? 'No results in this stage yet.' : 'No results yet.'}</p>
+                  ) : (
+                    <StandingsTable standings={records} onTeam={showTeamMatches} />
+                  )}
                 </div>
                 <div className="section" ref={matchesRef}>
                   <div className="matches__head">
-                    <h3 className="ctx__sub">Matches (newest first)</h3>
+                    <h3 className="ctx__sub">Matches{stage ? `: ${stage.label}` : ''} (newest first)</h3>
                     {matches.data && upcoming.length + results.length > 0 && (
                       <ResultsFilters
                         teams={teams}
@@ -220,19 +248,19 @@ export default function TournamentPage({ id }: { id: string }) {
                   <div className="matches">
                     <div className="matches__list">
                       {matches.data ? (
-                        results.length === 0 && !filtering ? (
-                          <p className="matches__note">No results yet.</p>
-                        ) : filtering && matchedUpcoming.length + matchedResults.length === 0 ? (
-                          <p className="matches__note">No matches for this team.</p>
+                        matchedResults.length === 0 && !showUpcoming ? (
+                          <p className="matches__note">
+                            {filtering ? 'No matches for this team.' : stage ? 'No matches in this stage yet.' : 'No results yet.'}
+                          </p>
                         ) : (
                           <>
-                            {filtering && matchedUpcoming.length > 0 && (
+                            {showUpcoming && (
                               <>
                                 <h4 className="matches__group">Upcoming</h4>
                                 <UpcomingTable upcoming={matchedUpcoming} />
                               </>
                             )}
-                            {filtering && matchedUpcoming.length > 0 && matchedResults.length > 0 && <h4 className="matches__group">Played</h4>}
+                            {showUpcoming && matchedResults.length > 0 && <h4 className="matches__group">Played</h4>}
                             <div id={resultsId}>{visibleResults.length > 0 && <ResultsTable results={visibleResults} base={base} />}</div>
                             {canToggleResults && (
                               <button

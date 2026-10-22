@@ -74,7 +74,7 @@ export async function loadTournamentRosters(pool: pg.Pool, t: TournamentRow): Pr
        GROUP BY tm.id, p.id, pgm.role`,
       [t.memberIds],
     ),
-    loadStandings(pool, t.id),
+    loadStandings(pool, { tournament: t.id }),
   ])
   return shapeRosters(rows, standings.map((s) => s.team))
 }

@@ -710,10 +710,14 @@ export interface TournamentStage {
   rounds: StageRound[]
   /** Swiss stages only: every team with its record, best first. */
   standings?: SwissRow[]
+  /** Each team's series and game record in this stage alone, best first. */
+  records: StandingRow[]
 }
 
 export interface StagesResponse {
   empty: boolean
+  /** The stage the page opens on (the last with a result); null when the page shows no stages. */
+  defaultKey: TournamentStage['key'] | null
   stages: TournamentStage[]
 }
 

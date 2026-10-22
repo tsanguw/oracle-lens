@@ -680,6 +680,7 @@
   }
   .matches {
     contain: size; /* the panel adds nothing to the row height; it fills the height the standings give it */
+    min-height: 360px; /* but never less than this: a stage with few or no records would otherwise squeeze it shut */
   }
   .matches__list {
     flex: 1 1 0;
