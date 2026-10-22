@@ -55,8 +55,8 @@ beforeAll(async () => {
        VALUES ($1,$2,$3,$4,$5,5,$6,$7,$8,$9,$10) RETURNING id`,
       [tournament, t1, t2, winner, winner ? '1-0' : null, `S${++n}`, at?.toISOString() ?? null, ...(stage ?? [null, null, null])],
     )
-  const played = async (tournament: number, winner: number, loser: number, daysAgo: number) => {
-    const s = await series(tournament, winner, loser, winner, day(-daysAgo))
+  const played = async (tournament: number, winner: number, loser: number, daysAgo: number, stage?: [string, number, number]) => {
+    const s = await series(tournament, winner, loser, winner, day(-daysAgo), stage)
     const g = await one(
       `INSERT INTO game (leaguepedia_id, series_id, tournament_id, played_at, length_sec) VALUES ($1,$2,$3,$4,1800) RETURNING id`,
       [`G${++n}`, s, tournament, day(-daysAgo).toISOString()],
@@ -68,8 +68,8 @@ beforeAll(async () => {
   await series(ids.upcoming, A, B, null, day(6), ['Semifinals', 1, 1])
   await series(ids.upcoming, B, C, null, day(7), ['Semifinals', 1, 2])
   await series(ids.upcoming, null, null, null, null, ['Finals', 2, 1])
-  await played(ids.worldsPlayIn, A, C, 6)
-  await series(ids.worlds, A, B, null, day(4))
+  await played(ids.worldsPlayIn, A, C, 6, ['Play-In Round 1', 1, 1])
+  await series(ids.worlds, A, B, null, day(4), ['Round 1', 1, 1])
   await played(ids.msiPlayIn, A, B, 59)
   await played(ids.msiPlayIn, A, C, 58)
   await played(ids.msiPlayIn, B, A, 56)
@@ -184,5 +184,21 @@ describe('the address a play-in had before its main event was loaded', () => {
   it('still opens a play-in that stands on its own at its own address, and 404s for a slug nothing has', async () => {
     expect((await api('/api/tournaments/msi-2026-play-in')).body.tournament).toMatchObject({ id: ids.msiPlayIn, slug: 'msi-2026-play-in' })
     expect((await api('/api/tournaments/worlds-2027-play-in')).status).toBe(404)
+  })
+})
+
+describe('the stages of a competition whose main event has not played yet', () => {
+  it("open on the play-in, whose records are its own, while the main event's stage has no record yet", async () => {
+    const { body } = await api(`/api/tournaments/${ids.worlds}/stages`)
+    expect(body.stages.map((s: { key: string }) => s.key)).toEqual(['playin', 'groups'])
+    expect(body.defaultKey).toBe('playin')
+    const [playIn, groups] = body.stages
+    expect(playIn.records.map((r: { team: string; seriesWins: number }) => [r.team, r.seriesWins])).toEqual([['Alpha', 1], ['Charlie', 0]])
+    expect(groups.records).toEqual([])
+  })
+
+  it('lead the related-info strip with the play-in leaders rather than nothing', async () => {
+    const { body } = await api(`/api/tournaments/${ids.worlds}/context`)
+    expect(body.teams.map((t: { team: string }) => t.team)).toEqual(['Alpha', 'Charlie'])
   })
 })

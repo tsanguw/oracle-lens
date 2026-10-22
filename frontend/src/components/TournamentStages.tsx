@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent } from 'react'
+import { useRef, type KeyboardEvent } from 'react'
 import type { TournamentStage } from '../api/types'
 import { Bracket, RoundColumns } from './Bracket'
 import SwissRecords from './SwissRecords'
@@ -10,13 +10,25 @@ const NOTE: Record<TournamentStage['key'], string> = {
   knockout: 'The winner of each series moves on; scores are in games',
 }
 
-/** The event's stages as tabs (play-in, swiss, knockout...), each showing its series; the knockout one as a bracket. */
-export default function TournamentStages({ stages }: { stages: TournamentStage[] }) {
-  const knockout = stages.findIndex((s) => s.key === 'knockout')
-  const [active, setActive] = useState(knockout >= 0 ? knockout : stages.length - 1)
+/**
+ * The event's stages as tabs (play-in, swiss, knockout...), each showing its series; the knockout one as a bracket. The
+ * page owns the chosen stage (it is in the address, and the standings and match list below follow it).
+ */
+export default function TournamentStages({
+  stages,
+  activeKey,
+  onSelect,
+}: {
+  stages: TournamentStage[]
+  activeKey: TournamentStage['key']
+  onSelect: (key: TournamentStage['key']) => void
+}) {
   const tabs = useRef<(HTMLButtonElement | null)[]>([])
-  const stage = stages[active] ?? stages[0]
+  const found = stages.findIndex((s) => s.key === activeKey)
+  const active = found >= 0 ? found : 0
+  const stage = stages[active]
   if (!stage) return null
+  const setActive = (i: number) => onSelect(stages[i].key)
 
   const onKey = (e: KeyboardEvent) => {
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
