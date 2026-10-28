@@ -783,3 +783,52 @@ export interface CompareTeamsResponse {
   b: CompareTeamSide
   headToHead: TeamHeadToHead
 }
+
+export interface RegionTeamRow {
+  team: string
+  games: number
+  wins: number
+  losses: number
+  winRate: number
+  underMinSample: boolean
+}
+
+export interface CompareRegionSide {
+  region: { name: string; area: string | null }
+  summary: TeamSummary | null
+  /** Teams of the region that played in these meetings, most games first. */
+  teams: RegionTeamRow[]
+  picks: TeamPick[]
+}
+
+export interface RegionMeeting {
+  seriesId: number
+  playedAt: string | null
+  tournament: string
+  tournamentId: number
+  tournamentSlug: string
+  teamA: string
+  teamB: string
+  /** Series score from region A's team's side. */
+  score: string | null
+  winner: 'a' | 'b' | null
+}
+
+export interface RegionHeadToHead {
+  games: number
+  wins: number
+  losses: number
+  seriesPlayed: number
+  seriesWins: number
+  seriesLosses: number
+  avgGameLengthSec: number | null
+  recent: RegionMeeting[]
+}
+
+export interface CompareRegionsResponse {
+  range: CompareRange
+  empty: boolean
+  a: CompareRegionSide
+  b: CompareRegionSide
+  headToHead: RegionHeadToHead
+}

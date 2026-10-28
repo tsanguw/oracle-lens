@@ -625,3 +625,53 @@
     text-align: left;
   }
 }
+
+/* Regions: the league mark stands in for a logo, and a half's picker is a grid of the six leagues. */
+.rmark {
+  display: grid;
+  place-items: center;
+  min-width: 72px;
+  height: 72px;
+  padding: 0 14px;
+  border: 2px solid var(--rc, var(--accent));
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+}
+.vhalf__regions {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+.vhalf__region {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  height: auto;
+  min-height: 48px;
+  padding: 6px 12px;
+  text-align: left;
+}
+.vhalf__region b {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+}
+.vhalf__region span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cmp-meeting__match {
+  white-space: normal;
+}
+.cmp-meeting__games {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  list-style: none;
+}
+.cmp-meeting__games[hidden] {
+  display: none;
+}

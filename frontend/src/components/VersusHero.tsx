@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { Link } from 'react-router-dom'
 import { AnimatePresence, m } from 'motion/react'
 import { StageBackdrop, StageMotion, STAGE_INTERVAL, useChampionStage, type PickRow, type Stage } from './ChampionStage'
+import { REGIONS } from '../lib/regions'
 import SearchBox from './SearchBox'
 import { SlideControls } from './SlideParts'
 
@@ -11,10 +12,12 @@ import { SlideControls } from './SlideParts'
  * record. The two slideshows start together and tick together; one pause button stops both.
  */
 
-export type CompareKind = 'players' | 'teams'
+export type CompareKind = 'players' | 'teams' | 'regions'
+
+const SINGULAR: Record<CompareKind, string> = { players: 'player', teams: 'team', regions: 'region' }
 
 export interface HeroSide {
-  /** The URL segment: a player's page name or a team's name. */
+  /** The URL segment: a player's page name, a team's name or a league's name. */
   page: string
   name: string
   detail: string
@@ -94,12 +97,13 @@ function Half({
   const changeRef = useRef<HTMLButtonElement>(null)
   const wasPicking = useRef(false)
   const open = picking || !subject
-  const singular = kind === 'players' ? 'player' : 'team'
+  const singular = SINGULAR[kind]
+  const groupRef = useRef<HTMLDivElement>(null)
   const { slides, show, current } = stage
 
   // The button that opened the picker disappears with it, so focus follows into the box, and back to the button on Cancel.
   useEffect(() => {
-    if (picking) inputRef.current?.focus()
+    if (picking) (inputRef.current ?? groupRef.current?.querySelector('button'))?.focus()
     else if (wasPicking.current) changeRef.current?.focus()
     wasPicking.current = picking
   }, [picking])
@@ -149,20 +153,39 @@ function Half({
         {open && (
           <div className="vhalf__picker">
             {subject ? null : <p className="vhalf__prompt">Choose a {singular}</p>}
-            <SearchBox
-              variant="bar"
-              inputRef={inputRef}
-              pick={{
-                kind: kind === 'players' ? 'Players' : 'Teams',
-                label: `Search ${kind} for side ${side.toUpperCase()}`,
-                exclude: other ?? undefined,
-                placeholder: `Search for a ${singular}…`,
-                onSelect: (value) => {
-                  setPicking(false)
-                  onPick(value)
-                },
-              }}
-            />
+            {kind === 'regions' ? (
+              <div className="vhalf__regions" role="group" aria-label={`Choose a region for side ${side.toUpperCase()}`} ref={groupRef}>
+                {REGIONS.filter((r) => r.name.toLowerCase() !== other?.toLowerCase()).map((r) => (
+                  <button
+                    key={r.name}
+                    type="button"
+                    className="cmp-btn vhalf__region"
+                    onClick={() => {
+                      setPicking(false)
+                      onPick(r.name)
+                    }}
+                  >
+                    <b>{r.name}</b>
+                    <span>{r.area}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <SearchBox
+                variant="bar"
+                inputRef={inputRef}
+                pick={{
+                  kind: kind === 'players' ? 'Players' : 'Teams',
+                  label: `Search ${kind} for side ${side.toUpperCase()}`,
+                  exclude: other ?? undefined,
+                  placeholder: `Search for a ${singular}…`,
+                  onSelect: (value) => {
+                    setPicking(false)
+                    onPick(value)
+                  },
+                }}
+              />
+            )}
             {subject && (
               <button type="button" className="cmp-btn" onClick={() => setPicking(false)}>
                 Cancel
