@@ -41,9 +41,11 @@ interface Props {
   onPick: (side: 'a' | 'b', value: string) => void
   /** Side A's record against side B; null until it is known. */
   record: HeroRecord | null
+  /** Side B's picker takes focus when the hero mounts: side A was just chosen and B is the next step. */
+  focusB?: boolean
 }
 
-export default function VersusHero({ kind, a, b, onPick, record }: Props) {
+export default function VersusHero({ kind, a, b, onPick, record, focusB }: Props) {
   const stageA = useChampionStage(a?.picks)
   const stageB = useChampionStage(b?.picks)
   const staged = [stageA, stageB].filter((s) => s.staged)
@@ -56,7 +58,7 @@ export default function VersusHero({ kind, a, b, onPick, record }: Props) {
     <StageMotion>
       <section className="vs" aria-label={a && b ? `${a.name} versus ${b.name}` : `Choose two ${kind} to compare`}>
         <Half side="a" kind={kind} subject={a} other={b?.page ?? null} stage={stageA} onPick={(v) => onPick('a', v)} />
-        <Half side="b" kind={kind} subject={b} other={a?.page ?? null} stage={stageB} onPick={(v) => onPick('b', v)} />
+        <Half side="b" kind={kind} subject={b} other={a?.page ?? null} stage={stageB} onPick={(v) => onPick('b', v)} focusOnMount={focusB} />
         <div className="vs__seam">
           <span className="vs__vs">VS</span>
           {record && (
@@ -84,6 +86,7 @@ function Half({
   other,
   stage,
   onPick,
+  focusOnMount,
 }: {
   side: 'a' | 'b'
   kind: CompareKind
@@ -91,6 +94,7 @@ function Half({
   other: string | null
   stage: Stage
   onPick: (value: string) => void
+  focusOnMount?: boolean
 }) {
   const [picking, setPicking] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -101,12 +105,18 @@ function Half({
   const groupRef = useRef<HTMLDivElement>(null)
   const { slides, show, current } = stage
 
+  const focusPicker = () => (inputRef.current ?? groupRef.current?.querySelector('button'))?.focus()
+
   // The button that opened the picker disappears with it, so focus follows into the box, and back to the button on Cancel.
   useEffect(() => {
-    if (picking) (inputRef.current ?? groupRef.current?.querySelector('button'))?.focus()
+    if (picking) focusPicker()
     else if (wasPicking.current) changeRef.current?.focus()
     wasPicking.current = picking
   }, [picking])
+
+  useEffect(() => {
+    if (focusOnMount) focusPicker()
+  }, [])
 
   return (
     <div className={`vhalf vhalf--${side}${subject ? '' : ' vhalf--empty'}`} ref={stage.headerRef} style={{ '--rc': stage.accent } as CSSProperties}>

@@ -190,11 +190,12 @@ describe('the address a play-in had before its main event was loaded', () => {
 describe('the stages of a competition whose main event has not played yet', () => {
   it("open on the play-in, whose records are its own, while the main event's stage has no record yet", async () => {
     const { body } = await api(`/api/tournaments/${ids.worlds}/stages`)
-    expect(body.stages.map((s: { key: string }) => s.key)).toEqual(['playin', 'groups'])
+    expect(body.stages.map((s: { key: string }) => s.key)).toEqual(['playin', 'swiss'])
     expect(body.defaultKey).toBe('playin')
-    const [playIn, groups] = body.stages
+    const [playIn, swiss] = body.stages
     expect(playIn.records.map((r: { team: string; seriesWins: number }) => [r.team, r.seriesWins])).toEqual([['Alpha', 1], ['Charlie', 0]])
-    expect(groups.records).toEqual([])
+    expect(swiss.records).toEqual([])
+    expect(swiss.standings).toEqual([])
   })
 
   it('lead the related-info strip with the play-in leaders rather than nothing', async () => {

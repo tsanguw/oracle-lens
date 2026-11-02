@@ -412,6 +412,14 @@
   .stage {
     min-height: 0;
   }
+  /* One column on phones: the 200 px standing column above would leave a long event name about 100 px */
+  .home__split .trn__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home__split .trn__standing {
+    grid-column: 1;
+    grid-row: auto;
+  }
   .stage__inner {
     padding: 40px 16px 36px;
   }

@@ -69,7 +69,7 @@ export default function TournamentStages({
         ))}
       </div>
       <div id="stage-panel" role="tabpanel" aria-labelledby={`stage-tab-${stage.key}`}>
-        {stage.standings && <SwissRecords standings={stage.standings} />}
+        {stage.standings && <SwissRecords standings={stage.standings} settled={stages.some((s) => s.key === 'knockout')} />}
         {stage.key === 'knockout' ? <Bracket rounds={stage.rounds} label={`${stage.label} bracket`} /> : <RoundColumns rounds={stage.rounds} label={`${stage.label} rounds`} />}
       </div>
     </section>

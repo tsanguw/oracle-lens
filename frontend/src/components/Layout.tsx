@@ -22,9 +22,12 @@ function focusMain(): void {
   main.focus({ preventScroll: true })
 }
 
-/** After a link navigation (not a filter or page change within the same page), start the new page at the top. */
+/**
+ * After a link navigation (not a filter or page change within the same page), start the new page at the top. A page that
+ * puts focus somewhere better itself (the Versus picker) says so with `state.focus`, and keeps it.
+ */
 function RouteEffects() {
-  const { pathname } = useLocation()
+  const { pathname, state } = useLocation()
   const first = useRef(true)
   useEffect(() => {
     if (first.current) {
@@ -32,7 +35,7 @@ function RouteEffects() {
       return
     }
     window.scrollTo(0, 0)
-    focusMain()
+    if (!state?.focus) focusMain()
   }, [pathname])
   return null
 }

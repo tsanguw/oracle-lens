@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import type {
   CompareRange,
   CompareRegionsResponse,
@@ -43,6 +43,7 @@ const pathFor = (kind: CompareKind, a: string | null, b: string | null, qs: stri
 export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: string | null; b: string | null }) {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
+  const focusB = useLocation().state?.focus === 'b'
   const query = params.toString()
   const qs = query ? `?${query}` : ''
   const singular = SINGULAR[kind]
@@ -63,8 +64,12 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
   const nameA = sides.a?.name ?? a ?? ''
   const nameB = sides.b?.name ?? b ?? ''
   // With nothing chosen yet, either half fills side A; the second pick then fills B.
-  const pick = (side: 'a' | 'b', value: string) =>
-    navigate(side === 'a' || !a ? pathFor(kind, value, a ? b : null, qs) : pathFor(kind, a, value, qs))
+  const pick = (side: 'a' | 'b', value: string) => {
+    if (side === 'b' && a) return navigate(pathFor(kind, a, value, qs))
+    // side B is still empty after this pick: the page then puts focus in its picker (see RouteEffects)
+    const nextB = a ? b : null
+    navigate(pathFor(kind, value, nextB, qs), nextB ? undefined : { state: { focus: 'b' } })
+  }
   const record: HeroRecord | null = data ? { wins: data.headToHead.wins, losses: data.headToHead.losses, games: data.headToHead.games } : null
 
   // Widening to all time keeps side and domestic, which narrow games within a range rather than choosing one.
@@ -96,7 +101,7 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
           </header>
         </div>
 
-        <VersusHero kind={kind} a={sides.a} b={sides.b} onPick={pick} record={record} />
+        <VersusHero kind={kind} a={sides.a} b={sides.b} onPick={pick} record={record} focusB={focusB} />
 
         {/* Screen readers hear when a comparison starts loading and what it ended up showing. */}
         <p className="sr-only" role="status" aria-live="polite">
