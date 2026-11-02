@@ -5,6 +5,7 @@ import { z, ZodError } from 'zod'
 import { pool } from './db.js'
 import { comparePlayersSchema, compareTeamsSchema, loadComparePlayers, loadCompareTeams } from './compareQueries.js'
 import { filterSchema, isAllTime, listFilterSchema } from './filters.js'
+import { compareRegionsSchema, findRegion, loadCompareRegions } from './regionQueries.js'
 import { recentSchema, recentTournaments, search, searchSchema } from './homeQueries.js'
 import { loadPlayerAccomplishments } from './playerAccomplishments.js'
 import { loadPlayerContext } from './playerContext.js'
@@ -281,6 +282,21 @@ export function createApp(options: AppOptions = {}) {
       return
     }
     res.json(await loadCompareTeams(pool, a, b, filters))
+  }))
+
+  /** Two regions (leagues) on one shared range: their teams' record against each other. Same error rules as the other comparisons. */
+  app.get('/api/compare/regions/:a/:b', wrap(async (req, res) => {
+    const filters = compareRegionsSchema.parse(req.query)
+    const [a, b] = await Promise.all([findRegion(pool, String(req.params.a)), findRegion(pool, String(req.params.b))])
+    if (!a || !b) {
+      res.status(404).json({ error: `Region not found: ${!a ? 'a' : 'b'}` })
+      return
+    }
+    if (a.id === b.id) {
+      res.status(400).json({ error: 'Pick two different regions' })
+      return
+    }
+    res.json(await loadCompareRegions(pool, a, b, { ...filters, domestic: false }))
   }))
 
   /** Resolves :name to a champion and hands its parsed filters to `load`, or sends 404. */

@@ -5,7 +5,7 @@ import FilterDock from './FilterDock'
 
 const ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']
 
-type Key = 'league' | 'year' | 'split' | 'patch' | 'side' | 'role'
+export type Key = 'league' | 'year' | 'split' | 'patch' | 'side' | 'role'
 
 /** Choosing one of these replaces the default range; side and role only narrow the games within it. */
 const RANGE_KEYS: Key[] = ['league', 'year', 'split', 'patch']
@@ -22,6 +22,8 @@ interface Props {
   withRole?: boolean
   /** The page's API understands `range=all`: clearing the last range filter then shows all history. */
   allTime?: boolean
+  /** Offer only these selects (and no "Domestic only" box): the region comparison has no league, split or side. */
+  only?: Key[]
 }
 
 /**
@@ -32,7 +34,7 @@ interface Props {
  * leagues keeps that league's own latest split. Clearing the last range filter sets `range=all`
  * (all history); choosing any range filter drops it again.
  */
-export default function FilterBar({ params, onChange, options, range, withRole = false, allTime = false }: Props) {
+export default function FilterBar({ params, onChange, options, range, withRole = false, allTime = false, only }: Props) {
   const pinned = (key: Key, value: string): URLSearchParams => {
     const next = new URLSearchParams(params)
     if (range?.isDefault && RANGE_KEYS.includes(key)) {
@@ -77,7 +79,7 @@ export default function FilterBar({ params, onChange, options, range, withRole =
 
   const league = shown('league')
   const patches = usePatchOptions(options, league, shown('year'), shown('split'))
-  const selects: { key: Key; label: string; blank: string; values: string[] }[] = [
+  const allSelects: { key: Key; label: string; blank: string; values: string[] }[] = [
     { key: 'league', label: 'League', blank: 'All leagues', values: options?.leagues ?? [] },
     { key: 'year', label: 'Year', blank: 'All years', values: (options ? yearsFor(options, league, shown('split')) : []).map(String) },
     { key: 'split', label: 'Split', blank: 'All splits', values: options ? splitsFor(options, league, shown('year')) : [] },
@@ -85,6 +87,7 @@ export default function FilterBar({ params, onChange, options, range, withRole =
     { key: 'patch', label: 'Patch', blank: 'All patches', values: patches },
     { key: 'side', label: 'Side', blank: 'Both sides', values: ['blue', 'red'] },
   ]
+  const selects = only ? allSelects.filter((s) => only.includes(s.key)) : allSelects
 
   return (
     <FilterDock showing={range?.label ?? null} note={allTime && range?.label === 'All time' ? range.description : undefined}>
@@ -106,20 +109,22 @@ export default function FilterBar({ params, onChange, options, range, withRole =
           </label>
         )
       })}
-      <label className="check">
-        <input
-          type="checkbox"
-          name="domestic"
-          checked={params.get('domestic') === 'true'}
-          onChange={(e) => {
-            const next = new URLSearchParams(params)
-            if (e.target.checked) next.set('domestic', 'true')
-            else next.delete('domestic')
-            onChange(next)
-          }}
-        />
-        Domestic only
-      </label>
+      {!only && (
+        <label className="check">
+          <input
+            type="checkbox"
+            name="domestic"
+            checked={params.get('domestic') === 'true'}
+            onChange={(e) => {
+              const next = new URLSearchParams(params)
+              if (e.target.checked) next.set('domestic', 'true')
+              else next.delete('domestic')
+              onChange(next)
+            }}
+          />
+          Domestic only
+        </label>
+      )}
       <button type="button" className="btn-reset" aria-label="Reset filters" onClick={() => onChange(new URLSearchParams())}>
         Reset
       </button>

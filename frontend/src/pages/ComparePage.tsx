@@ -1,11 +1,14 @@
+import { Fragment, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import type {
   CompareRange,
+  CompareRegionsResponse,
   ComparePlayersResponse,
   CompareTeamSide,
   CompareTeamsResponse,
   FiltersResponse,
   PlayerHeadToHead,
+  RegionHeadToHead,
   TeamHeadToHead,
   ChampionRow,
 } from '../api/types'
@@ -13,17 +16,23 @@ import { useApi } from '../api/useApi'
 import EmptyState from '../components/EmptyState'
 import ErrorState from '../components/ErrorState'
 import FilterBar from '../components/FilterBar'
+import SeriesGames from '../components/SeriesGames'
 import { ChampionIcon, PlayerPhoto, TeamLogo } from '../components/Images'
 import VersusHero, { type CompareKind, type HeroRecord, type HeroSide } from '../components/VersusHero'
 import VersusTape from '../components/VersusTape'
 import { percent } from '../lib/format'
-import { PLAYER_ROWS, TEAM_ROWS } from '../lib/compareRows'
+import { PLAYER_ROWS, REGION_ROWS, TEAM_ROWS } from '../lib/compareRows'
+import { areaOf } from '../lib/regions'
+import { duration } from '../lib/format'
+import { tournamentPath } from '../lib/tournamentPath'
 import { usePageMeta } from '../lib/usePageMeta'
 
 export type { CompareKind }
 
-const KINDS = ['players', 'teams'] as const
-const KIND_LABEL: Record<CompareKind, string> = { players: 'Players', teams: 'Teams' }
+const KINDS = ['players', 'teams', 'regions'] as const
+const KIND_LABEL: Record<CompareKind, string> = { players: 'Players', teams: 'Teams', regions: 'Regions' }
+const SINGULAR: Record<CompareKind, string> = { players: 'player', teams: 'team', regions: 'region' }
+type CompareData = ComparePlayersResponse | CompareTeamsResponse | CompareRegionsResponse
 /** What a visitor's range choice is made of; widening to all time drops them all. */
 const RANGE_PARAMS = ['league', 'year', 'split', 'tournament', 'patch']
 
@@ -36,11 +45,11 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
   const navigate = useNavigate()
   const query = params.toString()
   const qs = query ? `?${query}` : ''
-  const singular = kind === 'players' ? 'player' : 'team'
+  const singular = SINGULAR[kind]
 
   // Both subjects chosen; until then nothing is fetched, not even the filter options.
   const ready = a !== null && b !== null
-  const result = useApi<ComparePlayersResponse | CompareTeamsResponse>(
+  const result = useApi<CompareData>(
     ready ? `/api/compare/${kind}/${encodeURIComponent(a)}/${encodeURIComponent(b)}${qs}` : null,
   )
   const filters = useApi<FiltersResponse>(ready ? '/api/filters' : null)
@@ -108,14 +117,22 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
               <p className="empty__text">
                 {result.error?.status === 400
                   ? `Both sides are the same ${singular}.`
-                  : `We don’t have one of these ${kind}. Check the spelling, or search for another.`}
+                  : kind === 'regions'
+                    ? 'We only compare LCK, LPL, LEC, LCS, CBLOL and LCP. Pick one of those.'
+                    : `We don’t have one of these ${kind}. Check the spelling, or search for another.`}
               </p>
             </div>
           )}
 
           {ready && !result.error && !data && <CompareSkeleton />}
 
-          {data?.empty && <EmptyState onReset={reset} />}
+          {data?.empty && kind !== 'regions' && <EmptyState onReset={reset} />}
+          {data?.empty && kind === 'regions' && (
+            <div className="empty" role="status">
+              <h2 className="empty__title">No meetings in this range</h2>
+              <NeverMet range={data.range} onAllTime={showAllTime} text={`${nameA} and ${nameB} teams haven’t played each other in this range.`} />
+            </div>
+          )}
 
           {data && !data.empty && (
             <>
@@ -129,10 +146,16 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
                   <h2 id="cmp-stats" className="section__title">
                     Tale of the tape
                   </h2>
-                  <span className="section__note">Bars compare the two with each other. The better figure is green; games played and game length are not ranked.</span>
+                  <span className="section__note">
+                    {kind === 'regions'
+                      ? 'Only games between teams of the two regions. Bars compare the two with each other; the better figure is green and game length is not ranked.'
+                      : 'Bars compare the two with each other. The better figure is green; games played and game length are not ranked.'}
+                  </span>
                 </div>
                 {kind === 'players' ? (
                   <VersusTape rows={PLAYER_ROWS} a={(data as ComparePlayersResponse).a.summary} b={(data as ComparePlayersResponse).b.summary} names={[nameA, nameB]} />
+                ) : kind === 'regions' ? (
+                  <VersusTape rows={REGION_ROWS} a={(data as CompareRegionsResponse).a.summary} b={(data as CompareRegionsResponse).b.summary} names={[nameA, nameB]} />
                 ) : (
                   <VersusTape rows={TEAM_ROWS} a={(data as CompareTeamsResponse).a.summary} b={(data as CompareTeamsResponse).b.summary} names={[nameA, nameB]} />
                 )}
@@ -140,9 +163,15 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
 
               <section aria-labelledby="cmp-pool" className="section">
                 <h2 id="cmp-pool" className="section__title">
-                  {kind === 'players' ? 'Champion pools' : 'Lineups'}
+                  {kind === 'players' ? 'Champion pools' : kind === 'regions' ? 'Teams in these meetings' : 'Lineups'}
                 </h2>
-                {kind === 'players' ? <ChampionPools data={data as ComparePlayersResponse} names={[nameA, nameB]} /> : <Lineups data={data as CompareTeamsResponse} />}
+                {kind === 'players' ? (
+                  <ChampionPools data={data as ComparePlayersResponse} names={[nameA, nameB]} />
+                ) : kind === 'regions' ? (
+                  <RegionTeams data={data as CompareRegionsResponse} />
+                ) : (
+                  <Lineups data={data as CompareTeamsResponse} />
+                )}
               </section>
 
               <section aria-labelledby="cmp-h2h" className="section">
@@ -151,6 +180,8 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
                 </h2>
                 {kind === 'players' ? (
                   <PlayerH2H h={(data as ComparePlayersResponse).headToHead} a={nameA} onAllTime={showAllTime} range={data.range} />
+                ) : kind === 'regions' ? (
+                  <RegionH2H h={(data as CompareRegionsResponse).headToHead} a={nameA} b={nameB} onAllTime={showAllTime} range={data.range} />
                 ) : (
                   <TeamH2H h={(data as CompareTeamsResponse).headToHead} a={nameA} onAllTime={showAllTime} range={data.range} />
                 )}
@@ -166,6 +197,7 @@ export default function ComparePage({ kind, a, b }: { kind: CompareKind; a: stri
           options={filters.data}
           range={data?.range ?? null}
           withRole={kind === 'players'}
+          only={kind === 'regions' ? ['year', 'patch'] : undefined}
           allTime
         />
       )}
@@ -178,8 +210,28 @@ function heroSides(
   kind: CompareKind,
   a: string | null,
   b: string | null,
-  data: ComparePlayersResponse | CompareTeamsResponse | null,
+  data: CompareData | null,
 ): { a: HeroSide | null; b: HeroSide | null } {
+  if (kind === 'regions') {
+    const d = data as CompareRegionsResponse | null
+    const one = (page: string | null, side: CompareRegionsResponse['a'] | undefined): HeroSide | null => {
+      if (!page) return null
+      const name = side?.region.name ?? page.toUpperCase()
+      return {
+        page,
+        name,
+        detail: side?.region.area ?? areaOf(page),
+        image: (
+          <span className="rmark" aria-hidden="true">
+            {name}
+          </span>
+        ),
+        to: `/teams?league=${encodeURIComponent(name)}`,
+        picks: side?.picks,
+      }
+    }
+    return { a: one(a, d?.a), b: one(b, d?.b) }
+  }
   if (kind === 'players') {
     const d = data as ComparePlayersResponse | null
     const one = (page: string | null, side: ComparePlayersResponse['a'] | undefined): HeroSide | null => {
@@ -326,10 +378,10 @@ function Tile({ label, value, sub }: { label: string; value: string; sub: string
 
 const record = (wins: number, losses: number) => `${wins}-${losses}`
 
-function NeverMet({ range, onAllTime }: { range: CompareRange; onAllTime: () => void }) {
+function NeverMet({ range, onAllTime, text = 'They didn’t face each other in this range.' }: { range: CompareRange; onAllTime: () => void; text?: string }) {
   return (
     <div className="cmp-never">
-      <p className="section__note">They didn’t face each other in this range.</p>
+      <p className="section__note">{text}</p>
       {range.label !== 'All time' && (
         <button type="button" className="btn-reset btn-reset--inline" onClick={onAllTime}>
           Look at all time
@@ -398,6 +450,116 @@ function TeamH2H({ h, a, range, onAllTime }: { h: TeamHeadToHead; a: string; ran
                 <span className="cmp-list__stat">{m.winner ? `${m.winner} won` : 'No result'}</span>
               </li>
             ))}
+          </ul>
+        </div>
+      )}
+    </>
+  )
+}
+
+function RegionTeams({ data }: { data: CompareRegionsResponse }) {
+  const side = (s: CompareRegionsResponse['a']) => (
+    <div className="panel">
+      <div className="panel__head">
+        <h3 className="panel__title">{s.region.name}</h3>
+        <span className="panel__note">
+          {s.teams.length} {s.teams.length === 1 ? 'team' : 'teams'}
+        </span>
+      </div>
+      {s.teams.length === 0 ? (
+        <p className="cmp-none">No games in this range.</p>
+      ) : (
+        <ul className="cmp-list">
+          {s.teams.map((t) => (
+            <li key={t.team} className={`cmp-list__row${t.underMinSample ? ' is-dim' : ''}`}>
+              <TeamLogo name={t.team} size={28} />
+              <Link to={`/teams/${encodeURIComponent(t.team)}`} className="pool__link">
+                {t.team}
+              </Link>
+              <span className="cmp-list__stat">
+                {t.games} {t.games === 1 ? 'game' : 'games'} · {percent(t.winRate)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+  return (
+    <>
+      <div className="panels">
+        {side(data.a)}
+        {side(data.b)}
+      </div>
+      <p className="section__note">
+        A team counts for the league it played in that year. Teams with no domestic games that year (wildcards, untracked leagues) are left out. LCP includes PCS, VCS and LJL before 2025.
+      </p>
+    </>
+  )
+}
+
+const Chevron = (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+    <path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
+
+function RegionH2H({ h, a, b, range, onAllTime }: { h: RegionHeadToHead; a: string; b: string; range: CompareRange; onAllTime: () => void }) {
+  // Present once a series has been opened; the value is whether it is open now. Opened drafts stay mounted, hidden, once fetched.
+  const [opened, setOpened] = useState<Record<number, boolean>>({})
+  return (
+    <>
+      <div className="cmp-tiles">
+        <Tile label="Game record" value={record(h.wins, h.losses)} sub={h.games ? `${a}’s record over ${h.games} ${h.games === 1 ? 'game' : 'games'}` : 'No games played'} />
+        <Tile label="Series record" value={record(h.seriesWins, h.seriesLosses)} sub={h.seriesPlayed ? `${a}’s record over ${h.seriesPlayed} series` : 'No finished series'} />
+        <Tile label="Average game" value={duration(h.avgGameLengthSec)} sub="Across all their games" />
+      </div>
+      {h.games === 0 && <NeverMet range={range} onAllTime={onAllTime} text={`${a} and ${b} teams didn’t meet in this range.`} />}
+      {h.recent.length > 0 && (
+        <div className="panel">
+          <div className="panel__head">
+            <h3 className="panel__title">Recent meetings</h3>
+            <span className="panel__note">Most recent first · score from {a}’s side</span>
+          </div>
+          <ul className="cmp-list">
+            {h.recent.map((m) => {
+              const open = opened[m.seriesId] === true
+              const detailId = `cmp-series-${m.seriesId}`
+              return (
+                <Fragment key={m.seriesId}>
+                  <li className="cmp-list__row cmp-list__row--meeting">
+                    <button
+                      type="button"
+                      className="row-toggle"
+                      aria-expanded={open}
+                      aria-controls={detailId}
+                      aria-label={`Games: ${m.teamA} vs ${m.teamB}`}
+                      onClick={() => setOpened((o) => ({ ...o, [m.seriesId]: !o[m.seriesId] }))}
+                    >
+                      {Chevron}
+                    </button>
+                    <span>{meetingDate(m.playedAt)}</span>
+                    <Link to={tournamentPath({ slug: m.tournamentSlug, id: m.tournamentId })} className="pool__link cmp-list__event">
+                      {m.tournament}
+                    </Link>
+                    <span className="cmp-list__stat cmp-meeting__match">
+                      <Link to={`/teams/${encodeURIComponent(m.teamA)}`} className={`pool__link${m.winner === 'a' ? ' series__winner' : ''}`}>
+                        {m.teamA}
+                      </Link>
+                      <span className="series__vs"> {m.score ?? 'vs'} </span>
+                      <Link to={`/teams/${encodeURIComponent(m.teamB)}`} className={`pool__link${m.winner === 'b' ? ' series__winner' : ''}`}>
+                        {m.teamB}
+                      </Link>
+                    </span>
+                  </li>
+                  {m.seriesId in opened && (
+                    <li id={detailId} className="cmp-meeting__games" hidden={!open}>
+                      <SeriesGames path={`/api/tournaments/${encodeURIComponent(m.tournamentSlug)}/series/${m.seriesId}`} />
+                    </li>
+                  )}
+                </Fragment>
+              )
+            })}
           </ul>
         </div>
       )}

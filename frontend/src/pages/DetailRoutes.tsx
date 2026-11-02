@@ -39,3 +39,8 @@ export function CompareTeamsRoute() {
   const { a = null, b = null } = useParams()
   return <ComparePage key={`${a}/${b}`} kind="teams" a={a} b={b} />
 }
+
+export function CompareRegionsRoute() {
+  const { a = null, b = null } = useParams()
+  return <ComparePage key={`${a}/${b}`} kind="regions" a={a} b={b} />
+}
