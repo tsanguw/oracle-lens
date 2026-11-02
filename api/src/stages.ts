@@ -1,5 +1,5 @@
 import type pg from 'pg'
-import { loadStandings, type StandingRow } from './tournamentQueries.js'
+import { loadStandings, type StandingRow, type TournamentRow } from './tournamentQueries.js'
 
 /*
  * An event's series grouped into stages (play-in, swiss, groups, knockout) from the round each one belongs to on
@@ -73,7 +73,15 @@ export interface Stage {
 
 const KNOCKOUT_WORDS = /quarter|semi|final|bracket|playoff|knockout|elimination|upper|lower/i
 
-/** What kind of stage a round belongs to. `swissLike` says plain "Round N" rounds are swiss rounds (the event also has a knockout). */
+/**
+ * An international "<x>/Main Event" page (Worlds, MSI): its plain "Round N" tabs are a swiss stage even before the
+ * knockout tabs are published. Other internationals use "Round N" for brackets, so they do not qualify.
+ */
+export function isMainEvent(event: { isInternational: boolean; leaguepediaName: string }): boolean {
+  return event.isInternational && /\/Main Event$/i.test(event.leaguepediaName)
+}
+
+/** What kind of stage a round belongs to. `swissLike` says plain "Round N" rounds are swiss rounds (a main event, or one that also has a knockout). */
 export function tabKind(tab: string, ctx: { playoffs: boolean; swissLike: boolean }): StageKind {
   if (/play-?in/i.test(tab)) return 'playin'
   if (/swiss/i.test(tab)) return 'swiss'
@@ -102,8 +110,8 @@ const roundName = (tab: string) => tab.replace(/^bracket\s+/i, '')
  * play-in played gathered into one Play-In stage in front (its rounds as Leaguepedia lists them; a play-in is never drawn
  * as a bracket). `playInRows` are the series of the other tournaments of the event.
  */
-export function buildEventStages(mainRows: StageSeriesRow[], playInRows: StageSeriesRow[], tournamentName: string): Stage[] {
-  const stages = buildStages(mainRows, tournamentName)
+export function buildEventStages(mainRows: StageSeriesRow[], playInRows: StageSeriesRow[], tournamentName: string, mainEvent = false): Stage[] {
+  const stages = buildStages(mainRows, tournamentName, mainEvent)
   if (playInRows.length === 0) return stages
   const list = [...playInRows].sort((a, b) => a.tabOrder - b.tabOrder || (a.n ?? 0) - (b.n ?? 0) || a.seriesId - b.seriesId)
   const playIn: Stage = { key: 'playin', label: labelFor('playin', false), rounds: plainRounds(list) }
@@ -111,9 +119,9 @@ export function buildEventStages(mainRows: StageSeriesRow[], playInRows: StageSe
   return [playIn, ...stages.filter((s) => s.key !== 'playin')]
 }
 
-export function buildStages(rows: StageSeriesRow[], tournamentName: string): Stage[] {
+export function buildStages(rows: StageSeriesRow[], tournamentName: string, mainEvent = false): Stage[] {
   const playoffs = /playoffs?|knockout/i.test(tournamentName)
-  const swissLike = rows.some((r) => /quarter|semi/i.test(r.tab))
+  const swissLike = mainEvent || rows.some((r) => /quarter|semi/i.test(r.tab))
   const ctx = { playoffs, swissLike }
 
   const byKind = new Map<StageKind, StageSeriesRow[]>()
@@ -235,7 +243,7 @@ export function defaultStageKey(stages: Stage[]): StageKind | null {
 }
 
 /** `event.id` is the main event; `event.memberIds` adds the play-in tournament(s) of the same competition. */
-export async function loadStages(pool: pg.Pool, event: { id: number; memberIds: number[]; name: string }): Promise<EventStage[]> {
+export async function loadStages(pool: pg.Pool, event: Pick<TournamentRow, 'id' | 'memberIds' | 'name' | 'leaguepediaName' | 'isInternational'>): Promise<EventStage[]> {
   const stages = await loadStageSeries(pool, event)
   return Promise.all(
     stages.map(async (s) => ({
@@ -245,7 +253,7 @@ export async function loadStages(pool: pg.Pool, event: { id: number; memberIds: 
   )
 }
 
-async function loadStageSeries(pool: pg.Pool, event: { id: number; memberIds: number[]; name: string }): Promise<Stage[]> {
+async function loadStageSeries(pool: pg.Pool, event: Pick<TournamentRow, 'id' | 'memberIds' | 'name' | 'leaguepediaName' | 'isInternational'>): Promise<Stage[]> {
   const { rows } = await pool.query<StageSeriesRow & { tournamentId: number }>(
     `SELECT s.id AS "seriesId", s.tournament_id AS "tournamentId", s.stage_tab AS tab, s.stage_order AS "tabOrder", s.stage_match AS n,
             t1.name AS team1, t2.name AS team2, t1.region AS region1, t2.region AS region2,
@@ -259,5 +267,6 @@ async function loadStageSeries(pool: pg.Pool, event: { id: number; memberIds: nu
     rows.filter((r) => r.tournamentId === event.id),
     rows.filter((r) => r.tournamentId !== event.id),
     event.name,
+    isMainEvent(event),
   )
 }
