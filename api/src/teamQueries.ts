@@ -63,26 +63,29 @@ export interface TeamSummary {
   goldDiff: number | null
 }
 
+/** The aggregate columns of a team summary over a `base` CTE; shared with the region comparison, which groups them per region. */
+export const TEAM_SUMMARY_COLUMNS = `COUNT(*)::int AS games,
+    COUNT(*) FILTER (WHERE win)::int AS wins,
+    COUNT(*) FILTER (WHERE side = 'blue')::int AS "blueGames",
+    COUNT(*) FILTER (WHERE side = 'blue' AND win)::int AS "blueWins",
+    COUNT(*) FILTER (WHERE side = 'red')::int AS "redGames",
+    COUNT(*) FILTER (WHERE side = 'red' AND win)::int AS "redWins",
+    AVG(length_sec)::float8 AS "avgGameLengthSec",
+    AVG(kills)::float8 AS "killsPerGame",
+    AVG(opp_kills)::float8 AS "deathsPerGame",
+    SUM(gold) FILTER (WHERE gold IS NOT NULL AND length_sec > 0)::float8
+      / NULLIF(SUM(length_sec) FILTER (WHERE gold IS NOT NULL AND length_sec > 0) / 60.0, 0) AS "goldPerMin",
+    AVG(towers)::float8 AS "towersPerGame",
+    AVG(dragons)::float8 AS "dragonsPerGame",
+    AVG(barons)::float8 AS "baronsPerGame",
+    AVG(heralds)::float8 AS "heraldsPerGame",
+    AVG(void_grubs)::float8 AS "voidGrubsPerGame",
+    AVG(gold - opp_gold)::float8 AS "goldDiff"`
+
 export async function loadTeamSummary(pool: pg.Pool, scope: PlayerScope): Promise<TeamSummary | null> {
   const { rows } = await pool.query(
     `WITH ${base(scope)}
-     SELECT COUNT(*)::int AS games,
-       COUNT(*) FILTER (WHERE win)::int AS wins,
-       COUNT(*) FILTER (WHERE side = 'blue')::int AS "blueGames",
-       COUNT(*) FILTER (WHERE side = 'blue' AND win)::int AS "blueWins",
-       COUNT(*) FILTER (WHERE side = 'red')::int AS "redGames",
-       COUNT(*) FILTER (WHERE side = 'red' AND win)::int AS "redWins",
-       AVG(length_sec)::float8 AS "avgGameLengthSec",
-       AVG(kills)::float8 AS "killsPerGame",
-       AVG(opp_kills)::float8 AS "deathsPerGame",
-       SUM(gold) FILTER (WHERE gold IS NOT NULL AND length_sec > 0)::float8
-         / NULLIF(SUM(length_sec) FILTER (WHERE gold IS NOT NULL AND length_sec > 0) / 60.0, 0) AS "goldPerMin",
-       AVG(towers)::float8 AS "towersPerGame",
-       AVG(dragons)::float8 AS "dragonsPerGame",
-       AVG(barons)::float8 AS "baronsPerGame",
-       AVG(heralds)::float8 AS "heraldsPerGame",
-       AVG(void_grubs)::float8 AS "voidGrubsPerGame",
-       AVG(gold - opp_gold)::float8 AS "goldDiff"
+     SELECT ${TEAM_SUMMARY_COLUMNS}
      FROM base`,
     scope.params,
   )

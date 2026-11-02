@@ -1,5 +1,5 @@
 import type { Summary, TeamSummary } from '../api/types'
-import { decimal, duration, goldDiff, percent, whole } from './format'
+import { decimal, duration, goldDiff, percent, rate, whole } from './format'
 
 export interface StatRow<S> {
   label: string
@@ -37,6 +37,24 @@ export const TEAM_ROWS: StatRow<TeamSummary>[] = [
   { label: 'Deaths / game', value: (s) => s.deathsPerGame, format: (v) => decimal(v), better: 'low' },
   { label: 'Gold / min', value: (s) => s.goldPerMin, format: whole, better: 'high' },
   { label: 'Gold difference', value: (s) => s.goldDiff, format: goldDiff, better: 'high' },
+  { label: 'Towers / game', value: (s) => s.towersPerGame, format: (v) => decimal(v), better: 'high' },
+  { label: 'Dragons / game', value: (s) => s.dragonsPerGame, format: dec2, better: 'high' },
+  { label: 'Barons / game', value: (s) => s.baronsPerGame, format: dec2, better: 'high' },
+  { label: 'Heralds / game', value: (s) => s.heraldsPerGame, format: dec2, better: 'high' },
+  { label: 'Void grubs / game', value: (s) => s.voidGrubsPerGame, format: dec2, better: 'high' },
+  { label: 'Avg game', value: (s) => s.avgGameLengthSec, format: duration },
+]
+
+/**
+ * Regions face each other game for game, so games, deaths and gold difference would only mirror the other side. Side win
+ * rates show which side of the map each region did better on in these meetings.
+ */
+export const REGION_ROWS: StatRow<TeamSummary>[] = [
+  { label: 'Win rate', value: (s) => s.winRate, format: pct, better: 'high' },
+  { label: 'Blue side win rate', value: (s) => rate(s.blueWins, s.blueGames), format: pct, better: 'high' },
+  { label: 'Red side win rate', value: (s) => rate(s.redWins, s.redGames), format: pct, better: 'high' },
+  { label: 'Kills / game', value: (s) => s.killsPerGame, format: (v) => decimal(v), better: 'high' },
+  { label: 'Gold / min', value: (s) => s.goldPerMin, format: whole, better: 'high' },
   { label: 'Towers / game', value: (s) => s.towersPerGame, format: (v) => decimal(v), better: 'high' },
   { label: 'Dragons / game', value: (s) => s.dragonsPerGame, format: dec2, better: 'high' },
   { label: 'Barons / game', value: (s) => s.baronsPerGame, format: dec2, better: 'high' },
