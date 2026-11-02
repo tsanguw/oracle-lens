@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildStages, tabKind, type StageSeriesRow } from '../src/stages.js'
+import { buildEventStages, buildStages, defaultStageKey, isMainEvent, tabKind, type StageSeriesRow } from '../src/stages.js'
 
 let id = 0
 const row = (tab: string, tabOrder: number, n: number, team1: string, team2: string, winner: 1 | 2 | null, score = '3-1'): StageSeriesRow => ({
@@ -32,6 +32,41 @@ describe('tabKind', () => {
     expect(tabKind('Round 2', { playoffs: true, swissLike: false })).toBe('knockout')
     expect(tabKind('Round 2', { playoffs: false, swissLike: true })).toBe('swiss')
     expect(tabKind('Round 2', { playoffs: false, swissLike: false })).toBe('groups')
+  })
+})
+
+describe('isMainEvent', () => {
+  it('is true only for an international "<x>/Main Event" page', () => {
+    expect(isMainEvent({ isInternational: true, leaguepediaName: '2026 Season World Championship/Main Event' })).toBe(true)
+    expect(isMainEvent({ isInternational: true, leaguepediaName: '2026 Americas Cup' })).toBe(false)
+    expect(isMainEvent({ isInternational: true, leaguepediaName: '2025 Asia Masters/Swiss 1' })).toBe(false)
+    expect(isMainEvent({ isInternational: false, leaguepediaName: 'LCK/2026 Season/Main Event' })).toBe(false)
+  })
+})
+
+describe('swiss rounds before the knockout is published', () => {
+  const rounds = () => [
+    row('Round 1', 1, 1, 'T1', 'G2', 1, '1-0'),
+    row('Round 1', 1, 2, 'BLG', 'HLE', 2, '0-1'),
+    row('Round 2', 2, 1, 'T1', 'HLE', null),
+  ]
+
+  it('builds plain "Round N" tabs of an international main event as the swiss stage', () => {
+    const stages = buildStages(rounds(), 'Worlds 2027', true)
+    expect(stages.map((s) => [s.key, s.label, s.rounds.map((r) => r.name)])).toEqual([['swiss', 'Swiss', ['Round 1', 'Round 2']]])
+    expect(stages[0].standings!.map((r) => [r.team, r.wins, r.losses])).toEqual([['HLE', 1, 0], ['T1', 1, 0], ['BLG', 0, 1], ['G2', 0, 1]])
+  })
+
+  it('opens the event on the swiss stage when a play-in stands in front of it', () => {
+    const playIn = [row('Round 1', 1, 1, 'A', 'B', 1)]
+    const stages = buildEventStages(rounds(), playIn, 'Worlds 2027', true)
+    expect(stages.map((s) => s.key)).toEqual(['playin', 'swiss'])
+    expect(defaultStageKey(stages)).toBe('swiss')
+  })
+
+  it('leaves "Round N" tabs of any other event as groups until a quarterfinal exists', () => {
+    const stages = buildStages([...rounds(), row('Finals', 3, 1, 'T1', 'BLG', null)], 'Americas Cup 2026')
+    expect(stages.map((s) => s.key)).toEqual(['groups', 'knockout'])
   })
 })
 
