@@ -296,7 +296,9 @@ export function createApp(options: AppOptions = {}) {
       res.status(400).json({ error: 'Pick two different regions' })
       return
     }
-    res.json(await loadCompareRegions(pool, a, b, { ...filters, domestic: false }))
+    // Slow on a cold database and only changes with the nightly sync, so the answer is kept until the next one.
+    const key = `regions:${a.id}:${b.id}:${JSON.stringify(filters)}`
+    res.json(await responseCache.get(key, () => loadCompareRegions(pool, a, b, { ...filters, domestic: false })))
   }))
 
   /** Resolves :name to a champion and hands its parsed filters to `load`, or sends 404. */

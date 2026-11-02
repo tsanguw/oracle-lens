@@ -26,9 +26,10 @@ const RECENT_LIMIT = 20
  * tie); a game's league is the tournament's, or the team's own conference league in a multi-league event. A team with no
  * domestic game in a year has no region then. `meetings`: one row per team per game in which the two regions' teams
  * played each other, from that team's side, with the columns `TEAM_SUMMARY_COLUMNS` reads.
- * $1 and $2 are the region ids; `yearParam` limits team_year to one year when the range fixes it.
+ * $1 and $2 are the region ids; `yearParam` limits team_year to one year when the range fixes it. With `newest` only the
+ * newest year with a meeting is kept, found in the same pass so the team-to-region mapping is worked out once.
  */
-function meetingsCte(yearParam: string | null, conds: string[]): string {
+function meetingsCte(yearParam: string | null, conds: string[], newest: boolean): string {
   return `
   team_year AS (
     SELECT DISTINCT ON (tg.team_id, t.year) tg.team_id, t.year, COALESCE(ttl.league_id, t.league_id) AS league_id
@@ -41,7 +42,7 @@ function meetingsCte(yearParam: string | null, conds: string[]): string {
     GROUP BY tg.team_id, t.year, COALESCE(ttl.league_id, t.league_id)
     ORDER BY tg.team_id, t.year, COUNT(*) DESC, MAX(g.played_at) DESC NULLS LAST
   ),
-  meetings AS (
+  found AS MATERIALIZED (
     SELECT ry.league_id AS region, t.year, g.series_id, g.played_at, g.length_sec,
            pgm.game_id, pgm.team_id, pgm.win, pgm.side, pgm.kills, pgm.gold,
            pgm.towers, pgm.dragons, pgm.barons, pgm.heralds, pgm.void_grubs,
@@ -54,16 +55,24 @@ function meetingsCte(yearParam: string | null, conds: string[]): string {
     JOIN team_year oy ON oy.team_id = opp.team_id AND oy.year = t.year
     WHERE ry.league_id IN ($1, $2) AND oy.league_id IN ($1, $2) AND ry.league_id <> oy.league_id
       ${conds.map((c) => `AND ${c}`).join(' ')}
+  ),
+  meetings AS MATERIALIZED (
+    SELECT * FROM found ${newest ? 'WHERE year = (SELECT MAX(year) FROM found)' : ''}
   )`
 }
 
+interface RegionRange {
+  /** Newest-year default: the year is found by the query and the range labelled afterwards. */
+  newest: boolean
+  conds: string[]
+  params: unknown[]
+  /** The year an explicit filter fixes, so team_year can skip the other years. */
+  year: number | null
+  range: CompareRange
+}
+
 /** Explicit filters and `range=all` mean what they mean on the other Versus pages; otherwise the newest year the regions met. */
-async function resolveRegionRange(
-  pool: pg.Pool,
-  a: RegionRow,
-  b: RegionRow,
-  filters: Filters,
-): Promise<{ range: CompareRange; year: number | null; conds: string[]; params: unknown[] }> {
+function resolveRegionRange(a: RegionRow, b: RegionRow, filters: Filters): RegionRange {
   const params: unknown[] = [a.id, b.id]
   const base = { domesticOnly: false, from: null, to: null }
 
@@ -71,38 +80,16 @@ async function resolveRegionRange(
     const conds = buildConditions(filters, params)
     const parts = [filters.year, filters.tournament, filters.patch].filter(Boolean)
     return {
+      newest: false,
       conds,
       params,
       year: filters.year ?? null,
       range: { ...base, label: parts.join(' '), description: 'Custom filters', isDefault: false, resolved: null },
     }
   }
-  if (isAllTime(filters)) {
-    return {
-      conds: [],
-      params,
-      year: null,
-      range: { ...base, label: 'All time', description: 'Tier 1 leagues and internationals only', isDefault: false, resolved: null },
-    }
-  }
-
-  const { rows } = await pool.query(`WITH ${meetingsCte(null, [])} SELECT MAX(year)::int AS year FROM meetings`, params)
-  const year: number | null = rows[0]?.year ?? null
-  if (year === null) {
-    return {
-      conds: [],
-      params,
-      year: null,
-      range: { ...base, label: 'All time', description: 'They have not met in any year', isDefault: true, resolved: null },
-    }
-  }
-  params.push(year)
-  return {
-    conds: [`t.year = $${params.length}`],
-    params,
-    year,
-    range: { ...base, label: String(year), description: 'Newest year they met', isDefault: true, resolved: { year, split: null } },
-  }
+  const allTime: CompareRange = { ...base, label: 'All time', description: 'Tier 1 leagues and internationals only', isDefault: false, resolved: null }
+  if (isAllTime(filters)) return { newest: false, conds: [], params, year: null, range: allTime }
+  return { newest: true, conds: [], params, year: null, range: allTime }
 }
 
 export interface RegionTeamRow {
@@ -149,67 +136,83 @@ export interface RegionHeadToHead {
   recent: RegionMeeting[]
 }
 
+/**
+ * One statement computes the meetings once (the team-to-region mapping is the expensive part) and every figure is read from
+ * them as a JSON column: the summaries, the series, the teams and the picks.
+ */
 export async function loadCompareRegions(pool: pg.Pool, a: RegionRow, b: RegionRow, filters: Filters) {
-  const { range, year, conds, params } = await resolveRegionRange(pool, a, b, filters)
-  // team_year only needs the year the range fixes, so a default or single-year view skips every other year's team games.
+  const resolved = resolveRegionRange(a, b, filters)
+  const { newest, conds, params, year } = resolved
   const queryParams = [...params]
   const yearParam = year === null ? null : `$${queryParams.push(year)}`
-  const withMeetings = `WITH ${meetingsCte(yearParam, conds)}`
 
-  const [summaries, series, teams, picks] = await Promise.all([
-    pool.query(`${withMeetings} SELECT region, ${TEAM_SUMMARY_COLUMNS} FROM meetings GROUP BY region`, queryParams),
-    pool.query(
-      `${withMeetings},
-       met AS (
-         SELECT series_id, team_id, opp_id, MAX(played_at) AS last FROM meetings
-         WHERE region = $1 AND series_id IS NOT NULL GROUP BY series_id, team_id, opp_id
-       )
-       SELECT s.id AS "seriesId", met.last AS "playedAt", t.name AS tournament, t.id AS "tournamentId", ts.slug AS "tournamentSlug",
-              ta.name AS "teamA", tb.name AS "teamB", s.score, (s.team1_id = met.team_id) AS "isTeam1",
-              CASE WHEN s.winner_id = met.team_id THEN 'a' WHEN s.winner_id = met.opp_id THEN 'b' END AS winner
-       FROM met JOIN series s ON s.id = met.series_id
-       JOIN tournament t ON t.id = s.tournament_id JOIN tournament_slug ts ON ts.id = t.id
-       JOIN team ta ON ta.id = met.team_id JOIN team tb ON tb.id = met.opp_id
-       ORDER BY met.last DESC NULLS LAST, s.id DESC`,
-      queryParams,
-    ),
-    pool.query(
-      `${withMeetings}
-       SELECT m.region, tm.name AS team, COUNT(*)::int AS games, COUNT(*) FILTER (WHERE m.win)::int AS wins
-       FROM meetings m JOIN team tm ON tm.id = m.team_id
-       GROUP BY m.region, tm.id ORDER BY games DESC, tm.name`,
-      queryParams,
-    ),
-    pool.query(
-      `${withMeetings}
-       SELECT m.region, c.name AS champion, COUNT(*)::int AS games, COUNT(*) FILTER (WHERE m.win)::int AS wins
-       FROM meetings m
-       JOIN player_game pg2 ON pg2.game_id = m.game_id AND pg2.team_id = m.team_id
-       JOIN champion c ON c.id = pg2.champion_id
-       GROUP BY m.region, c.name ORDER BY games DESC, wins DESC, c.name`,
-      queryParams,
-    ),
-  ])
+  const { rows } = await pool.query(
+    `WITH ${meetingsCte(yearParam, conds, newest)},
+     met AS (
+       SELECT series_id, team_id, opp_id, MAX(played_at) AS last FROM meetings
+       WHERE region = $1 AND series_id IS NOT NULL GROUP BY series_id, team_id, opp_id
+     )
+     SELECT
+       (SELECT MAX(year)::int FROM meetings) AS year,
+       (SELECT COALESCE(json_agg(s), '[]'::json)
+        FROM (SELECT region, ${TEAM_SUMMARY_COLUMNS} FROM meetings GROUP BY region) s) AS summaries,
+       (SELECT COALESCE(json_agg(x ORDER BY x."playedAt" DESC NULLS LAST, x."seriesId" DESC), '[]'::json)
+        FROM (
+          SELECT s.id AS "seriesId", met.last AS "playedAt", t.name AS tournament, t.id AS "tournamentId", ts.slug AS "tournamentSlug",
+                 ta.name AS "teamA", tb.name AS "teamB", s.score, (s.team1_id = met.team_id) AS "isTeam1",
+                 CASE WHEN s.winner_id = met.team_id THEN 'a' WHEN s.winner_id = met.opp_id THEN 'b' END AS winner
+          FROM met JOIN series s ON s.id = met.series_id
+          JOIN tournament t ON t.id = s.tournament_id JOIN tournament_slug ts ON ts.id = t.id
+          JOIN team ta ON ta.id = met.team_id JOIN team tb ON tb.id = met.opp_id
+        ) x) AS series,
+       (SELECT COALESCE(json_agg(x ORDER BY x.games DESC, x.team), '[]'::json)
+        FROM (
+          SELECT m.region, tm.name AS team, COUNT(*)::int AS games, COUNT(*) FILTER (WHERE m.win)::int AS wins
+          FROM meetings m JOIN team tm ON tm.id = m.team_id GROUP BY m.region, tm.id
+        ) x) AS teams,
+       (SELECT COALESCE(json_agg(x ORDER BY x.region, x.rank), '[]'::json)
+        FROM (
+          SELECT p.*, row_number() OVER (PARTITION BY p.region ORDER BY p.games DESC, p.wins DESC, p.champion) AS rank
+          FROM (
+            SELECT m.region, c.name AS champion, COUNT(*)::int AS games, COUNT(*) FILTER (WHERE m.win)::int AS wins
+            FROM meetings m
+            JOIN player_game pg2 ON pg2.game_id = m.game_id AND pg2.team_id = m.team_id
+            JOIN champion c ON c.id = pg2.champion_id
+            GROUP BY m.region, c.name
+          ) p
+        ) x WHERE x.rank <= ${POOL_LIMIT}) AS picks`,
+    queryParams,
+  )
+  const found = rows[0]
+
+  const range: CompareRange =
+    newest && found.year !== null
+      ? { ...resolved.range, label: String(found.year), description: 'Newest year they met', isDefault: true, resolved: { year: found.year, split: null } }
+      : newest
+        ? { ...resolved.range, description: 'They have not met in any year', isDefault: true }
+        : resolved.range
 
   const side = (r: RegionRow): RegionSide => {
-    const found = summaries.rows.find((x) => x.region === r.id)
-    const { region: _region, ...summary } = found ?? {}
+    const summaryRow = (found.summaries as Array<{ region: number; games: number; wins: number }>).find((x) => x.region === r.id)
+    const { region: _region, ...summary } = summaryRow ?? ({} as { region: number; games: number; wins: number })
     return {
       region: { name: r.name, area: r.area },
-      summary: found ? ({ ...summary, losses: found.games - found.wins, winRate: found.wins / found.games } as TeamSummary) : null,
-      teams: teams.rows
+      summary: summaryRow
+        ? ({ ...summary, losses: summaryRow.games - summaryRow.wins, winRate: summaryRow.wins / summaryRow.games } as TeamSummary)
+        : null,
+      teams: (found.teams as Array<{ region: number; games: number; wins: number }>)
         .filter((x) => x.region === r.id)
-        .map(({ region: _r, ...x }) => ({ ...x, losses: x.games - x.wins, winRate: x.wins / x.games, underMinSample: x.games < MIN_SAMPLE })),
-      picks: picks.rows
+        .map(({ region: _r, ...x }) => ({ ...x, losses: x.games - x.wins, winRate: x.wins / x.games, underMinSample: x.games < MIN_SAMPLE })) as RegionTeamRow[],
+      picks: (found.picks as Array<{ region: number; games: number; wins: number; rank: number }>)
         .filter((x) => x.region === r.id)
-        .slice(0, POOL_LIMIT)
-        .map(({ region: _r, ...x }) => ({ ...x, winRate: x.wins / x.games, underMinSample: x.games < MIN_SAMPLE })),
+        .map(({ region: _r, rank: _rank, ...x }) => ({ ...x, winRate: x.wins / x.games, underMinSample: x.games < MIN_SAMPLE })) as TeamPick[],
     }
   }
   const sa = side(a)
   const sb = side(b)
 
-  const decided = series.rows.filter((r) => r.winner !== null)
+  const series = found.series as Array<{ winner: 'a' | 'b' | null; isTeam1: boolean; score: string | null }>
+  const decided = series.filter((r) => r.winner !== null)
   const seriesWins = decided.filter((r) => r.winner === 'a').length
   const headToHead: RegionHeadToHead = {
     games: sa.summary?.games ?? 0,
@@ -219,11 +222,11 @@ export async function loadCompareRegions(pool: pg.Pool, a: RegionRow, b: RegionR
     seriesWins,
     seriesLosses: decided.length - seriesWins,
     avgGameLengthSec: sa.summary?.avgGameLengthSec ?? null,
-    recent: series.rows.slice(0, RECENT_LIMIT).map(({ isTeam1, score, ...m }) => ({
+    recent: series.slice(0, RECENT_LIMIT).map(({ isTeam1, score, ...m }) => ({
       ...m,
       // Series scores are stored as team1-team2; show them from region A's team's side.
       score: score && !isTeam1 ? score.split('-').reverse().join('-') : (score ?? null),
-    })),
+    })) as RegionMeeting[],
   }
   return { range, empty: sa.summary === null && sb.summary === null, a: sa, b: sb, headToHead }
 }
