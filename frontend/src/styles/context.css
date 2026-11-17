@@ -708,3 +708,58 @@
 .row-action:hover {
   color: var(--accent-text);
 }
+
+/* The chosen champion record in this event. */
+.cdetail {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.cdetail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.cdetail__name {
+  margin: 0;
+  font-size: 22px;
+}
+.cdetail__link {
+  margin-left: auto;
+  font-size: 14px;
+}
+.cdetail__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  margin: 0;
+}
+.cdetail__stat {
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.cdetail__stat dt {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.cdetail__stat dd {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.cdetail__stat small {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cdetail__note {
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}

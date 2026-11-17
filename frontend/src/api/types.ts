@@ -832,3 +832,35 @@ export interface CompareRegionsResponse {
   b: CompareRegionSide
   headToHead: RegionHeadToHead
 }
+
+export interface TournamentChampionPlayer {
+  page: string
+  name: string
+  team: string | null
+  role: string | null
+  games: number
+  wins: number
+  winRate: number
+  kda: number | null
+  underMinSample: boolean
+}
+
+export interface TournamentChampionDetail {
+  /** Games in the event, and how many of them had the champion picked or banned. */
+  eventGames: number
+  presentGames: number
+  picks: number
+  wins: number
+  losses: number
+  winRate: number | null
+  underMinSample: boolean
+  bans: number
+  presence: number
+}
+
+export interface TournamentChampionDetailResponse {
+  champion: { id: number; name: string }
+  empty: boolean
+  summary: TournamentChampionDetail | null
+  players: TournamentChampionPlayer[]
+}

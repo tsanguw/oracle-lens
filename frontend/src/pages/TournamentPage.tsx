@@ -7,6 +7,7 @@ import type {
   StagesResponse,
   StandingRow,
   TournamentChampion,
+  TournamentChampionDetailResponse,
   TournamentContextResponse,
   TournamentPlayer,
   TournamentResponse,
@@ -16,6 +17,7 @@ import { useApi } from '../api/useApi'
 import {
   ResultsTable,
   StandingsTable,
+  TournamentChampionDetailPanel,
   TournamentChampionsTable,
   TournamentChampionTiles,
   TournamentContext,
@@ -29,6 +31,7 @@ import { usePageMeta, useJsonLd } from '../lib/usePageMeta'
 import { notFoundSeo, tournamentLd, tournamentSeo } from '../lib/seoText'
 import { tournamentPath } from '../lib/tournamentPath'
 import { filterMatches, teamOptions } from '../lib/matchFilter'
+import ChampionSelect from '../components/ChampionSelect'
 import ErrorState from '../components/ErrorState'
 import { TeamLogo } from '../components/Images'
 import ResultsFilters from '../components/ResultsFilters'
@@ -37,6 +40,9 @@ import TournamentStages from '../components/TournamentStages'
 
 /** Results shown before "Show all results" is pressed; the API's own cap (200) is how many "all" can be. */
 const RESULTS_PREVIEW = 20
+
+/** Champions in the hero strip, tiles and table: what the champions list returned before the search needed all of them. */
+const TOP_CHAMPIONS = 15
 
 const Skeleton = () => (
   <div className="skeleton" style={{ height: 240 }} role="status" aria-busy="true">
@@ -57,7 +63,23 @@ export default function TournamentPage({ id }: { id: string }) {
   const standings = useApi<{ empty: boolean; standings: StandingRow[] }>(`${base}/standings`)
   const matches = useApi<MatchesResponse>(`${base}/matches?limit=200`)
   const players = useApi<{ empty: boolean; minGames: number; players: TournamentPlayer[] }>(`${base}/players`)
-  const champions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions`)
+  // Every champion of the event (the API caps a list at 200, and an event has well under that): the top of it feeds the
+  // hero strip, tiles and table exactly as before, the whole of it feeds the champion search.
+  const allChampions = useApi<{ empty: boolean; champions: TournamentChampion[] }>(`${base}/champions?limit=200`)
+  const champions = {
+    ...allChampions,
+    data: allChampions.data && { ...allChampions.data, champions: allChampions.data.champions.slice(0, TOP_CHAMPIONS) },
+  }
+  // The champion search lives in the URL (?champion=). A name that is not one of the event's champions (an old link) is
+  // ignored, and so is the whole choice while the list is still loading.
+  const champion = allChampions.data?.champions.find((c) => c.champion === params.get('champion'))?.champion ?? ''
+  const championDetail = useApi<TournamentChampionDetailResponse>(champion ? `${base}/champions/${encodeURIComponent(champion)}` : null)
+  const setChampion = (value: string) => {
+    const next = new URLSearchParams(params)
+    if (value) next.set('champion', value)
+    else next.delete('champion')
+    setParams(next, { replace: true })
+  }
   const rosters = useApi<RostersResponse>(`${base}/rosters`)
   const context = useApi<TournamentContextResponse>(`${base}/context`)
   const stages = useApi<StagesResponse>(`${base}/stages`)
@@ -329,7 +351,13 @@ export default function TournamentPage({ id }: { id: string }) {
                   Champions
                 </h2>
                 <span className="section__note">Presence is the share of games where it was picked or banned</span>
+                {allChampions.data && allChampions.data.champions.length > 0 && (
+                  <div className="matches__tools">
+                    <ChampionSelect champions={allChampions.data.champions.map((c) => c.champion)} value={champion} onChange={setChampion} />
+                  </div>
+                )}
               </div>
+              {champion && <TournamentChampionDetailPanel name={champion} state={championDetail} />}
               {champions.data ? (
                 <>
                   <TournamentChampionTiles champions={champions.data.champions.slice(0, 8)} />

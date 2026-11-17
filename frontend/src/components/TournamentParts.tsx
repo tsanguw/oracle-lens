@@ -4,10 +4,13 @@ import type {
   SeriesRow,
   StandingRow,
   TournamentChampion,
+  TournamentChampionDetailResponse,
   TournamentContextResponse,
   TournamentPlayer,
   TournamentResponse,
 } from '../api/types'
+import type { ApiState } from '../api/useApi'
+import ErrorState from './ErrorState'
 import { dateRange, decimal, duration, matchClock, matchTime, NA, percent, statusBadge, whole } from '../lib/format'
 import { dayLabel, groupByDay } from '../lib/matchFilter'
 import { ChampionPicker, StageBackdrop, StageMotion, stageClass, usePresenceStage } from './ChampionStage'
@@ -460,6 +463,114 @@ export function TournamentPlayersTable({ players }: { players: TournamentPlayer[
         </tr>
       ))}
     </Table>
+  )
+}
+
+/**
+ * The chosen champion's record in the event and who played it. Shows its own loading, error and empty states so the
+ * rest of the Champions section stays as it is while it loads.
+ */
+export function TournamentChampionDetailPanel({ name, state }: { name: string; state: ApiState<TournamentChampionDetailResponse> }) {
+  const { data, error } = state
+  if (error) return <ErrorState message={error.message} onRetry={state.reload} heading="Could not load this champion" level={3} />
+  if (!data) {
+    return (
+      <div className="skeleton" style={{ height: 180, marginTop: 16 }} role="status" aria-busy="true">
+        <span className="sr-only">Loading {name}…</span>
+      </div>
+    )
+  }
+  const s = data.summary
+  const champion = data.champion.name
+  return (
+    <div className="cdetail" role="region" aria-label={`${champion} in this event`}>
+      <div className="cdetail__head">
+        <ChampionIcon name={champion} size={44} />
+        <h3 className="cdetail__name">{champion}</h3>
+        <Link to={`/champions/${encodeURIComponent(champion)}`} className="cdetail__link pool__link">
+          All of {champion}’s games
+        </Link>
+      </div>
+      {s === null ? (
+        <p className="cdetail__note">{champion} was not picked or banned in this event.</p>
+      ) : (
+        <>
+          <dl className="cdetail__stats">
+            <div className="cdetail__stat">
+              <dt>Presence</dt>
+              <dd>{percent(s.presence)}</dd>
+              <small>
+                {s.presentGames} of {s.eventGames} games
+              </small>
+            </div>
+            <div className="cdetail__stat">
+              <dt>Picks</dt>
+              <dd>{s.picks}</dd>
+            </div>
+            <div className="cdetail__stat">
+              <dt>Bans</dt>
+              <dd>{s.bans}</dd>
+            </div>
+            <div className="cdetail__stat">
+              <dt>W-L</dt>
+              <dd>{s.picks > 0 ? `${s.wins}-${s.losses}` : NA}</dd>
+            </div>
+            <div className={`cdetail__stat${s.underMinSample && s.picks > 0 ? ' is-dim' : ''}`}>
+              <dt>Win rate</dt>
+              <dd>{percent(s.winRate)}</dd>
+              {s.underMinSample && s.picks > 0 && <small>Under 5 games</small>}
+            </div>
+          </dl>
+          {data.players.length === 0 ? (
+            <p className="cdetail__note">Not picked in this event, only banned.</p>
+          ) : (
+            <Table
+              head={[
+                { label: 'Player', left: true },
+                { label: 'Team', left: true },
+                { label: 'Role', left: true },
+                { label: 'Games' },
+                { label: 'W-L' },
+                { label: 'Win rate' },
+                { label: 'KDA' },
+                { label: '' },
+              ]}
+            >
+              {data.players.map((p) => (
+                <tr key={p.page} className={p.underMinSample ? 'is-dim' : undefined}>
+                  <td className="pool__champ">
+                    <span className="with-img">
+                      <PlayerPhoto page={p.page} name={p.name} role={p.role} size={28} />
+                      <Link to={`/players/${encodeURIComponent(p.page)}`} className="pool__link">
+                        {p.name}
+                      </Link>
+                    </span>
+                  </td>
+                  <td className="pool__champ pool__role" style={{ textTransform: 'none', letterSpacing: 0, fontSize: 15 }}>
+                    {p.team ? (
+                      <span className="with-img">
+                        <TeamLogo name={p.team} size={22} />
+                        <Link to={teamLink(p.team)} className="pool__link">
+                          {p.team}
+                        </Link>
+                      </span>
+                    ) : (
+                      NA
+                    )}
+                  </td>
+                  <td className="pool__champ pool__role">{p.role ?? NA}</td>
+                  <td>{p.games}</td>
+                  <td>{`${p.wins}-${p.games - p.wins}`}</td>
+                  <td>{percent(p.winRate)}</td>
+                  <td>{decimal(p.kda)}</td>
+                  <td className="pool__flag">{p.underMinSample ? 'Under 5 games' : ''}</td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </>
+      )}
+    </div>
   )
 }
 
