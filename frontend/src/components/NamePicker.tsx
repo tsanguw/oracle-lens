@@ -9,10 +9,15 @@ interface Props {
   label: string
   /** The first option, which chooses nothing: "All teams". */
   allLabel: string
+  /** What the button says while nothing is chosen, when that should differ from the first option. */
+  placeholder?: string
   /** The accessible name of the list. */
   listLabel: string
   /** The icon beside a name, in the button and in the list. */
   icon: (name: string, size: number) => ReactNode
+  /** Names to grey out (they stay selectable), and what a screen reader hears after them. */
+  dimmed?: (name: string) => boolean
+  dimNote?: string
 }
 
 /**
@@ -20,7 +25,7 @@ interface Props {
  * combobox pattern: focus stays on the button, the highlighted option is named by `aria-activedescendant`, and the
  * arrow keys, Home, End, Enter, Space, Escape and typing a name's first letters all work as they do on a native select.
  */
-export default function NamePicker({ names, value, onChange, label, allLabel, listLabel, icon }: Props) {
+export default function NamePicker({ names, value, onChange, label, allLabel, listLabel, icon, dimmed, dimNote, placeholder }: Props) {
   const id = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const typed = useRef({ text: '', at: 0 })
@@ -128,7 +133,7 @@ export default function NamePicker({ names, value, onChange, label, allLabel, li
         </span>
         <span id={`${id}-value`} className="picker__value">
           {value && icon(value, 20)}
-          <span className="picker__name">{value || allLabel}</span>
+          <span className="picker__name">{value || placeholder || allLabel}</span>
         </span>
         <span className="picker__chevron" aria-hidden="true" />
       </button>
@@ -141,12 +146,13 @@ export default function NamePicker({ names, value, onChange, label, allLabel, li
               id={optionId(i)}
               role="option"
               aria-selected={i === selected}
-              className={`picker__option${i === active ? ' is-active' : ''}${i === selected ? ' is-selected' : ''}`}
+              className={`picker__option${i === active ? ' is-active' : ''}${i === selected ? ' is-selected' : ''}${name && dimmed?.(name) ? ' is-dim' : ''}`}
               onMouseEnter={() => setActive(i)}
               onClick={() => choose(i)}
             >
               {name ? icon(name, 22) : <span className="picker__blank" aria-hidden="true" />}
               <span className="picker__name">{name || allLabel}</span>
+              {name && dimmed?.(name) && dimNote && <span className="sr-only">{dimNote}</span>}
             </li>
           ))}
         </ul>

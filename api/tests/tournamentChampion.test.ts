@@ -145,3 +145,11 @@ describe('GET /api/tournaments/:id/champions', () => {
     expect(champions.map((c: { champion: string }) => c.champion)).toEqual(['Azir', 'Zed', 'Ahri', 'Lux'])
   })
 })
+
+describe('GET /api/filters/champions', () => {
+  it('lists every champion by name, including ones no event used', async () => {
+    const { body, status } = await api('/api/filters/champions')
+    expect(status).toBe(200)
+    expect(body.names).toEqual(['Ahri', 'Azir', 'Lux', 'Nami', 'Zed'])
+  })
+})

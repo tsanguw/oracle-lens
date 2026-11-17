@@ -220,26 +220,6 @@ export function TournamentPlayerCards({ players }: { players: TournamentPlayer[]
   )
 }
 
-/** The eight champions with the highest presence, as an icon grid. */
-export function TournamentChampionTiles({ champions }: { champions: TournamentChampion[] }) {
-  return (
-    <ul className="champs">
-      {champions.map((c, i) => (
-        <li key={c.champion} style={{ ['--i' as string]: i }}>
-          <Link to={`/champions/${encodeURIComponent(c.champion)}`} className="champs__tile">
-            <ChampionIcon name={c.champion} size={56} />
-            <span className="champs__name">{c.champion}</span>
-            <span className="champs__stat">{percent(c.presence)} presence</span>
-            <span className="champs__stat">
-              {c.picks} {c.picks === 1 ? 'pick' : 'picks'}, {c.bans} {c.bans === 1 ? 'ban' : 'bans'}
-            </span>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 /** `grouped`: the children are `<tbody>`s (one per day) instead of rows. */
 function Table({ head, children, grouped = false }: { head: { label: string; left?: boolean }[]; children: React.ReactNode; grouped?: boolean }) {
   return (
@@ -571,29 +551,5 @@ export function TournamentChampionDetailPanel({ name, state }: { name: string; s
         </>
       )}
     </div>
-  )
-}
-
-export function TournamentChampionsTable({ champions }: { champions: TournamentChampion[] }) {
-  return (
-    <Table head={[{ label: 'Champion', left: true }, { label: 'Presence' }, { label: 'Picks' }, { label: 'W-L' }, { label: 'Win rate' }, { label: 'Bans' }]}>
-      {champions.map((c) => (
-        <tr key={c.champion}>
-          <td className="pool__champ">
-            <span className="with-img">
-              <ChampionIcon name={c.champion} size={28} />
-              <Link to={`/champions/${encodeURIComponent(c.champion)}`} className="pool__link">
-                {c.champion}
-              </Link>
-            </span>
-          </td>
-          <td>{percent(c.presence)}</td>
-          <td>{c.picks}</td>
-          <td>{c.picks > 0 ? `${c.wins}-${c.picks - c.wins}` : NA}</td>
-          <td>{percent(c.winRate)}</td>
-          <td>{c.bans}</td>
-        </tr>
-      ))}
-    </Table>
   )
 }
