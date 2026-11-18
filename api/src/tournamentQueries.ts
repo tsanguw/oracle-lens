@@ -263,7 +263,13 @@ export interface TournamentChampion {
   presence: number
 }
 
-export async function loadTournamentChampions(pool: pg.Pool, tournamentIds: number[], limit = 15): Promise<TournamentChampion[]> {
+/** The event's champions by presence; with `championId`, only that champion's row (same counts as in the full list). */
+export async function loadTournamentChampions(
+  pool: pg.Pool,
+  tournamentIds: number[],
+  limit = 15,
+  championId: number | null = null,
+): Promise<TournamentChampion[]> {
   const { rows } = await pool.query(
     `WITH ev AS (
        SELECT pgm.game_id, pgm.champion_id, 'pick' AS kind, pgm.win
@@ -278,10 +284,90 @@ export async function loadTournamentChampions(pool: pg.Pool, tournamentIds: numb
             COUNT(*) FILTER (WHERE ev.kind = 'ban')::int AS bans,
             COUNT(DISTINCT ev.game_id) / (SELECT n FROM tot) AS presence
      FROM ev JOIN champion c ON c.id = ev.champion_id
+     WHERE ($3::int IS NULL OR ev.champion_id = $3::int)
      GROUP BY c.id ORDER BY presence DESC, picks DESC, c.name LIMIT $2`,
-    [tournamentIds, limit],
+    [tournamentIds, limit, championId],
   )
   return rows.map((r) => ({ ...r, winRate: r.picks > 0 ? r.wins / r.picks : null }))
+}
+
+export interface TournamentChampionPlayer {
+  page: string
+  name: string
+  team: string | null
+  role: string | null
+  games: number
+  wins: number
+  winRate: number
+  kda: number | null
+  underMinSample: boolean
+}
+
+/** Who played the champion in the event (play-in included), most games first. */
+export async function loadTournamentChampionPlayers(
+  pool: pg.Pool,
+  tournamentIds: number[],
+  championId: number,
+): Promise<TournamentChampionPlayer[]> {
+  const { rows } = await pool.query(
+    `SELECT p.name AS page, COALESCE(p.display_name, p.name) AS name,
+       mode() WITHIN GROUP (ORDER BY pt.name) AS team,
+       mode() WITHIN GROUP (ORDER BY pgm.role) AS role,
+       COUNT(*)::int AS games, COUNT(*) FILTER (WHERE pgm.win)::int AS wins,
+       CASE WHEN SUM(pgm.deaths) FILTER (WHERE ${ok}) = 0
+            THEN SUM(${ka}) FILTER (WHERE ${ok})::float8
+            ELSE SUM(${ka}) FILTER (WHERE ${ok})::float8 / NULLIF(SUM(pgm.deaths) FILTER (WHERE ${ok}), 0)
+       END AS kda
+     ${FROM}
+     JOIN player p ON p.id = pgm.player_id JOIN team pt ON pt.id = pgm.team_id
+     WHERE t.id = ANY($1::int[]) AND pgm.champion_id = $2
+     GROUP BY p.id ORDER BY games DESC, wins DESC, p.name`,
+    [tournamentIds, championId],
+  )
+  return rows.map((r) => ({ ...r, winRate: r.wins / r.games, underMinSample: r.games < MIN_SAMPLE }))
+}
+
+export interface TournamentChampionDetail {
+  /** Games in the event, and the ones where the champion was picked or banned. */
+  eventGames: number
+  presentGames: number
+  picks: number
+  wins: number
+  losses: number
+  winRate: number | null
+  underMinSample: boolean
+  bans: number
+  presence: number
+}
+
+/** One champion's record in the event, or null when it was neither picked nor banned there. */
+export async function loadTournamentChampionDetail(
+  pool: pg.Pool,
+  tournamentIds: number[],
+  championId: number,
+): Promise<{ summary: TournamentChampionDetail; players: TournamentChampionPlayer[] } | null> {
+  const [rows, total, players] = await Promise.all([
+    loadTournamentChampions(pool, tournamentIds, 1, championId),
+    pool.query(`SELECT COUNT(*)::int AS n FROM game WHERE tournament_id = ANY($1::int[])`, [tournamentIds]),
+    loadTournamentChampionPlayers(pool, tournamentIds, championId),
+  ])
+  const c = rows[0]
+  if (!c) return null
+  const eventGames: number = total.rows[0].n
+  return {
+    summary: {
+      eventGames,
+      presentGames: Math.round(c.presence * eventGames),
+      picks: c.picks,
+      wins: c.wins,
+      losses: c.picks - c.wins,
+      winRate: c.winRate,
+      underMinSample: c.picks < MIN_SAMPLE,
+      bans: c.bans,
+      presence: c.presence,
+    },
+    players,
+  }
 }
 
 export interface RelatedEvent {

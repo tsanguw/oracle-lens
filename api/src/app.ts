@@ -20,6 +20,7 @@ import {
   loadRelatedEvents,
   loadResults,
   loadStandings,
+  loadTournamentChampionDetail,
   loadTournamentChampions,
   loadTournamentPlayers,
   loadTournamentSummary,
@@ -448,6 +449,13 @@ export function createApp(options: AppOptions = {}) {
     const champions = await loadTournamentChampions(pool, tournament.memberIds, limit)
     return { empty: champions.length === 0, champions }
   })
+  /** One champion's record in the event (every tournament of it), and who played it. Unknown champion: 404. */
+  tournamentRoute('/champions/:name', async ({ tournament, params }) => {
+    const champion = await findChampion(pool, String(params.name))
+    if (!champion) return null
+    const detail = await loadTournamentChampionDetail(pool, tournament.memberIds, champion.id)
+    return { champion, empty: detail === null, summary: detail?.summary ?? null, players: detail?.players ?? [] }
+  })
   /**
    * The event's series grouped into stages (play-in, swiss, groups, knockout), with the links a bracket is drawn from and
    * each team's record in each stage. `defaultKey` is the stage the page opens on (null: the page shows no stages).
@@ -477,6 +485,13 @@ export function createApp(options: AppOptions = {}) {
     return { teams, upcoming, results, related }
   })
 
+
+  /** Every champion name, for pickers that list champions an event never used. Changes only when the sync runs, so it is cacheable. */
+  app.get('/api/filters/champions', wrap(async (_req, res) => {
+    res.set('Cache-Control', 'public, max-age=300')
+    const { rows } = await pool.query<{ name: string }>(`SELECT name FROM champion ORDER BY name`)
+    res.json({ names: rows.map((r) => r.name) })
+  }))
 
   /** Patches that have games in the chosen league, year and split (each optional), so the patch filter offers only real choices. */
   app.get('/api/filters/patches', wrap(async (req, res) => {

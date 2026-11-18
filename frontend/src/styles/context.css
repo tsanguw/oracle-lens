@@ -708,3 +708,172 @@
 .row-action:hover {
   color: var(--accent-text);
 }
+
+/* The chosen champion record in this event. */
+.cdetail {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+.cdetail__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.cdetail__name {
+  margin: 0;
+  font-size: 22px;
+}
+.cdetail__link {
+  margin-left: auto;
+  font-size: 14px;
+}
+.cdetail__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  margin: 0;
+}
+.cdetail__stat {
+  padding: 12px 16px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.cdetail__stat dt {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.cdetail__stat dd {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+}
+.cdetail__stat small {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cdetail__note {
+  margin: 0;
+  padding: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* A champion the event never used: greyed out in the dropdown, still selectable. */
+.picker__option.is-dim {
+  color: var(--text-dim);
+}
+.picker__option.is-dim .img,
+.picker__option.is-dim img {
+  opacity: 0.4;
+}
+.picker__option.is-dim.is-active,
+.picker__option.is-dim.is-selected {
+  color: var(--text-muted);
+}
+
+/* Sortable champion table headers: a button that looks like the header text, with an arrow on the sorted column. */
+.pool__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.pool__sort:hover {
+  color: var(--text);
+}
+.pool__arrow {
+  width: 6px;
+  height: 6px;
+  opacity: 0;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-1px) rotate(45deg);
+}
+.pool th[aria-sort="descending"] .pool__arrow,
+.pool th[aria-sort="ascending"] .pool__arrow {
+  opacity: 1;
+}
+.pool th[aria-sort="ascending"] .pool__arrow {
+  transform: translateY(1px) rotate(225deg);
+}
+.pool th[aria-sort="descending"],
+.pool th[aria-sort="ascending"] {
+  color: var(--text);
+}
+.pool tr.is-chosen {
+  background: var(--bg-raised);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.pool__dim {
+  color: var(--text-dim);
+}
+.champtable {
+  margin-top: 16px;
+}
+
+/* On a phone the six columns fit without sideways scrolling: tighter cells, and the champion name may wrap. */
+@media (max-width: 520px) {
+  .champtable .pool {
+    min-width: 0;
+  }
+  .champtable .pool th,
+  .champtable .pool td {
+    padding: 10px 3px;
+    font-size: 13px;
+  }
+  .champtable .pool th {
+    font-size: 12px;
+  }
+  .champtable .pool th:first-child,
+  .champtable .pool td:first-child {
+    padding-left: 10px;
+  }
+  .champtable .pool th:last-child,
+  .champtable .pool td:last-child {
+    padding-right: 10px;
+  }
+  .champtable .with-img {
+    gap: 6px;
+  }
+  .champtable .pool__sort {
+    gap: 3px;
+    letter-spacing: 0;
+  }
+}
+
+/* The line above the champion table: the count in full text, how it is sorted beside it, a gap before the header. */
+.champtable__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.champtable__count {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+.champtable__sort {
+  color: var(--text-muted);
+}
