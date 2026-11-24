@@ -77,7 +77,7 @@ A visitor's browser only ever talks to the frontend, the API and the image bucke
 |---|---|
 | `frontend/` | React + Vite + TypeScript UI |
 | `api/` | Express + TypeScript API, SQL migrations, vitest suite |
-| `sync/` | Python loader (`backfill` mode implemented; `nightly` loads only new data) |
+| `sync/` | Python loader and CLI: `backfill`, `nightly`, `schedule`, `rosters`, `results` and the image commands |
 | `docker-compose.yml` | Local Postgres 16 for development |
 
 Design decisions worth knowing:
@@ -148,17 +148,17 @@ python main.py backfill --latest                                   # most recent
 python main.py backfill --tournament "LCK/2026 Season/Rounds 3-4"  # a specific Leaguepedia page
 python main.py backfill --all --force                              # re-sync even if already done
 python main.py logo-tones                                          # measure which team logos are too dark for the dark panels (they are then shown on a light plate)
-python main.py schedule                                           # refresh every series' date and round (the bracket and stage tabs are built from these); --tournament PAGE limits it to one event
+python main.py schedule                                            # refresh every series' date and round (the bracket and stage tabs are built from these), without reloading games; --tournament PAGE limits it to one event
+python main.py rosters                                             # every player's team history (a few minutes); --since 2026-09-01 only players with a roster change from that date on
 python main.py art                                                 # cache the Legends of Runeterra card art as small WebP files under frontend/public/img/art (about 12 MB; run once)
 python main.py upload-images --from ../frontend/public/img        # put the cached art (and any new logos and photos) on R2; the site falls back to Riot's CDN for anything missing
 python main.py results                                             # fetch final placements (1st, 3rd-4th, ...) for every event
-python main.py schedule                                            # refresh match dates (series.scheduled_at) without reloading games
-python main.py nightly                                             # only what is new: unfinished tournaments, match dates, champion icons (about 30 seconds)
+python main.py nightly                                             # only what is new: unfinished and upcoming tournaments, match dates, placements, team history, champion icons (about 30 seconds)
 python main.py images                                              # cache team logos and player photos, and record champion icon keys
 python main.py images --only teams --limit 20                      # a quick trial
 ```
 
-**Nightly update.** `python main.py nightly` skips every tournament already marked `done`, loads new and still-running ones (a reload is idempotent), refreshes match dates for the last 14 days, and refreshes champion icon keys. It also refreshes final placements (from Leaguepedia's `TournamentResults`) for events that ended in the last 45 days or have none yet; the recent-events panels on player and team pages show them in place of "Completed". It exits non-zero if a tournament failed, so a scheduler can flag it; run it again to retry. It deliberately leaves team logos and player photos out, because they are files and a scheduled runner has no permanent disk (they need somewhere to live in production; see the roadmap). `.github/workflows/nightly-sync.yml` runs it on GitHub Actions; it runs every day at 12:00 UTC (and on demand from the Actions tab) using the seven repository secrets it lists; `python sync/set_github_secrets.py` sets them from `.env`.
+**Nightly update.** `python main.py nightly` skips every tournament already marked `done`, loads new and still-running ones (a reload is idempotent), refreshes match dates for the last 14 days, and refreshes champion icon keys. It looks 14 days ahead too: a tournament that starts within that window is stored before its first game, with the series Leaguepedia has scheduled (slots whose teams are still TBD are not series), and is reloaded each night until it ends; a past event with no games, or one with no end date, is skipped. Players with a roster change in the last 30 days get their team history rebuilt (`python main.py rosters` pulls everyone). It also refreshes final placements (from Leaguepedia's `TournamentResults`) for events that ended in the last 45 days or have none yet; the recent-events panels on player and team pages show them in place of "Completed". It exits non-zero if a tournament failed, so a scheduler can flag it; run it again to retry. It deliberately leaves team logos and player photos out, because they are files and a scheduled runner has no permanent disk (they need somewhere to live in production; see the roadmap). `.github/workflows/nightly-sync.yml` runs it on GitHub Actions; it runs every day at 12:00 UTC (and on demand from the Actions tab) using the seven repository secrets it lists; `python sync/set_github_secrets.py` sets them from `.env`.
 
 A full run takes a few hours (roughly 10-20 seconds per tournament with the bot login). It writes a log to `sync/logs/` (gitignored), continues past individual failures, and picks up where it left off if you run it again.
 
@@ -200,6 +200,8 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/players/:id/matchups/champions` | Record and average gold difference against the champion the lane opponent played. |
 | `GET /api/players/:id/target-bans` | Champions the player has played that opponents banned, with the share of games. |
 | `GET /api/players/:id/context` | The related-info strip on the player page: current (or last) team and its roster, running events, upcoming series and recent results. Ignores the stat filters. |
+| `GET /api/players/:id/accomplishments` | The player's international record: for Worlds, MSI and First Stand, the events they played in and their best finish (null while no placement is known). Ignores the stat filters. |
+| `GET /api/players/:id/team-history` | The teams the player has been on and when, newest first, each with the region, their first in-game role and a link to our team page where we hold games. Ignores the stat filters. |
 | `GET /api/teams/:id` | Team profile (`:id` is the exact team name or numeric id), resolved range and summary: record, side split, game length, kills and deaths per game, gold per minute and difference, objectives per game. Same filters as players except `role`. |
 | `GET /api/teams/:id/players` | Everyone who played for the team in the range, with their stats for this team only (entries under 5 games are flagged). |
 | `GET /api/teams/:id/draft` | Most picked champions with records, the team's own most frequent bans and the bans made against it (`limit`, default 8). |
@@ -211,18 +213,21 @@ All player stat endpoints accept the filters `league`, `year`, `split`, `tournam
 | `GET /api/champions/:name` | Champion profile and summary for the range: games, win rate, blue/red split, pick rate, ban rate and presence (shares of all games in the range), KDA, kill participation, damage/gold/CS per minute, game length, main role. Same filters as the leaderboard, including `role` and `qualifiers=true`. |
 | `GET /api/champions/:name/players`, `/teams`, `/matchups`, `/roles`, `/patches` | Top players and teams on the champion, record against each lane opponent's champion (with gold difference), results by role (ignores the role filter) and by patch with per-patch pick rate. `limit` applies to the first three (default 8). |
 | `GET /api/champions/:name/context` | The related-info strip on the champion page: top players, top teams and recent events. Ignores the stat filters. |
-| `GET /api/tournaments/:id` | One event (`:id` is the numeric id the search and home links use): league (or the leagues of a multi-league event), stage, status, dates, and a summary: games, series, teams, game length, blue-side win rate, kills per game, patches, and the leader (while running) or champion (finished playoffs and internationals). |
-| `GET /api/tournaments/:id/standings`, `/matches`, `/players`, `/champions` | Team records (series first, then game difference), results newest first plus upcoming scheduled series, soonest first (`limit`, 1-200, caps both lists; without it, 30 results and 5 upcoming), top players by KDA (minimum 5 games, or everyone for very short events), and champion picks, bans and presence. |
+| `GET /api/tournaments/:id` | One event (`:id` is its readable slug, such as `worlds-2025`, in any letter case, or an old numeric id; a play-in's id or old address gives its competition): league (or the leagues of a multi-league event), stage, status (`Upcoming`, `In progress` or `Completed`, from its dates), dates, and a summary: games, series, teams, game length, blue-side win rate, kills per game, patches, and the leader (while running), the champion (finished playoffs and internationals) or the team with the top record (other finished events and standalone play-ins). An event with no games has `empty: true` and no summary. |
+| `GET /api/tournaments/:id/standings`, `/matches`, `/players`, `/champions` | Team records (series first, then game difference), results newest first plus upcoming scheduled series, soonest first (`limit`, 1-200, caps both lists; without it, 30 results and 5 upcoming), top players by KDA (minimum 5 games, or everyone for very short events; `limit`, default 10), and every champion's picks, bans and presence, most present first (`limit`, 1-200, default 15). |
+| `GET /api/tournaments/:id/champions/:name` | One champion in the event (every tournament of it, a play-in included): picks, wins, bans, win rate (flagged `underMinSample` under 5 picks) and presence with the games it was present in, and the players who played it with games, record, win rate and KDA, most games first. `:name` is the champion name in any letter case. 404 for an unknown champion or event; a champion the event never used, or an event with no games, is `empty: true`. |
 | `GET /api/tournaments/:id/series/:seriesId` | One series and its games, each with the blue and red side: team, result, kills, bans in slot order and picks from Top to Support (champion, role, player, pick order, `null` when unknown). Game numbers are derived from `played_at`, because the data has none; a game without draft data has empty `bans` and `picks`. 404 for an unknown event or series, or a series of another event; 400 when `:seriesId` is not a positive integer. |
 | `GET /api/tournaments/:id/rosters` | Who played for each team in the event, its play-in included, taken from the games (a tournament has no roster list of its own). Teams come in standings order, then any the table doesn't list (a play-in's teams) by name. Each player appears once, under the role they played most, with their games for the team; players run Top to Support. |
 | `GET /api/tournaments/:id/stages` | The event's series grouped into stages (`playin`, `groups`, `swiss`, `knockout`) from the round each belongs to, derived on request and not stored. Each stage has rounds of series with both teams' scores and, in a knockout, a `lane` (`upper`, `lower` or `final`) and a `from` link on each team to the earlier series it came from and whether it won or lost there, so a bracket can be drawn. Swiss stages add every team's record and its result per round. An event with no round data returns `empty: true`. |
 | `GET /api/tournaments/:id/context` | The related-info strip on the tournament page: leading teams, upcoming and latest series, and the other events of the same league and year (or the other internationals). |
-| `GET /api/teams`, `/api/champions`, `/api/tournaments` | The list pages. All take `q` (name search), `dir`, `page` and `pageSize`, and a `sort` from a fixed set. **Teams** (`sort`: `winRate` default, `games`, `goldDiff`, `killsPerGame`, `towersPerGame`, `avgGameLengthSec`; minimum 5 games) use the leaderboard's default range and filters. **Champions** (`sort`: `presence` default, `games`, `winRate`, `pickRate`, `banRate`, `kda`) use the champion page's default range (the whole newest year across every league, internationals included) and the same filters, and rank rows under 5 games after the rest when sorting by win rate or KDA. **Tournaments** (`sort`: `date` or `name`) filter by `league` (or `INTL`), `year`, `stage` and `status`, and hide qualifiers unless `stage=Qualifier`. |
+| `GET /api/teams`, `/api/champions`, `/api/tournaments` | The list pages. All take `q` (name search), `dir`, `page` and `pageSize`, and a `sort` from a fixed set. **Teams** (`sort`: `winRate` default, `games`, `goldDiff`, `killsPerGame`, `towersPerGame`, `avgGameLengthSec`; minimum 5 games) use the leaderboard's default range and filters. **Champions** (`sort`: `presence` default, `games`, `winRate`, `pickRate`, `banRate`, `kda`) use the champion page's default range (the whole newest year across every league, internationals included) and the same filters, and rank rows under 5 games after the rest when sorting by win rate or KDA. **Tournaments** (`sort`: `date` or `name`) filter by `league` (or `INTL`), `year`, `stage` and `status` (`Upcoming`, `In progress` or `Completed`), and hide qualifiers unless `stage=Qualifier`. An event with no games is listed (and found by search) until it ends, so an upcoming event can be opened; a past event that never had a game stays hidden. |
 | `GET /api/assets/images` | Which champions, teams and players have an image: the Data Dragon version, champion name to icon key, team name to logo file and player page to photo file. Loaded once by the front end and cached for five minutes. |
 | `GET /api/search?q=` | Players (including old names), teams, champions and tournaments matching `q` (2+ characters), grouped by type, prefix matches first. `limit` per group (default 4). |
-| `GET /api/tournaments/recent` | The newest official events with games, qualifiers excluded. Each has a status (`In progress` while today is inside its dates) and a standing: the current leader while running, the champion for finished playoffs and internationals, otherwise the team with the best record. `limit` default 5. |
+| `GET /api/tournaments/recent` | The newest official events with games, newest start first. Domestic qualifiers and promotion series are left out; an international play-in is listed under its own name until its main event is loaded, then as part of the competition. Each has a status (`In progress` while today is inside its dates) and a standing: the current leader while running, the champion for finished playoffs and internationals, otherwise the team with the best record ("Top record"); no standing while a competition's main event has not decided a series. `limit` default 5. |
 | `GET /api/leaderboard/players` | Ranked players for the leaderboard page (see below). |
 | `GET /api/filters` | Available leagues, years, splits, patches. Years with only qualifier games are left out. |
+| `GET /api/filters/patches` | Patches that have games in the chosen `league`, `year` and `split` (each optional), so the patch filter offers only real choices. |
+| `GET /api/filters/champions` | Every champion's name, alphabetical, including champions no event used (the tournament page's champion dropdown). Cacheable for five minutes. |
 | `GET /api/meta/last-updated` | Timestamp of the last successful sync (shown in the footer). |
 
 **Default range:** with none of `league`/`year`/`split`/`tournament`/`patch` set, a player's page shows their most recent domestic split plus any international events from that split's start onward. `domestic=true` restricts it to the league's split only. Any explicit filter replaces the default range. `range=all` (with none of those filters) shows every game in the tracked leagues and internationals, labelled "All time"; `domestic=true` and `side` still apply, and any explicit filter overrides it. The player, team and champion pages, the teams list, the player leaderboard and the champions list support it. Over all history the leaderboard and the champions list take about 1 s, so their all-time results are kept in memory (up to 200 entries, at most an hour, dropped when the nightly sync stamps `meta.last_synced_at`; the champions list keeps its database rows per filter set and sorts, searches and pages them on every request), and only the first all-time request after a sync or a restart pays the query.
@@ -293,7 +298,7 @@ What is in place:
 - **The API is hardened:** per-IP rate limiting (429 with a JSON message), no `X-Powered-By`, errors that never include internals, and `CORS_ORIGIN` to restrict browser callers.
 - **The site sends security headers** (`frontend/public/_headers`): no framing, no sniffing, a strict referrer policy and and an enforced content security policy that lists exactly where scripts, styles, fonts, images and API calls may come from. If images or the API ever move to a custom domain, add it to `img-src` / `connect-src` there first. The frontend uses no `innerHTML` or `eval`. The one third-party script allowed is Cloudflare Web Analytics (see below).
 - **Analytics** are Cloudflare Web Analytics only: it sets no cookies and keeps no personal profile, so there is no consent banner. Cloudflare Pages injects its beacon (`static.cloudflareinsights.com`), which reports to `cloudflareinsights.com`; both are the only analytics hosts in the content security policy. No Google Analytics or session-recording tools.
-- **Dependencies:** `npm audit` (api and frontend) and `pip-audit` (sync) report no known vulnerabilities as of the last review. Re-run them now and then. GitHub's Dependabot alerts watch the manifests, and `.github/dependabot.yml` opens a weekly, grouped update pull request per area against `dev`. To keep the commit history to the author alone, bump versions in your own commit rather than merging a bot's pull request.
+- **Dependencies:** `npm audit` (api and frontend) and `pip-audit` (sync) report no known vulnerabilities as of the last review. Re-run them now and then. GitHub's Dependabot alerts watch the manifests, and `.github/dependabot.yml` opens a weekly, grouped update pull request per area against `dev`. Read each one's release notes and wait for green checks before merging it into `dev` (with a merge commit), and do not batch-merge major version bumps. Merged Dependabot pull requests keep the bot as author, so `dependabot[bot]` appears in GitHub's contributors list; that is expected. Security-update pull requests are the exception to `dev`: GitHub aims those at `main`, so they are better applied as a lockfile update through `dev` and the pull request closed.
 - **CI permissions** are read-only for both workflows, and the nightly workflow stops with a clear message if a secret is missing.
 
 If a secret ever leaks (shows up in a commit, a log or a screenshot), treat it as burned: rotate it at the source (reset the Neon password, create a new R2 token, change the bot password), update `.env`, run `python sync/set_github_secrets.py` and update Render, and only then clean the history. Rewriting history does not un-leak a secret that was ever pushed.
@@ -303,37 +308,49 @@ No personal email address is in the code or in new commits: the sync's `User-Age
 ## Branches and releases
 
 - **`main` is production.** Cloudflare Pages deploys the site from it, Render deploys the API from it, and the nightly sync runs from it. Only merge to `main` what has been checked on `dev`.
-- **`dev` is where work is collected.** Small changes can be committed to it directly; larger ones start on a branch (`feature/compare-players`, `fix/search-clip`) and are merged into `dev` with a pull request.
-- **Previews.** Cloudflare Pages builds every non-production branch as a preview, at `https://<branch>.oracle-lens.pages.dev` (`https://dev.oracle-lens.pages.dev` for `dev`). Two settings make a preview work: the same `VITE_API_BASE`, `VITE_IMAGE_BASE` and `NODE_VERSION` variables under the project's Preview environment, and the preview address in Render's `CORS_ORIGIN`. A preview calls the production API, which is read-only, so previewing is safe.
-- **Releasing** is a pull request from `dev` into `main` (merge it with a merge commit, so `dev` and `main` don't drift apart). After it deploys, check the live site.
-- **Checks.** The [secret scan](#security) runs on every push to every branch. The CI workflow (`.github/workflows/ci.yml`) runs the API tests and type check, the sync tests, and the frontend type check and build on every pull request and on every push to `main` and `dev`. It uses a throwaway Postgres container and no secrets. Wait for green checks before merging; running the commands under [Testing](#testing) first saves a round trip.
+- **`dev` is where work is collected.** Every change starts on a branch cut from `dev` (`feat/...`, `fix/...`, `chore/...`) and is merged into `dev` with a pull request and a merge commit, not committed to `dev` directly. One logical change per commit, each leaving the tests passing.
+- **Previews.** Cloudflare Pages builds every non-production branch as a preview, at `https://<branch>.oracle-lens.pages.dev`. A preview can show the page shell but not data: the API's `CORS_ORIGIN` allows only the production address, so previews cannot call it. To make them work, put the same `VITE_API_BASE`, `VITE_IMAGE_BASE` and `NODE_VERSION` variables under the project's Preview environment and add the preview address to Render's `CORS_ORIGIN` (the production API is read-only, so previewing against it is safe). Until then, check UI changes locally and then on the live site after the release.
+- **Releasing** is a pull request from `dev` into `main` (merge it with a merge commit, so `dev` and `main` don't drift apart). Read the check results first; after it deploys, check the live site and the API.
+- **Checks.** The [secret scan](#security) runs on every push to every branch. The CI workflow (`.github/workflows/ci.yml`) runs the API tests and type check, the sync tests, and the frontend Functions tests, type check and build on every pull request and on every push to `main` and `dev`. It uses a throwaway Postgres container and no secrets. Wait for green checks before merging; running the commands under [Testing](#testing) first saves a round trip.
 
 ## Testing
 
 ```bash
 cd api && npm test              # vitest + supertest
 cd api && npm run typecheck
+cd frontend && npm run build              # type check (tsc) and production build
+cd frontend && npm run test:functions     # the Cloudflare Pages Functions (sitemap.xml, robots.txt)
 cd sync && python -m pytest
 python scripts/scan_secrets.py --history   # no secrets in any tracked file or commit
 ```
 
-API tests run against a separate `lolstats_test` database on the same Postgres server. It is dropped, recreated, and migrated on every run, and never touches your dev data.
+API tests run against a separate `lolstats_test` database on the same Postgres server, so Postgres must be running (`docker compose up -d`). It is dropped, recreated, and migrated on every run, and never touches your dev data. Run one API test run at a time: they share that database.
+
+The frontend has no component or unit tests: pages are checked in the browser (console, interactions, and layout at 375, 822 and 1280 px) together with `npm run build`.
 
 ## Project layout
 
 ```
 api/
   migrations/     numbered SQL migrations (plain SQL, no ORM)
-  src/            app, filters, player queries, migration runner
+  src/            app.ts (every route), one query module per entity (player, team, champion, tournament,
+                  compare, region, leaderboard, list, home), range and filter resolution, response cache,
+                  stages, migration runner
   tests/          vitest suites and test-database setup
 frontend/
   src/api/        fetch hook and response types
-  src/components/ header/footer, filter bar, stat tiles, champion table
-  src/pages/      player page and placeholder routes
-  src/styles/     design tokens, layout, player page styles
+  src/components/ header and footer, filter bar and dock, pickers (team, champion, search), stat tables,
+                  stage backdrops, brackets, Versus hero and tape
+  src/lib/        pure helpers: formatting, sorting and filtering, bracket layout, page metadata and SEO text
+  src/pages/      home, leaderboard, the four lists, the detail pages and Versus
+  src/styles/     design tokens, layout and one stylesheet per area
   functions/      Cloudflare Pages Functions: /sitemap.xml and /robots.txt (with Node tests)
 sync/
-  lolsync/        client, normalizers, backfill
+  lolsync/        Leaguepedia client, normalizers, backfill, nightly, schedule, results, rosters, images
+  main.py         the CLI (backfill, nightly, schedule, rosters, results, images, art, upload-images)
+  prod.py         runs commands against production; read it before use
+  verify.py       read-only data health report
+  repair_names.py merge duplicate players and teams (dry run by default)
   league_aliases.yaml
   FIELDS.md
 scripts/
@@ -359,7 +376,10 @@ LICENSE             MIT license for the code
 9. ✅ Nightly sync: `nightly` command and workflow, scheduled daily, with an uptime monitor keeping the API awake
 10. ✅ Deployment: Neon, Render, Cloudflare Pages and R2 are live (see Deployment)
 11. ✅ Tournament stages and brackets (play-ins, groups, Swiss, single and double elimination)
-12. Ideas, roughly in order: compare two players or teams, head-to-head history, a patch and meta view, live and upcoming matches, a custom domain
+12. ✅ **Versus:** compare two players, two teams or two regions on one shared range, with the head-to-head record
+13. ✅ Upcoming tournaments: events are stored and listed before their first game, with their schedule, bracket and teams
+14. ✅ Tournament page champion lookup: a sortable table of every champion in the event and a dropdown for one champion's record and players
+15. Ideas, roughly in order: a patch and meta view, live matches, a sortable and filterable players table on the tournament page, a custom domain, a language switcher
 
 ## Scope decisions
 
@@ -367,14 +387,13 @@ LICENSE             MIT license for the code
 - **A play-in is part of its competition.** "Worlds 2025 Play-In" and "Worlds 2025 Main Event" are two tournament rows (two Leaguepedia pages, different stages), but they are one competition, shown as "Worlds 2025". The `event` view (migration 012) folds them together for everything that lists or opens events: the tournaments list, search, the home page, the sitemap and the event page itself. The event's dates run from the first play-in day to the end of the main event, its page has a Play-In tab, and its results, top players, champions and totals count both stages; the standings and the champion are the main event's alone. Opening a play-in's old address lands on the competition. Which tournament is a play-in of which comes from the Leaguepedia page names (`<x>/Play-In` belongs to `<x>/Main Event`, and the LCK's `Season Play-In` to its `Season Playoffs`), so a new Worlds or MSI joins up on its own; a play-in whose main event is not loaded yet stays an event of its own until it is. The games keep their own stage, so leaderboards and filters (which leave qualifiers out) do not change.
 - **Events have readable addresses**: `/tournaments/worlds-2025`, not `/tournaments/587`. The slug is the name in lower case with other characters turned into hyphens, derived by the `event_slug` view (migration 013) rather than stored, so the sync has nothing to maintain. If two events would share a slug, the earlier keeps it and the later gets `-<id>` added, and a name that is only digits gets `event-` in front, so a slug is never mistaken for a number. The API takes a slug (any letter case) or an old numeric id, a play-in's id included, and the page moves to the slug, so every old link still works. Everything that links to an event (lists, search, the home page, the player, team and champion event lists, the sitemap) uses the slug.
 - **Detail pages show related info near the top.** Player, team, champion and tournament pages each carry a strip of linked context under the header (for a player: current team and roster, running events, schedule and results), and every entity in it links to its own page. The shared building blocks are in `frontend/src/components/LinkedInfo.tsx`.
-- **Filters are docked to the bottom of the viewport** on the player, team and leaderboard pages (`FilterDock`), so they stay reachable while scrolling the stats they control. The dock can be collapsed to a slim bar that still shows the range being viewed, and starts collapsed on phones.
+- **Filters are docked to the bottom of the viewport** on the player, team, champion and leaderboard pages, the teams, champions and tournaments lists, and Versus (`FilterDock`), so they stay reachable while scrolling the stats they control. The dock can be collapsed to a slim bar that still shows the range being viewed, and starts collapsed on phones.
 - **Images.** Champion icons load from Riot's Data Dragon CDN (a free public feed, no key needed; the sync records each champion's icon key and the current version). Team logos and player photos come from Leaguepedia's file store: `python main.py images` downloads each one once, shrinks it to a small WebP (logos 128px, photos 256px) and saves it under `frontend/public/img/`, so pages never load images from Fandom. That folder is gitignored (the images belong to their owners) and is regenerated by the command; set `VITE_IMAGE_BASE` to serve them from somewhere else in production. Every image has a fallback (a neutral box, or initials), because Leaguepedia has a logo for about 72% of our teams (93% of the teams active in the last year) but a photo for only about 13% of players (almost none of the active ones). The footer credits Leaguepedia and Riot and carries Riot's fan-site disclaimer.
 - Everything is rolled up under each league's current name (see [Sync](#sync)); pre-2025 PCS, VCS and LJL count as LCP, and from 2025 they are second-tier leagues that are not loaded.
 
 ## Known limitations
 
-- **Upcoming matches only exist for events we already hold.** An event is loaded once it has recorded games, so the schedule of an event that has not started yet (or a bracket slot whose teams are still TBD) is not shown until the sync sees it.
-
+- **Upcoming matches only show for events the sync has stored.** The nightly sync stores an event up to 14 days before it starts, with the series Leaguepedia has scheduled, so an event further out has no page yet, and a bracket slot whose teams are still TBD is not a series until the teams are known. An event with no end date is not stored until it has one.
 - **First blood is not available** in Leaguepedia's scoreboard tables, so `first_blood` is `NULL` and the stat shows "N/A".
 - **Draft order** for picks and bans is the slot within each team's picks or bans, not the true interleaved draft order.
 - Leagues outside the six tracked ones (and their predecessors) are not loaded: for example LMS, OPL, TCL, LLA, and Challengers leagues. Predecessors that are not listed in `league_aliases.yaml` are not included.
